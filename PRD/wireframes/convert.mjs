@@ -56,10 +56,25 @@ function renderElement(el) {
     const weight = el.fontWeight ? ` font-weight="${el.fontWeight}"` : "";
     const anchor = el.textAlign === "center" ? "middle" : "start";
     const tx = el.textAlign === "center" ? x + width / 2 : x;
-    const ty = y + height / 2 + fontSize * 0.35;
-    return `<text ${opacity} x="${tx}" y="${ty}" text-anchor="${anchor}" font-size="${fontSize}"${weight} font-family="sans-serif" fill="${escapeXml(
+    const lineHeight = (el.lineHeight || 1.25) * fontSize;
+    const lines = (el.text || "").split("\n");
+    const ty0 = y + lineHeight / 2;
+    const attrs = `${opacity} x="${tx}" text-anchor="${anchor}" font-size="${fontSize}"${weight} font-family="sans-serif" fill="${escapeXml(
       el.strokeColor
-    )}">${escapeXml(el.text || "")}</text>`;
+    )}"`;
+    if (lines.length === 1) {
+      const ty = y + lineHeight * 0.5;
+      return `<text ${attrs} y="${ty}">${escapeXml(lines[0])}</text>`;
+    }
+    const tspans = lines
+      .map((ln, i) => {
+        const dy = i === 0 ? 0 : lineHeight;
+        return `<tspan x="${tx}" dy="${dy}"${i === 0 ? ` y="${ty0}"` : ""}>${escapeXml(
+          ln
+        )}</tspan>`;
+      })
+      .join("");
+    return `<text ${attrs}>${tspans}</text>`;
   }
 
   return "";

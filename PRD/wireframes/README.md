@@ -10,6 +10,10 @@
 | `01-login-desktop.excalidraw.svg` | 由源文件**自动生成**的 SVG，供 markdown/GitHub 渲染展示 |
 | `01-login-mobile.excalidraw` | 登录页·移动版线框**源文件**（对应 §4.3，可编辑） |
 | `01-login-mobile.excalidraw.svg` | 由源文件**自动生成**的 SVG |
+| `02-correction-desktop.excalidraw` | 纠错主页·桌面版线框**源文件**（对应 `pages/02-Correction.md`，可编辑） |
+| `02-correction-desktop.excalidraw.svg` | 由源文件**自动生成**的 SVG |
+| `02-correction-mobile.excalidraw` | 纠错主页·移动版线框**源文件**（可编辑） |
+| `02-correction-mobile.excalidraw.svg` | 由源文件**自动生成**的 SVG |
 | `convert.mjs` | 批量转换脚本：`.excalidraw` → `.excalidraw.svg` |
 | `NN-<feature>-{desktop,mobile}.excalidraw` | 后续页面线框，命名与 `pages/NN-<feature>.md` 对应，每页含桌面/移动双形态 |
 

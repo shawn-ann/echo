@@ -2,20 +2,20 @@
   <rect x="0" y="0" width="704" height="720" opacity="1" rx="0" ry="0" fill="#f0fdfa" stroke="#f0fdfa" stroke-width="1" />
   <rect x="704" y="0" width="576" height="720" opacity="1" rx="0" ry="0" fill="#ffffff" stroke="#ffffff" stroke-width="1" />
   <ellipse cx="352" cy="230" rx="50" ry="50" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
-  <text opacity="1" x="352" y="332.5" text-anchor="middle" font-size="30" font-family="sans-serif" fill="#1e1e1e">地道英语纠错</text>
-  <text opacity="1" x="352" y="368.3" text-anchor="middle" font-size="18" font-family="sans-serif" fill="#868e96">AI 英语教练 · 帮你记住每个错误</text>
-  <text opacity="1" x="180" y="447.95" text-anchor="start" font-size="17" font-family="sans-serif" fill="#343a40">✓ 会话式纠错 + 无限追问</text>
-  <text opacity="1" x="180" y="487.95" text-anchor="start" font-size="17" font-family="sans-serif" fill="#343a40">✓ 中式英语专项纠正</text>
-  <text opacity="1" x="180" y="527.95" text-anchor="start" font-size="17" font-family="sans-serif" fill="#343a40">✓ 错题积累，不再重复犯错</text>
+  <text opacity="1" x="352" text-anchor="middle" font-size="30" font-family="sans-serif" fill="#1e1e1e" y="323.75">地道英语纠错</text>
+  <text opacity="1" x="352" text-anchor="middle" font-size="18" font-family="sans-serif" fill="#868e96" y="361.25">AI 英语教练 · 帮你记住每个错误</text>
+  <text opacity="1" x="180" text-anchor="start" font-size="17" font-family="sans-serif" fill="#343a40" y="440.625">✓ 会话式纠错 + 无限追问</text>
+  <text opacity="1" x="180" text-anchor="start" font-size="17" font-family="sans-serif" fill="#343a40" y="480.625">✓ 中式英语专项纠正</text>
+  <text opacity="1" x="180" text-anchor="start" font-size="17" font-family="sans-serif" fill="#343a40" y="520.625">✓ 错题积累，不再重复犯错</text>
   <rect x="792" y="150" width="400" height="400" opacity="1" rx="72" ry="72" fill="#ffffff" stroke="#e0e0e0" stroke-width="2" />
-  <text opacity="1" x="992" y="201.1" text-anchor="middle" font-size="26" font-family="sans-serif" fill="#1e1e1e">登录</text>
-  <text opacity="1" x="822" y="260.25" text-anchor="start" font-size="15" font-family="sans-serif" fill="#1e1e1e">用户名</text>
+  <text opacity="1" x="992" text-anchor="middle" font-size="26" font-family="sans-serif" fill="#1e1e1e" y="194.25">登录</text>
+  <text opacity="1" x="822" text-anchor="start" font-size="15" font-family="sans-serif" fill="#1e1e1e" y="254.375">用户名</text>
   <rect x="822" y="270" width="340" height="46" opacity="1" rx="8.28" ry="8.28" fill="#f8f9fa" stroke="#ced4da" stroke-width="2" />
-  <text opacity="1" x="838" y="297.9" text-anchor="start" font-size="14" font-family="sans-serif" fill="#adb5bd">请输入用户名</text>
-  <text opacity="1" x="822" y="355.25" text-anchor="start" font-size="15" font-family="sans-serif" fill="#1e1e1e">密码</text>
+  <text opacity="1" x="838" text-anchor="start" font-size="14" font-family="sans-serif" fill="#adb5bd" y="291.75">请输入用户名</text>
+  <text opacity="1" x="822" text-anchor="start" font-size="15" font-family="sans-serif" fill="#1e1e1e" y="349.375">密码</text>
   <rect x="822" y="365" width="340" height="46" opacity="1" rx="8.28" ry="8.28" fill="#f8f9fa" stroke="#ced4da" stroke-width="2" />
-  <text opacity="1" x="838" y="392.9" text-anchor="start" font-size="14" font-family="sans-serif" fill="#adb5bd">请输入密码（掩码）</text>
+  <text opacity="1" x="838" text-anchor="start" font-size="14" font-family="sans-serif" fill="#adb5bd" y="386.75">请输入密码（掩码）</text>
   <rect x="822" y="445" width="340" height="48" opacity="1" rx="8.64" ry="8.64" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
-  <text opacity="1" x="992" y="476.65" text-anchor="middle" font-size="19" font-family="sans-serif" fill="#ffffff">登录</text>
-  <text opacity="1" x="992" y="534.9" text-anchor="middle" font-size="14" font-family="sans-serif" fill="#adb5bd">MVP 提示：使用内置账号登录</text>
+  <text opacity="1" x="992" text-anchor="middle" font-size="19" font-family="sans-serif" fill="#ffffff" y="470.875">登录</text>
+  <text opacity="1" x="992" text-anchor="middle" font-size="14" font-family="sans-serif" fill="#adb5bd" y="528.75">MVP 提示：使用内置账号登录</text>
 </svg>

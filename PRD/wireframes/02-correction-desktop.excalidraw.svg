@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -20 1320 840" width="1320" height="840">
+  <rect x="0" y="0" width="1280" height="800" opacity="1" rx="0" ry="0" fill="#f0fdfa" stroke="#f0fdfa" stroke-width="1" />
+  <rect x="0" y="0" width="1280" height="56" opacity="1" rx="0" ry="0" fill="#ffffff" stroke="#ffffff" stroke-width="1" />
+  <ellipse cx="37" cy="28" rx="13" ry="13" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
+  <text opacity="1" x="58" text-anchor="start" font-size="15" font-weight="600" font-family="sans-serif" fill="#212529" y="27.375">地道英语纠错</text>
+  <rect x="1170" y="14" width="70" height="28" opacity="1" rx="5.04" ry="5.04" fill="#ffffff" stroke="#ced4da" stroke-width="2" />
+  <text opacity="1" x="1205" text-anchor="middle" font-size="13" font-family="sans-serif" fill="#868e96" y="27.125">退出</text>
+  <rect x="540" y="80" width="580" height="100" opacity="1" rx="8" ry="8" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
+  <text opacity="1" x="560" text-anchor="start" font-size="13" font-family="sans-serif" fill="#ffffff"><tspan x="560" dy="0" y="103.05">Yesterday I go to the restaurant with my friend.</tspan><tspan x="560" dy="22.099999999999998">We eat a lot of food, the food is very delicious.</tspan><tspan x="560" dy="22.099999999999998">After dinner we walk in the park.</tspan></text>
+  <rect x="160" y="190" width="700" height="330" opacity="1" rx="8" ry="8" fill="#f8f9fa" stroke="#e9ecef" stroke-width="1" />
+  <text opacity="1" x="184" text-anchor="start" font-size="13" font-weight="600" font-family="sans-serif" fill="#343a40" y="214.125">语块纠错（3 处）</text>
+  <rect x="184" y="234" width="650" height="52" opacity="1" rx="8" ry="8" fill="#ffffff" stroke="#e9ecef" stroke-width="1" />
+  <text opacity="1" x="198" text-anchor="start" font-size="12" font-family="sans-serif" fill="#343a40" y="251">错误语段 go | 解释… | ✅ went</text>
+  <rect x="184" y="292" width="650" height="52" opacity="1" rx="8" ry="8" fill="#ffffff" stroke="#e9ecef" stroke-width="1" />
+  <text opacity="1" x="198" text-anchor="start" font-size="12" font-family="sans-serif" fill="#343a40" y="309">错误语段 very delicious 🇨🇳 | 解释… | ✅ delicious</text>
+  <rect x="184" y="352" width="650" height="150" opacity="1" rx="8" ry="8" fill="#ffffff" stroke="#e9ecef" stroke-width="1" />
+  <text opacity="1" x="198" text-anchor="start" font-size="12" font-family="sans-serif" fill="#2b8a3e" y="372.4">✏️ 最小修正：Yesterday I went to the restaurant…（标出修改点）</text>
+  <text opacity="1" x="198" text-anchor="start" font-size="11" font-family="sans-serif" fill="#868e96" y="395.15">为什么这样改：时态修正、去冗余 very</text>
+  <text opacity="1" x="198" text-anchor="start" font-size="12" font-family="sans-serif" fill="#5f3dc4" y="428.4">✨ 地道表达：Yesterday I went to that restaurant…（标出修改点）</text>
+  <text opacity="1" x="198" text-anchor="start" font-size="11" font-family="sans-serif" fill="#868e96" y="451.15">为什么这样写：更自然的指代、时态与口语表达</text>
+  <rect x="640" y="545" width="480" height="40" opacity="1" rx="8" ry="8" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
+  <text opacity="1" x="658" text-anchor="start" font-size="13" font-family="sans-serif" fill="#ffffff" y="565.45">为什么 delicious 前面不能加 very？</text>
+  <rect x="160" y="600" width="700" height="60" opacity="1" rx="8" ry="8" fill="#f8f9fa" stroke="#e9ecef" stroke-width="1" />
+  <text opacity="1" x="180" text-anchor="start" font-size="13" font-family="sans-serif" fill="#343a40" y="621.75">delicious 是极限形容词…（纯文本讲解，不限次数）</text>
+  <rect x="0" y="700" width="1280" height="80" opacity="1" rx="0" ry="0" fill="#ffffff" stroke="#e9ecef" stroke-width="1" />
+  <rect x="120" y="710" width="900" height="60" opacity="1" rx="8" ry="8" fill="#f8f9fa" stroke="#ced4da" stroke-width="2" />
+  <text opacity="1" x="138" text-anchor="start" font-size="13" font-family="sans-serif" fill="#343a40"><tspan x="138" dy="0" y="730.4">Yesterday I go to the restaurant with my friend.</tspan><tspan x="138" dy="20.8">We eat a lot of food, the food is very delicious.</tspan><tspan x="138" dy="20.8">After dinner we walk in the park.</tspan></text>
+  <text opacity="1" x="1030" text-anchor="start" font-size="11" font-family="sans-serif" fill="#adb5bd" y="737.15">n/500</text>
+  <rect x="1096" y="710" width="80" height="60" opacity="1" rx="8" ry="8" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
+  <text opacity="1" x="1136" text-anchor="middle" font-size="13" font-weight="600" font-family="sans-serif" fill="#ffffff" y="738.125">发送</text>
+</svg>
