@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -20 415 820" width="415" height="820">
+  <rect x="0" y="0" width="375" height="780" opacity="1" rx="0" ry="0" fill="#f0fdfa" stroke="#f0fdfa" stroke-width="1" />
+  <ellipse cx="187" cy="72" rx="28" ry="28" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
+  <text opacity="1" x="187.5" y="139.5" text-anchor="middle" font-size="30" font-weight="700" font-family="sans-serif" fill="#212529">地道英语纠错</text>
+  <text opacity="1" x="187.5" y="169.55" text-anchor="middle" font-size="13" font-family="sans-serif" fill="#868e96">AI 英语教练 · 帮你记住每个错误</text>
+  <rect x="16" y="210" width="343" height="370" opacity="1" rx="14" ry="14" fill="#ffffff" stroke="#ffffff" stroke-width="1" />
+  <text opacity="1" x="187.5" y="263.1" text-anchor="middle" font-size="26" font-weight="600" font-family="sans-serif" fill="#212529">登录</text>
+  <text opacity="1" x="44" y="312.9" text-anchor="start" font-size="14" font-family="sans-serif" fill="#495057">用户名</text>
+  <rect x="44" y="322" width="287" height="46" opacity="1" rx="8.28" ry="8.28" fill="#f8f9fa" stroke="#ced4da" stroke-width="2" />
+  <text opacity="1" x="58" y="349.9" text-anchor="start" font-size="14" font-family="sans-serif" fill="#adb5bd">请输入用户名</text>
+  <text opacity="1" x="44" y="402.9" text-anchor="start" font-size="14" font-family="sans-serif" fill="#495057">密码</text>
+  <rect x="44" y="412" width="287" height="46" opacity="1" rx="8.28" ry="8.28" fill="#f8f9fa" stroke="#ced4da" stroke-width="2" />
+  <text opacity="1" x="58" y="439.9" text-anchor="start" font-size="14" font-family="sans-serif" fill="#adb5bd">请输入密码（掩码）</text>
+  <rect x="44" y="486" width="287" height="48" opacity="1" rx="8.64" ry="8.64" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
+  <text opacity="1" x="187" y="515.95" text-anchor="middle" font-size="17" font-weight="600" font-family="sans-serif" fill="#ffffff">登录</text>
+  <text opacity="1" x="187.5" y="565.55" text-anchor="middle" font-size="13" font-family="sans-serif" fill="#adb5bd">MVP 提示：使用内置账号登录</text>
+</svg>
