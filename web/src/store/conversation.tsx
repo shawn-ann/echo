@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -15,6 +16,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const mounted = useRef(true)
+  const tempIdRef = useRef(0)
 
   useEffect(() => {
     mounted.current = true
@@ -39,8 +41,9 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   const send = useCallback(async (content: string) => {
     setPending(true)
     setError(null)
+    tempIdRef.current += 1
     const temp: messagesApi.Message = {
-      id: `tmp-${Date.now()}`,
+      id: `tmp-${tempIdRef.current}`,
       role: 'user',
       type: 'correction',
       content,
@@ -67,6 +70,9 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const value = { messages, pending, error, load, send }
+  const value = useMemo(
+    () => ({ messages, pending, error, load, send }),
+    [messages, pending, error, load, send],
+  )
   return <ConversationContext.Provider value={value}>{children}</ConversationContext.Provider>
 }
