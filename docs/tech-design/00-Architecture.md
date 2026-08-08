@@ -1,7 +1,7 @@
 # 整体架构设计文档（00-Architecture）
 
 **产品**：地道英语纠错 · 智能笔记本
-**版本**：V0.6 | **状态**：草稿 | **日期**：2026年8月
+**版本**：V0.7 | **状态**：草稿 | **日期**：2026年8月
 **对应 PRD**：`PRD/Overview.md`（总纲）、`PRD/pages/01-Login.md`、`PRD/pages/02-Correction.md`
 
 > 本文档为技术设计总纲，回答「系统如何搭建」，定义**顶层契约**（技术选型、项目结构、数据契约、接口约定、AI 接入契约、部署）。功能级详细设计（页面组件、业务流程、场景矩阵）见各功能设计文档：
@@ -234,6 +234,8 @@ correction_reports（纠错报告表，DB 持久化）
 - `location / { try_files $uri /index.html; }` —— SPA 客户端路由回退，刷新深链不 404
 - `location /api/ { proxy_pass http://api:8000; }` —— 反代后端 API（同源，无需 CORS）
 
+> **开发环境（本地 Vite dev server）**：本地开发前端直连 `http://localhost:8000`（跨源），需 FastAPI 启用 CORS 中间件，仅放行开发源（如 `http://localhost:5173`）；生产经 nginx 同源反代，无需 CORS。
+
 ### 7.2 环境变量清单
 
 | 变量 | 用途 |
@@ -278,6 +280,7 @@ correction_reports（纠错报告表，DB 持久化）
 
 **变更记录**
 
+- V0.7 · 2026-08 · §7.1 补充开发环境 CORS 说明（本地 Vite 直连 api 跨源需 FastAPI CORS 中间件；生产 nginx 同源无需）
 - V0.6 · 2026-08 · 登录会话改回 DB 存储（`sessions` 表，服务重启/多 worker 不失效）；§6 意图判定细节收敛至 02-Correction；新增 health 契约与 nginx SPA 回退要点；删除 S-06 及「服务重启失效」场景（纠错/追问验证移出本总览）
 - V0.5 · 2026-08 · 新增 §九 系统级验证（冒烟 S-01~S-06），明确「系统就绪→API→UI」验证顺序
 - V0.4 · 2026-08 · `users` 实体注明字段（含 `status` 状态），与 Login V0.3 对齐
