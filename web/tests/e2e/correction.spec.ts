@@ -28,30 +28,30 @@ test('U-C-02 提交含错英文呈现纠错报告', async ({ page }) => {
   await send(page, 'Yesterday I go to the park')
   await expect(page.getByText('错误分析').first()).toBeVisible()
   await expect(page.getByText('I went to').first()).toBeVisible()
-  await expect(page.getByText('改写')).toBeVisible()
-  await expect(page.getByText('最小修正')).toBeVisible()
-  await expect(page.getByText('地道表达')).toBeVisible()
+  await expect(page.getByText('改写').first()).toBeVisible()
+  await expect(page.getByText('最小修正').first()).toBeVisible()
+  await expect(page.getByText('地道表达').first()).toBeVisible()
 })
 
 // U-C-03 无错误文本 → 鼓励文案
 test('U-C-03 无错误文本展示鼓励文案', async ({ page }) => {
   await login(page)
   await send(page, 'no-error')
-  await expect(page.getByText(/这段英文写得不错/)).toBeVisible()
+  await expect(page.getByText(/这段英文写得不错/).first()).toBeVisible()
 })
 
 // U-C-04 纯中文 → 追问回复
 test('U-C-04 纯中文返回纯文本追问回复', async ({ page }) => {
   await login(page)
   await send(page, '为什么不能用 very？')
-  await expect(page.getByText('delicious 是极限形容词')).toBeVisible()
+  await expect(page.getByText('delicious 是极限形容词').first()).toBeVisible()
 })
 
 // U-C-05 连续追问
 test('U-C-05 连续追问多次均正常回复', async ({ page }) => {
   await login(page)
   await send(page, '为什么不能用 very？')
-  await expect(page.getByText('delicious 是极限形容词')).toBeVisible()
+  await expect(page.getByText('delicious 是极限形容词').first()).toBeVisible()
   await send(page, '那 delicious 可以用什么词修饰？')
   await expect(page.getByText(/delicious/).first()).toBeVisible()
 })
