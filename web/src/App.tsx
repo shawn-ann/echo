@@ -1,10 +1,11 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { AuthGuard, GuestGuard } from '@/components/AuthGuard'
-import CorrectionPlaceholder from '@/pages/CorrectionPlaceholder'
+import CorrectionPage from '@/pages/CorrectionPage'
 import Login from '@/pages/Login'
 import { useAuth } from '@/store/auth-context'
 import { AuthProvider } from '@/store/auth'
+import { ConversationProvider } from '@/store/conversation'
 
 function RootRedirect() {
   const { user, ready } = useAuth()
@@ -22,7 +23,14 @@ export default function App() {
             <Route path="/login" element={<Login />} />
           </Route>
           <Route element={<AuthGuard />}>
-            <Route path="/correction" element={<CorrectionPlaceholder />} />
+            <Route
+              path="/correction"
+              element={
+                <ConversationProvider>
+                  <CorrectionPage />
+                </ConversationProvider>
+              }
+            />
           </Route>
           <Route path="*" element={<RootRedirect />} />
         </Routes>

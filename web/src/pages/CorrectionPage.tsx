@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom'
 
+import Composer from '@/components/correction/Composer'
+import MessageList from '@/components/correction/MessageList'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/store/auth-context'
 
-export default function CorrectionPlaceholder() {
+export default function CorrectionPage() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -13,8 +15,8 @@ export default function CorrectionPlaceholder() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f0fdfa]">
-      <header className="flex h-16 items-center justify-between border-b border-[#dee2e6] bg-white px-4 md:px-8">
+    <div className="flex h-screen flex-col bg-[#f0fdfa]">
+      <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#dee2e6] bg-white px-4 md:px-8">
         <div className="flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-lg bg-[#0ca678] text-sm font-semibold text-white">
             E
@@ -24,9 +26,7 @@ export default function CorrectionPlaceholder() {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-[#495057]">
-            {user?.username ?? ''}
-          </span>
+          <span className="text-sm text-[#495057]">{user?.username ?? ''}</span>
           <Button
             variant="outline"
             onClick={handleLogout}
@@ -37,11 +37,8 @@ export default function CorrectionPlaceholder() {
         </div>
       </header>
 
-      <main className="flex flex-1 items-center justify-center p-6">
-        <p className="text-center text-[#868e96]">
-          纠错主页（待开发）· 登录流程验证完毕
-        </p>
-      </main>
+      <MessageList />
+      <Composer />
     </div>
   )
 }
