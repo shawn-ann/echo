@@ -1,6 +1,6 @@
 # 登录功能详细设计文档（01-Login）
 
-**所属**：地道英语纠错 · 智能笔记本 | **版本**：V0.2 | **状态**：草稿 | **日期**：2026年8月
+**所属**：地道英语纠错 · 智能笔记本 | **版本**：V0.3 | **状态**：草稿 | **日期**：2026年8月
 **对应 PRD**：`PRD/pages/01-Login.md`、`PRD/Overview.md` §3.1
 **依赖**：`00-Architecture.md`（顶层契约：接口风格、错误格式、鉴权、数据契约）
 
@@ -46,11 +46,13 @@ LoginPage
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `id` | UUID PK | |
-| `username` | varchar(64) UNIQUE | |
+| `username` | varchar(64) UNIQUE | 用户名 |
 | `password_hash` | varchar(255) | bcrypt 哈希 |
+| `status` | enum | 账号状态：`active`（正常）/ `disabled`（禁用）/ `deleted`（删除） |
 | `created_at` | timestamptz | |
 
 - **固定种子账号**：服务端启动时种子化内置账号（用户名/密码 bcrypt），无注册接口；后续版本多账号体系平滑迁移（PRD §4.9）
+- **状态语义**：`disabled` 账号禁止登录（提示账号不可用）；`deleted` 账号视为不存在（校验按未找到处理）；MVP 无管理界面，状态变更经服务端数据维护，为后期管理能力预留
 
 ### 2.2 登录会话（服务端内存存储）
 
@@ -78,8 +80,9 @@ User        Frontend          Backend              DB
  │        │ 失败→字段提示，不发请求│                   │
  │        │ 通过→按钮进入加载态    │                   │
  │        │──POST /api/v1/auth/login──▶│               │
- │        │                │ 校验固定账号            │
- │        │                │──查询 users──▶          │
+│        │                │ 校验固定账号            │
+│        │                │ 检查 status（禁用/删除则拒绝）│
+│        │                │──查询 users──▶          │
  │        │                │◀──返回用户──            │
  │        │                │ bcrypt 校验密码         │
  │        │                │ 生成 token，写入内存会话 │
@@ -107,7 +110,7 @@ User        Frontend          Backend              DB
 ```json
 { "token": "<opaque-token>", "expires_at": "2026-09-07T12:00:00Z", "user": { "id": "...", "username": "demo" } }
 ```
-错误：`400`（参数缺失，`code: VALIDATION_ERROR`）、`401`（`code: AUTH_INVALID_CREDENTIALS`，「用户名或密码错误」）
+错误：`400`（参数缺失，`code: VALIDATION_ERROR`）、`401`（`code: AUTH_INVALID_CREDENTIALS`，「用户名或密码错误」；**deleted 账号同样返回此错误**，不泄露账号状态）、`403`（`code: AUTH_ACCOUNT_DISABLED`，「账号不可用」，disabled 账号）
 
 ### 4.2 POST /api/v1/auth/logout（需鉴权）
 
@@ -143,6 +146,8 @@ User        Frontend          Backend              DB
 | 登录成功 | 未登录 | 输入合法固定账号提交 | 进入纠错主页 | AC-L-01 |
 | 字段为空 | 未登录 | 用户名或密码为空提交 | 字段提示，不发起请求 | AC-L-02 |
 | 密码错误 | 未登录 | 错误密码提交 | 「用户名或密码错误」，密码清空用户名保留 | AC-L-03 |
+| 账号被禁用 | 未登录 | 输入 disabled 账号提交 | 拒绝登录，提示账号不可用 | 本文档 §2.1 |
+| 账号已删除 | 未登录 | 输入 deleted 账号提交 | 按「用户名或密码错误」处理（不泄露账号状态） | 本文档 §2.1 |
 | 会话保持（刷新） | 已登录 | 刷新页面 | 保持登录态 | AC-L-04 |
 | 会话保持（重开） | 已登录 | 关闭重开浏览器 | 保持登录态（会话有效期内） | AC-L-04 |
 | 未登录访问业务页 | 未登录 | 访问纠错主页 | 重定向登录页 | AC-L-05 |
@@ -157,6 +162,7 @@ User        Frontend          Backend              DB
 
 **变更记录**
 
+- V0.3 · 2026-08 · `users` 表新增 `status` 状态字段（active/disabled/deleted）；登录对禁用账号返回 403、删除账号按凭证错误处理，场景矩阵补充对应场景
 - V0.2 · 2026-08 · 登录会话改为服务端内存存储（不落 DB，含服务重启失效取舍）；会话过期时提交纠错保留当前页面并提示重新登录（不再直接跳转登录页）
 - V0.1 · 2026-08 · 初稿：页面组件、数据模型（users/sessions）、登录时序、接口契约、三态与场景矩阵
 

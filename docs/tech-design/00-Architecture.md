@@ -1,7 +1,7 @@
 # 整体架构设计文档（00-Architecture）
 
 **产品**：地道英语纠错 · 智能笔记本
-**版本**：V0.3 | **状态**：草稿 | **日期**：2026年8月
+**版本**：V0.4 | **状态**：草稿 | **日期**：2026年8月
 **对应 PRD**：`PRD/Overview.md`（总纲）、`PRD/pages/01-Login.md`、`PRD/pages/02-Correction.md`
 
 > 本文档为技术设计总纲，回答「系统如何搭建」，定义**顶层契约**（技术选型、项目结构、数据契约、接口约定、AI 接入契约、部署）。功能级详细设计（页面组件、业务流程、场景矩阵）见各功能设计文档：
@@ -110,7 +110,7 @@ echo/
 
 | 实体 | 说明 | 归属文档 |
 |------|------|----------|
-| `users` | 账号（MVP 固定种子账号） | `01-Login.md` 细化 |
+| `users` | 账号（MVP 固定种子账号，含 `username`/`password_hash`/`status`） | `01-Login.md` 细化 |
 | `sessions` | 登录会话（认证令牌，**服务端内存存储**，含 token/有效期） | `01-Login.md` 细化 |
 | `session_conversations` | 对话（会话流，DB 持久化） | `02-Correction.md` 细化 |
 | `messages` | 消息（含消息 ID，DB 持久化） | `02-Correction.md` 细化 |
@@ -254,6 +254,7 @@ correction_reports（纠错报告表，DB 持久化）
 
 **变更记录**
 
+- V0.4 · 2026-08 · `users` 实体注明字段（含 `status` 状态），与 Login V0.3 对齐
 - V0.3 · 2026-08 · §4.2 新增对话示例（`session_conversations`/`messages`/`correction_reports` 关系图）与登录会话对比说明，消除命名歧义
 - V0.2 · 2026-08 · 登录会话改为服务端内存存储（`sessions` 不落 DB）；会话过期提交纠错改为保留页面提示重登
 - V0.1 · 2026-08 · 初稿：技术选型（React+FastAPI+PostgreSQL+OpenAI 兼容+Docker Compose）、项目结构、顶层数据/接口/AI 契约、部署与跨模块 Scenario
