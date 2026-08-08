@@ -10,6 +10,12 @@ class Settings(BaseSettings):
     SESSION_TTL_DAYS: int = 30
     CORS_ORIGINS: str = "http://localhost:5173"
 
+    LLM_BASE_URL: str = ""
+    LLM_API_KEY: str = ""
+    LLM_MODEL: str = ""
+    LLM_MODE: str = ""  # ""=真实调用（需配置）; "mock"=测试/演示用确定性 Mock
+    CONTEXT_LIMIT: int = 40
+
     # MVP 固定种子账号
     SEED_USERNAME: str = "demo"
     SEED_PASSWORD: str = "demo1234"
