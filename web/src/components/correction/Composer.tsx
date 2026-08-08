@@ -25,10 +25,12 @@ export default function Composer() {
     const content = text.trim()
     if (!content || disabled || submittingRef.current) return
     submittingRef.current = true
+    const prevText = text
     setText('')
     if (ref.current) ref.current.style.height = 'auto'
     try {
-      await send(content)
+      const ok = await send(content)
+      if (!ok) setText(prevText)
     } finally {
       submittingRef.current = false
     }

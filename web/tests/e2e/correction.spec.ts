@@ -102,3 +102,20 @@ test('U-C-10 手机宽度布局正常', async ({ page }) => {
   await expect(page.getByText('错误分析').first()).toBeVisible()
   await expect(page.getByRole('button', { name: '退出' })).toBeVisible()
 })
+
+// U-C-11 会话过期提示重新登录
+test('U-C-11 会话过期提示重新登录', async ({ page }) => {
+  await login(page)
+  await send(page, 'Yesterday I go to the park')
+  await expect(page.getByText('错误分析').first()).toBeVisible()
+
+  const token = await page.evaluate(() => localStorage.getItem('echo_token'))
+  const res = await page.request.post('http://localhost:8000/api/v1/auth/logout', {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  expect(res.status()).toBe(204)
+
+  await send(page, 'Another sentence here')
+  await expect(page.getByText('会话已过期，请重新登录')).toBeVisible()
+  await expect(page.getByRole('button', { name: '重新登录' })).toBeVisible()
+})

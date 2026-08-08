@@ -7,12 +7,14 @@ import UserBubble from '@/components/correction/UserBubble'
 import { useConversation } from '@/store/conversation-context'
 
 export default function MessageList() {
-  const { messages, pending, error } = useConversation()
+  const { messages, pending, error, sessionExpired, retry, relogin } = useConversation()
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length, pending])
+
+  const failedTemp = messages.filter((m) => m.id.startsWith('tmp-')).at(-1)
 
   if (messages.length === 0 && !pending) {
     return (
@@ -36,10 +38,31 @@ export default function MessageList() {
         ),
       )}
       {pending && <LoadingBubble />}
-      {error && (
-        <p className="text-center text-sm text-[#fa5252]">
-          {error}
-        </p>
+      {sessionExpired && (
+        <div className="text-center text-sm text-[#fa5252]">
+          <p>会话已过期，请重新登录</p>
+          <button
+            type="button"
+            onClick={relogin}
+            className="mt-2 rounded-md border border-[#ced4da] bg-white px-3 py-1 text-[#343a40] hover:bg-[#f1f3f5]"
+          >
+            重新登录
+          </button>
+        </div>
+      )}
+      {error && !sessionExpired && (
+        <div className="text-center text-sm text-[#fa5252]">
+          <p>{error}</p>
+          {failedTemp && (
+            <button
+              type="button"
+              onClick={() => retry(failedTemp.id, failedTemp.content ?? '')}
+              className="mt-2 rounded-md border border-[#ced4da] bg-white px-3 py-1 text-[#343a40] hover:bg-[#f1f3f5]"
+            >
+              重试
+            </button>
+          )}
+        </div>
       )}
       <div ref={bottomRef} />
     </div>

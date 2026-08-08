@@ -6,8 +6,11 @@ export interface ConversationState {
   messages: Message[]
   pending: boolean
   error: string | null
+  sessionExpired: boolean
   load: () => Promise<void>
-  send: (content: string) => Promise<void>
+  send: (content: string) => Promise<boolean>
+  retry: (tempId: string, content: string) => Promise<boolean>
+  relogin: () => void
 }
 
 export const ConversationContext = createContext<ConversationState | null>(null)
