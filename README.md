@@ -1,0 +1,68 @@
+# Echo · 地道英语纠错 · 智能笔记本
+
+基于大模型的英语学习工具：会话式纠错 + 追问，定位「会帮你记住每一个错误的 AI 英语教练」。
+
+## 技术栈
+
+| 层 | 选型 |
+|----|------|
+| 前端 | React 19 + Vite + TypeScript + TailwindCSS + shadcn/ui |
+| 后端 | Python FastAPI + SQLAlchemy(async) + Pydantic |
+| 数据库 | PostgreSQL 16 |
+| LLM | OpenAI 兼容 API（可配置，登录阶段未使用） |
+| 部署 | Docker Compose（db / api / web） |
+
+> 详细设计见 `PRD/` 与 `docs/tech-design/`。
+
+## 本地开发
+
+### 1. 启动数据库
+
+```bash
+docker compose up -d db
+```
+
+### 2. 后端
+
+```bash
+cd backend
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head      # 建表（首次或迁移后）
+uvicorn app.main:app --reload --port 8000
+```
+
+服务启动后自动种子化内置固定账号 `demo / demo1234`。
+
+### 3. 前端
+
+```bash
+cd web
+npm install
+npm run dev               # 默认 http://localhost:5173，/api 直连 http://localhost:8000（CORS 已放行）
+```
+
+### 4. 接口测试（API 契约验收）
+
+```bash
+cd backend
+pytest -v
+```
+
+## API 概览（前缀 `/api/v1`）
+
+| 方法 | 路径 | 鉴权 | 说明 |
+|------|------|------|------|
+| GET | `/health` | 无 | 健康检查 |
+| POST | `/auth/login` | 无 | 登录，返回 token |
+| POST | `/auth/logout` | Bearer | 退出登录 |
+| GET | `/auth/me` | Bearer | 当前用户信息 |
+
+统一错误响应：`{ "code": "...", "message": "...", "details": {} }`。
+
+## 部署
+
+```bash
+docker compose up -d --build   # db + api + web 三服务编排，web 映射 80
+```
