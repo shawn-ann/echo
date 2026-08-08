@@ -14,7 +14,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: '.venv/bin/uvicorn app.main:app --port 8000',
+      command: 'LLM_MODE=mock .venv/bin/uvicorn app.main:app --port 8000',
       cwd: '../backend',
       url: 'http://localhost:8000/api/v1/health',
       reuseExistingServer: true,
