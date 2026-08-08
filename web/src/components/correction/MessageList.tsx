@@ -38,7 +38,7 @@ export default function MessageList() {
       {pending && <LoadingBubble />}
       {error && (
         <p className="text-center text-sm text-[#fa5252]">
-          {error}，你的消息已保留，可重新发送
+          {error}
         </p>
       )}
       <div ref={bottomRef} />

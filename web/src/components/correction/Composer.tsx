@@ -9,9 +9,10 @@ export default function Composer() {
   const { send, pending } = useConversation()
   const [text, setText] = useState('')
   const ref = useRef<HTMLTextAreaElement>(null)
+  const submittingRef = useRef(false)
 
   const over = text.length > MAX_LENGTH
-  const disabled = pending || text.trim().length === 0 || over
+  const disabled = pending || submittingRef.current || text.trim().length === 0 || over
 
   function autoResize() {
     const el = ref.current
@@ -22,10 +23,15 @@ export default function Composer() {
 
   async function handleSend() {
     const content = text.trim()
-    if (!content || disabled) return
+    if (!content || disabled || submittingRef.current) return
+    submittingRef.current = true
     setText('')
     if (ref.current) ref.current.style.height = 'auto'
-    await send(content)
+    try {
+      await send(content)
+    } finally {
+      submittingRef.current = false
+    }
   }
 
   return (
