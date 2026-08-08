@@ -1,6 +1,6 @@
 # 登录功能详细设计文档（01-Login）
 
-**所属**：地道英语纠错 · 智能笔记本 | **版本**：V0.5 | **状态**：草稿 | **日期**：2026年8月
+**所属**：地道英语纠错 · 智能笔记本 | **版本**：V0.6 | **状态**：草稿 | **日期**：2026年8月
 **对应 PRD**：`PRD/pages/01-Login.md`、`PRD/Overview.md` §3.1
 **依赖**：`00-Architecture.md`（顶层契约：接口风格、错误格式、鉴权、数据契约）
 
@@ -69,20 +69,21 @@ LoginPage
 - **固定种子账号**：服务端启动时种子化内置账号（用户名/密码 bcrypt），无注册接口；后续版本多账号体系平滑迁移（PRD §4.9）
 - **状态语义**：`disabled` 账号禁止登录（提示账号不可用）；`deleted` 账号视为不存在（校验按未找到处理）；MVP 无管理界面，状态变更经服务端数据维护，为后期管理能力预留
 
-### 2.2 登录会话（服务端内存存储）
+### 2.2 登录会话（DB 持久化）
 
-> **存储位置**：登录会话**不落数据库**，存于服务端内存（进程内会话存储），仅对 `users` 表做账号持久化。
+> **存储位置**：登录会话**持久化于数据库**（`sessions` 表），多 worker/服务重启下登录态不丢失。
 
-| 字段 | 说明 |
-|------|------|
-| `token` | opaque token（`secrets.token_urlsafe(32)` 生成，作为内存存储的 key） |
-| `user_id` | 关联 `users.id` |
-| `expires_at` | 默认 30 天滑动过期（`SESSION_TTL_DAYS`） |
-| `created_at` / `last_used_at` | 创建与最近使用时间 |
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | UUID PK | |
+| `user_id` | UUID FK → users.id | |
+| `token_hash` | varchar(255) | opaque token 的 SHA-256 哈希（不存明文） |
+| `expires_at` | timestamptz | 默认 30 天滑动过期（`SESSION_TTL_DAYS`） |
+| `created_at` / `last_used_at` | timestamptz | |
 
-- **令牌方案**：`secrets.token_urlsafe(32)` 生成 opaque token，存于**服务端内存**（不落 DB、无需哈希）；**登出即从内存删除**实现即时撤销；30 天无活动滑动过期
-- **内存存储约束**：MVP 为单进程单实例（Docker Compose 单 `api` 容器），内存会话可用；**服务重启后全部会话失效**（用户需重新登录，属 MVP 可接受取舍）；后期多实例/重启无感需引入共享会话存储（如 Redis），记为后续增强
+- **令牌方案**：`secrets.token_urlsafe(32)` 生成 opaque token，DB 存哈希；**登出即删除该行**实现即时撤销；30 天无活动滑动过期
 - **滑动过期**：每次鉴权成功更新 `expires_at`（`SESSION_TTL_DAYS` 配置）
+- **多 worker 支持**：会话落库，多进程/多实例下共享登录态，无内存会话的一致性限制
 
 ## 三、交互流程
 
@@ -95,12 +96,12 @@ User        Frontend          Backend              DB
  │        │ 失败→字段提示，不发请求│                   │
  │        │ 通过→按钮进入加载态    │                   │
  │        │──POST /api/v1/auth/login──▶│               │
-│        │                │ 校验固定账号            │
-│        │                │ 检查 status（禁用/删除则拒绝）│
-│        │                │──查询 users──▶          │
+ │        │                │ 校验固定账号            │
+ │        │                │ 检查 status（禁用/删除则拒绝）│
+ │        │                │──查询 users──▶          │
  │        │                │◀──返回用户──            │
  │        │                │ bcrypt 校验密码         │
- │        │                │ 生成 token，写入内存会话 │
+ │        │                │ 生成 token，写入 sessions 表│
  │        │◀──200 {token, expires_at}──│               │
  │        │ localStorage 持久化 token               │
  │        │ 跳转纠错主页（AuthGuard 放行）            │
@@ -109,11 +110,14 @@ User        Frontend          Backend              DB
 ### 3.2 会话保持 / 退出
 
 - 前端在 `localStorage` 持久化 token，API 客户端统一注入 `Authorization: Bearer <token>`
+- **取舍说明（localStorage）**：token 存 localStorage 存在 XSS 窃取风险（可被脚本读取）；MVP 固定账号 + 自用场景接受此取舍，后期账号体系完善时迁移至 HttpOnly Cookie
 - 刷新/重开浏览器：`AuthGuard` 读 token → 调 `GET /auth/me` 校验 → 有效放行 / 失效重定向登录页
-- **退出**：调 `POST /auth/logout`（服务端从内存会话删除）→ 前端清 token → 回登录页；业务数据保留（存 DB）
+- **退出**：调 `POST /auth/logout`（服务端删除 `sessions` 表对应 token 行）→ 前端清 token → 回登录页；业务数据保留（存 DB）
 - **401 拦截（会话过期）**：业务请求返回 401 时，**保留当前页面不跳转**，弹出提示「会话已过期，请重新登录」+ 「重新登录」入口；用户消息/输入内容不丢失，重新登录后会话上下文仍在
 
 ## 四、接口契约
+
+> **MVP 取舍**：不提供登录失败限速、账号锁定等暴力破解防护（固定账号 + 自用场景，属已知取舍）；后期账号体系完善时补充防护机制。
 
 ### 4.1 POST /api/v1/auth/login
 
@@ -130,7 +134,7 @@ User        Frontend          Backend              DB
 ### 4.2 POST /api/v1/auth/logout（需鉴权）
 
 - 请求：`Authorization: Bearer <token>`
-- 行为：从服务端内存会话删除对应 token
+- 行为：删除 `sessions` 表中对应 token 行
 - 响应 204；token 已失效时返回 401（幂等处理，前端仍清本地 token）
 
 ### 4.3 GET /api/v1/auth/me（需鉴权）
@@ -170,7 +174,6 @@ User        Frontend          Backend              DB
 | 退出登录 | 已登录 | 点击退出 | 需重新登录；重新登录后历史仍在 | AC-L-07 |
 | 会话过期 | 已登录但过期 | 访问业务页 | 重定向登录页需重登 | AC-L-08 |
 | 会话过期时提交纠错 | 已过期 | 提交英文 | 401 → **保留当前页面**，提示「会话已过期，请重新登录」+ 重新登录入口，输入不丢失 | AC-L-08 / AC-C-08 |
-| 服务重启后会话失效 | 已登录 | 服务重启后再操作 | 会话失效提示重新登录（MVP 内存会话取舍） | 本文档 §2.2 |
 | 网络异常 | 未登录 | 登录提交 | 「登录失败，请稍后重试」，输入保留 | 登录页 §4.5 |
 
 ## 七、验证方式（技术验收）
@@ -190,7 +193,7 @@ User        Frontend          Backend              DB
 | T-L-07 | GET /auth/me | 失效/无 token | 401 `AUTH_TOKEN_EXPIRED`/`AUTH_UNAUTHORIZED` | AC-L-08 |
 | T-L-08 | POST /auth/logout | 有效 token | 204；再次调业务接口 401 | AC-L-07 |
 | T-L-09 | 任意业务接口 | 无 token | 401（除 /auth/login 外） | AC-L-05 |
-| T-L-10 | 服务重启后 | 重启前 token 调 /auth/me | 401（内存会话失效） | §2.2 |
+| T-L-10 | 服务重启后 | 重启前 token 调 /auth/me | 200（会话存 DB，重启不失效） | §2.2 |
 
 ### 7.2 UI 功能验证
 
@@ -205,17 +208,19 @@ User        Frontend          Backend              DB
 | U-L-07 | 未登录直接访问纠错主页 | 重定向登录页 | AC-L-05 |
 | U-L-08 | 手机宽度访问登录页 | 布局正常（品牌区+卡片浮层） | AC-L-06 |
 | U-L-09 | 点击「退出」（占位页导航栏） | 回登录页；重新登录后历史仍在 | AC-L-07 |
-| U-L-10 | 会话过期后提交纠错 | 保留页面 + 提示「会话已过期，请重新登录」+ 重登入口，输入不丢失 | AC-L-08 / AC-C-08 |
 
 ### 7.3 验证顺序
 
 1. **API 层**（T-L-01~10）：接口自动化测试（FastAPI TestClient/pytest）或 curl 手工验证，确保契约无误
-2. **UI 层**（U-L-01~10）：浏览器/端到端走查，重点响应式（U-L-08）与异常保留（U-L-10）
+2. **UI 层**（U-L-01~09）：浏览器/端到端走查，重点响应式（U-L-08）与异常保留（U-L-04）
+
+> 纠错/追问相关验证（如会话过期时提交纠错）依赖纠错功能，见 `02-Correction.md`，不在本登录验证范围。
 
 ---
 
 **变更记录**
 
+- V0.6 · 2026-08 · 登录会话改回 DB 存储（`sessions` 表，多 worker/重启不失效）；localStorage 存 token 记为显式取舍；明确 MVP 不提供暴力破解防护；删除 U-L-10 及「服务重启失效」场景，纠错相关验证移出登录范围；T-L-10 改为重启后仍有效；修复时序图缩进
 - V0.5 · 2026-08 · 新增 §0.1 空白纠错页（登录后落地页占位，导航栏展示用户名+退出），用于完整验证登录/退出流程；U-L-01/U-L-09 同步
 - V0.4 · 2026-08 · 新增 §7 验证方式：API 契约验证（T-L-01~10）+ UI 功能验证（U-L-01~10），先验 API 再验 UI，映射 PRD AC
 - V0.3 · 2026-08 · `users` 表新增 `status` 状态字段（active/disabled/deleted）；登录对禁用账号返回 403、删除账号按凭证错误处理，场景矩阵补充对应场景

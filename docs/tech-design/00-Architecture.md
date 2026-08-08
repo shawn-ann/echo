@@ -1,7 +1,7 @@
 # 整体架构设计文档（00-Architecture）
 
 **产品**：地道英语纠错 · 智能笔记本
-**版本**：V0.5 | **状态**：草稿 | **日期**：2026年8月
+**版本**：V0.6 | **状态**：草稿 | **日期**：2026年8月
 **对应 PRD**：`PRD/Overview.md`（总纲）、`PRD/pages/01-Login.md`、`PRD/pages/02-Correction.md`
 
 > 本文档为技术设计总纲，回答「系统如何搭建」，定义**顶层契约**（技术选型、项目结构、数据契约、接口约定、AI 接入契约、部署）。功能级详细设计（页面组件、业务流程、场景矩阵）见各功能设计文档：
@@ -106,12 +106,12 @@ echo/
 
 ### 4.1 实体总览
 
-> **命名约定**：本文档中「会话」指登录会话（`sessions`，认证令牌），「对话」指会话流（`session_conversations`，纠错历史）；二者为独立概念，勿混淆。**登录会话存储于服务端内存，不落数据库**（详见 `01-Login.md` §2.2）。
+> **命名约定**：本文档中「会话」指登录会话（`sessions`，认证令牌），「对话」指会话流（`session_conversations`，纠错历史）；二者为独立概念，勿混淆。**登录会话存储于数据库（`sessions` 表）**（详见 `01-Login.md` §2.2）。
 
 | 实体 | 说明 | 归属文档 |
 |------|------|----------|
 | `users` | 账号（MVP 固定种子账号，含 `username`/`password_hash`/`status`） | `01-Login.md` 细化 |
-| `sessions` | 登录会话（认证令牌，**服务端内存存储**，含 token/有效期） | `01-Login.md` 细化 |
+| `sessions` | 登录会话（认证令牌，**DB 持久化**，含 token 哈希/有效期） | `01-Login.md` 细化 |
 | `session_conversations` | 对话（会话流，DB 持久化） | `02-Correction.md` 细化 |
 | `messages` | 消息（含消息 ID，DB 持久化） | `02-Correction.md` 细化 |
 | `correction_reports` | 纠错报告（独立对象，自带 ID，DB 持久化） | `02-Correction.md` 细化 |
@@ -121,7 +121,7 @@ echo/
 - 按 `session_conversations → messages` 建模，`messages` 含唯一 `id`
 - **纠错报告为独立数据对象**（自带 `report_id`），便于追问指代与后续错题提取（F-03）
 - MVP 界面仅一个大会话，数据层预留对话维度，后期多对话管理为增量 UI 工作
-- 登录会话 `sessions` 与对话 `session_conversations` 相互独立（见 §4.1 命名约定）；登录会话为**服务端内存**存储，对话/消息持久化于 DB
+- 登录会话 `sessions` 与对话 `session_conversations` 相互独立（见 §4.1 命名约定）；均持久化于 DB（登录会话存 `sessions` 表，对话/消息/报告存各自表），服务重启/多 worker 下登录态不丢失
 
 #### 4.2.1 对话示例（`session_conversations` 是什么）
 
@@ -155,7 +155,7 @@ correction_reports（纠错报告表，DB 持久化）
 └──────────────────────────────────────────────────────┘
 ```
 
-> **对比**：登录会话 `sessions`（内存，认证凭证）`token → {user_id, expires_at}` 只回答「是否已登录」；对话 `session_conversations`（DB）回答「这个用户的纠错历史是什么」。二者无关联、生命周期不同，勿混淆。
+> **对比**：登录会话 `sessions`（DB，认证凭证）`token_hash → {user_id, expires_at}` 只回答「是否已登录」；对话 `session_conversations`（DB）回答「这个用户的纠错历史是什么」。二者无关联、生命周期不同，勿混淆。
 
 ### 4.3 推理上下文与触顶截断（顶层约定）
 
@@ -189,6 +189,12 @@ correction_reports（纠错报告表，DB 持久化）
 | 404 | 资源不存在 |
 | 429 | 限流（LLM 成本控制预留） |
 | 500 | 服务异常 |
+| 503 | 服务降级/不可用（如 db 异常时的健康检查） |
+
+**健康检查**：`GET /api/v1/health`（**无需鉴权**）
+
+- 200：`{ "status": "ok", "db": "connected" }`
+- 503：`{ "status": "degraded", "db": "unavailable" }`（db 连接异常）
 
 ### 5.3 版本化契约
 
@@ -206,12 +212,12 @@ correction_reports（纠错报告表，DB 持久化）
 ### 6.2 结构化输出
 
 - 纠错报告通过 JSON 结构化输出（system prompt 约束 JSON schema + Pydantic 校验）
-- 意图判定：首次请求先做意图分类（纠错/追问），再按分类分发
+- 意图判定、纠错报告生成等**具体机制属纠错功能行为**，细节见 `02-Correction.md`，本文档不展开
 
 ### 6.3 意图判定顶层规则
 
 - **AI 判断为主**（结合会话上下文），产品层兜底规则见 PRD `02-Correction.md` §4.3
-- 上线前进行提示词测试矩阵（纠错/追问/纯中文/中英混排/疑问句式），见 `02-Correction.md` §八
+- 意图判定的具体判定流程与提示词测试矩阵见 `02-Correction.md`（§4.3、§八），本文档仅定义顶层约束
 
 ## 七、部署与运维
 
@@ -222,6 +228,11 @@ correction_reports（纠错报告表，DB 持久化）
 | `db` | postgres:16 | 5432（内部） | — |
 | `api` | backend Dockerfile | 8000（内部） | db |
 | `web` | nginx（托管 SPA + 反代） | 80 | api |
+
+**nginx 配置要点**：
+
+- `location / { try_files $uri /index.html; }` —— SPA 客户端路由回退，刷新深链不 404
+- `location /api/ { proxy_pass http://api:8000; }` —— 反代后端 API（同源，无需 CORS）
 
 ### 7.2 环境变量清单
 
@@ -246,7 +257,6 @@ correction_reports（纠错报告表，DB 持久化）
 | 全链路：登录→纠错→追问 | 未登录 | 登录成功后提交英文再追问 | 各步正常，历史持久化 | AC-L-01 / AC-C-01 / AC-C-13 |
 | 会话过期时提交纠错 | 会话已过期 | 提交英文 | 401 → **保留当前页面**，提示「会话已过期，请重新登录」，输入内容保留不丢失 | AC-L-08 / AC-C-08 |
 | token 失效后刷新页面 | 令牌失效 | 刷新页面 | 重定向登录页，重新登录后历史仍在 | AC-L-08 / AC-C-11 |
-| 服务重启后操作 | 已登录（内存会话已失） | 服务重启后再提交 | 会话失效提示重新登录（MVP 内存会话取舍） | `01-Login.md` §2.2 |
 | LLM 服务异常 | LLM 不可用 | 提交纠错 | 返回 5xx 或超时 120s，前端提示重试，消息保留 | AC-C-08 / PRD §4.8 |
 | 账号数据隔离 | 多账号（后期） | 不同账号访问 | 数据按账号隔离（本期单账号，模型已预留 user_id） | PRD §3.2 |
 
@@ -261,14 +271,14 @@ correction_reports（纠错报告表，DB 持久化）
 | S-03 | 健康检查 | `GET /api/v1/health` | 200，返回 db 连接状态 |
 | S-04 | 静态资源 | 浏览器访问 `/` | 加载 SPA 登录页 |
 | S-05 | 反代连通 | 浏览器访问 `/api/v1/...` | nginx 正确反代到 api 服务 |
-| S-06 | 全链路冒烟 | 登录→纠错→追问 | 各步正常、历史持久化（详见 §八首行） |
 
-> 验证顺序：S-01~S-05（系统就绪）→ 功能文档 API 验证 → 功能文档 UI 验证。
+> 验证顺序：S-01~S-05（系统就绪）→ 功能文档 API 验证 → 功能文档 UI 验证。纠错/追问等依赖纠错功能的验证项不在本总览中，见 `02-Correction.md`。
 
 ---
 
 **变更记录**
 
+- V0.6 · 2026-08 · 登录会话改回 DB 存储（`sessions` 表，服务重启/多 worker 不失效）；§6 意图判定细节收敛至 02-Correction；新增 health 契约与 nginx SPA 回退要点；删除 S-06 及「服务重启失效」场景（纠错/追问验证移出本总览）
 - V0.5 · 2026-08 · 新增 §九 系统级验证（冒烟 S-01~S-06），明确「系统就绪→API→UI」验证顺序
 - V0.4 · 2026-08 · `users` 实体注明字段（含 `status` 状态），与 Login V0.3 对齐
 - V0.3 · 2026-08 · §4.2 新增对话示例（`session_conversations`/`messages`/`correction_reports` 关系图）与登录会话对比说明，消除命名歧义
