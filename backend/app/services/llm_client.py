@@ -48,14 +48,14 @@ def _default_responder(messages: list[dict[str, Any]]) -> str:
     """Mock 默认响应：中文→追问；含 no-error 标记→无错误报告；其余→纠错报告。"""
     user_contents = [m["content"] for m in messages if m.get("role") == "user"]
     last = user_contents[-1] if user_contents else ""
-    if re.fullmatch(r"[\u4e00-\u9fff\s，。！？、,.!?;；]*", last):
-        return json.dumps(
-            {"intent": "follow_up", "reply": "delicious 是极限形容词，通常不加 very。", "correction": None},
-            ensure_ascii=False,
-        )
     if "没有错误" in last or "no-error" in last:
         return json.dumps(
             {"intent": "correction", "correction": {"has_errors": False, "errors": [], "rewrite": None}, "reply": None},
+            ensure_ascii=False,
+        )
+    if re.search(r"[\u4e00-\u9fff]", last):
+        return json.dumps(
+            {"intent": "follow_up", "reply": "delicious 是极限形容词，通常不加 very。", "correction": None},
             ensure_ascii=False,
         )
     return json.dumps(
