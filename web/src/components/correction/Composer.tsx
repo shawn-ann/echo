@@ -10,6 +10,7 @@ export default function Composer() {
   const [text, setText] = useState('')
   const ref = useRef<HTMLTextAreaElement>(null)
   const submittingRef = useRef(false)
+  const userTypedRef = useRef(false)
 
   const over = text.length > MAX_LENGTH
   const disabled = pending || submittingRef.current || text.trim().length === 0 || over
@@ -26,11 +27,12 @@ export default function Composer() {
     if (!content || disabled || submittingRef.current) return
     submittingRef.current = true
     const prevText = text
+    userTypedRef.current = false
     setText('')
     if (ref.current) ref.current.style.height = 'auto'
     try {
       const ok = await send(content)
-      if (!ok) setText(prevText)
+      if (!ok && !userTypedRef.current) setText(prevText)
     } finally {
       submittingRef.current = false
     }
@@ -43,6 +45,7 @@ export default function Composer() {
           ref={ref}
           value={text}
           onChange={(e) => {
+            userTypedRef.current = true
             setText(e.target.value)
             autoResize()
           }}

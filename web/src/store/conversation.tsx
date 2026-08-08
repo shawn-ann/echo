@@ -43,73 +43,62 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     load()
   }, [load])
 
-  const send = useCallback(async (content: string): Promise<boolean> => {
-    setPending(true)
-    setError(null)
-    setSessionExpired(false)
-    tempIdRef.current += 1
-    const temp: messagesApi.Message = {
-      id: `tmp-${tempIdRef.current}`,
-      role: 'user',
-      type: 'correction',
-      content,
-      report: null,
-      created_at: new Date().toISOString(),
-    }
-    setMessages((prev) => [...prev, temp])
-    try {
-      const result = await messagesApi.submitMessage(content)
-      if (mounted.current) {
-        setMessages((prev) => [
-          ...prev.filter((m) => m.id !== temp.id),
-          result.user_message,
-          result.assistant_message,
-        ])
-      }
-      return true
-    } catch (err) {
-      if (mounted.current) {
-        if (err instanceof ApiError && err.status === 401) {
-          setSessionExpired(true)
-          setError('会话已过期，请重新登录')
-        } else {
-          setError(err instanceof ApiError ? err.message : '请求失败，请重试')
+  const submit = useCallback(
+    async (tempId: string, content: string): Promise<boolean> => {
+      setPending(true)
+      setError(null)
+      setSessionExpired(false)
+      try {
+        const result = await messagesApi.submitMessage(content)
+        if (mounted.current) {
+          setMessages((prev) => [
+            ...prev.filter((m) => m.id !== tempId),
+            result.user_message,
+            result.assistant_message,
+          ])
         }
+        return true
+      } catch (err) {
+        if (mounted.current) {
+          if (err instanceof ApiError && err.status === 401) {
+            setSessionExpired(true)
+            setError('会话已过期，请重新登录')
+          } else {
+            setError(err instanceof ApiError ? err.message : '请求失败，请重试')
+          }
+        }
+        return false
+      } finally {
+        if (mounted.current) setPending(false)
       }
-      return false
-    } finally {
-      if (mounted.current) setPending(false)
-    }
-  }, [])
+    },
+    [],
+  )
 
-  const retry = useCallback(async (tempId: string, content: string): Promise<boolean> => {
-    setPending(true)
-    setError(null)
-    setSessionExpired(false)
-    try {
-      const result = await messagesApi.submitMessage(content)
-      if (mounted.current) {
-        setMessages((prev) => [
-          ...prev.filter((m) => m.id !== tempId),
-          result.user_message,
-          result.assistant_message,
-        ])
+  const send = useCallback(
+    async (content: string): Promise<boolean> => {
+      tempIdRef.current += 1
+      const tempId = `tmp-${tempIdRef.current}`
+      const temp: messagesApi.Message = {
+        id: tempId,
+        role: 'user',
+        type: 'correction',
+        content,
+        report: null,
+        created_at: new Date().toISOString(),
       }
-      return true
-    } catch (err) {
-      if (mounted.current) {
-        if (err instanceof ApiError && err.status === 401) {
-          setSessionExpired(true)
-          setError('会话已过期，请重新登录')
-        } else {
-          setError(err instanceof ApiError ? err.message : '请求失败，请重试')
-        }
-      }
-      return false
-    } finally {
-      if (mounted.current) setPending(false)
-    }
-  }, [])
+      setMessages((prev) => [...prev, temp])
+      return submit(tempId, content)
+    },
+    [submit],
+  )
+
+  const retry = useCallback(
+    async (tempId: string, content: string): Promise<boolean> => {
+      return submit(tempId, content)
+    },
+    [submit],
+  )
 
   const relogin = useCallback(async () => {
     await logout()

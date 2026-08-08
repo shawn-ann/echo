@@ -119,3 +119,30 @@ test('U-C-11 会话过期提示重新登录', async ({ page }) => {
   await expect(page.getByText('会话已过期，请重新登录')).toBeVisible()
   await expect(page.getByRole('button', { name: '重新登录' })).toBeVisible()
 })
+
+// U-C-12 请求失败保留消息可重试
+test('U-C-12 请求失败保留消息可重试', async ({ page }) => {
+  await login(page)
+  let fail = true
+  await page.route('**/api/v1/messages', async (route) => {
+    if (route.request().method() === 'POST' && fail) {
+      fail = false
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 'LLM_SERVICE_UNAVAILABLE',
+          message: 'AI 服务不可用，请稍后重试',
+          details: {},
+        }),
+      })
+    } else {
+      await route.continue()
+    }
+  })
+  await send(page, 'Yesterday I go to the park')
+  await expect(page.getByText('AI 服务不可用，请稍后重试')).toBeVisible()
+  await expect(page.getByText('Yesterday I go to the park').first()).toBeVisible()
+  await page.getByRole('button', { name: '重试' }).click()
+  await expect(page.getByText('错误分析').first()).toBeVisible()
+})
