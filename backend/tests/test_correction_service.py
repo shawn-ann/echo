@@ -1,14 +1,12 @@
 import uuid
 
-import pytest
 from sqlalchemy import func, select
 
 from app.core.config import get_settings
 from app.db import async_session_factory
-from app.models.message import Message, MessageRole, MessageType
+from app.models.message import Message
 from app.models.report import CorrectionReport
 from app.models.user import User
-from app.schemas.correction import SubmitResponse
 from app.services.correction_service import (
     build_context,
     get_or_create_conversation,

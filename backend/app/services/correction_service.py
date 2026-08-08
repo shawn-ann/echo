@@ -91,7 +91,7 @@ async def _call_and_parse(llm_client: LLMClient, messages: list[dict]) -> LLMRes
             if attempt == 0:
                 continue
             raise AppError(502, "LLM_RESPONSE_INVALID", "AI 返回内容无效，请重试")
-    raise AppError(502, "LLM_RESPONSE_INVALID", "AI 返回内容无效，请重试")
+    raise AssertionError("unreachable")
 
 
 def _utcnow() -> datetime:
@@ -153,6 +153,8 @@ async def submit_message(
         await session.flush()
         report.message_id = ai_msg.id
     else:
+        if parsed.reply is None:
+            raise AppError(502, "LLM_RESPONSE_INVALID", "AI 返回内容无效，请重试")
         ai_msg = Message(
             conversation_id=conv.id,
             role=MessageRole.assistant,
