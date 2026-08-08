@@ -16,12 +16,12 @@ export default function CorrectionPage() {
 
   return (
     <div className="flex h-screen flex-col bg-[#f0fdfa]">
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#dee2e6] bg-white px-4 md:px-8">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#dee2e6] bg-white px-4 md:px-8">
         <div className="flex items-center gap-2">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-[#0ca678] text-sm font-semibold text-white">
+          <div className="flex size-7 items-center justify-center rounded-lg bg-[#0ca678] text-xs font-semibold text-white">
             E
           </div>
-          <span className="text-lg font-semibold text-[#0a7053]">
+          <span className="text-base font-semibold text-[#0a7053]">
             Echo · 地道英语纠错
           </span>
         </div>
@@ -30,7 +30,7 @@ export default function CorrectionPage() {
           <Button
             variant="outline"
             onClick={handleLogout}
-            className="h-9 border-[#ced4da] bg-white px-4 text-[#343a40] hover:bg-[#f1f3f5]"
+            className="h-8 border-[#ced4da] bg-white px-3 text-[#343a40] hover:bg-[#f1f3f5]"
           >
             退出
           </Button>

@@ -10,10 +10,10 @@ const CATEGORY_LABEL: Record<string, string> = {
 export default function ErrorCard({ error }: { error: ErrorBlock }) {
   const isChinglish = error.category === 'chinglish'
   const accent = isChinglish
-    ? 'border-l-[#f76707] bg-[#fff9f0]'
-    : 'border-l-[#fa5252] bg-[#fff5f5]'
+    ? 'border-l-[#f76707]'
+    : 'border-l-[#fa5252]'
   return (
-    <div className={`rounded-lg border border-[#dee2e6] border-l-4 p-3 ${accent}`}>
+    <div className={`rounded-lg border border-[#dee2e6] border-l-4 bg-white p-3 ${accent}`}>
       <div className="flex items-center gap-2">
         <span
           className={`rounded px-1.5 py-0.5 text-xs text-white ${isChinglish ? 'bg-[#f76707]' : 'bg-[#fa5252]'}`}
