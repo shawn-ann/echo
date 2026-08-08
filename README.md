@@ -50,6 +50,19 @@ cd backend
 pytest -v
 ```
 
+### 5. 前端自动验证（E2E + Playwright MCP）
+
+**E2E 测试**（覆盖登录 U-L-01~09 验收，使用系统 Chrome，免下载浏览器）：
+
+```bash
+docker compose up -d db          # 前置：数据库
+cd web
+source ~/.nvm/nvm.sh && nvm use 24   # Vite 8 需要 Node ≥22
+npm run test:e2e                  # 自动起后端+前端并运行 tests/e2e/login.spec.ts
+```
+
+**Playwright MCP**（opencode 中 agent 驱动浏览器走查）：配置见 `opencode.json`，重启 opencode 后生效；在会话中执行 `/frontend-check` 命令按 U-L-01~09 走查。
+
 ## API 概览（前缀 `/api/v1`）
 
 | 方法 | 路径 | 鉴权 | 说明 |
