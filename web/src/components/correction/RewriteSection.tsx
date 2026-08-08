@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import type { RewriteOption, RewriteSection as RewriteSectionType } from '@/api/messages'
 
@@ -14,11 +14,24 @@ function RewriteBox({
   accent: string
 }) {
   const [copied, setCopied] = useState(false)
+  const timerRef = useRef<number | undefined>(undefined)
+
+  useEffect(() => {
+    return () => {
+      window.clearTimeout(timerRef.current)
+    }
+  }, [])
 
   async function copy() {
-    await navigator.clipboard.writeText(option.text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+    if (!navigator.clipboard) return
+    try {
+      await navigator.clipboard.writeText(option.text)
+      setCopied(true)
+      window.clearTimeout(timerRef.current)
+      timerRef.current = window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // 复制失败：静默，不打断用户
+    }
   }
 
   return (
