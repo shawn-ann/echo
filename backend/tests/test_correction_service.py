@@ -1,8 +1,10 @@
 import uuid
 
+import pytest
 from sqlalchemy import func, select
 
 from app.core.config import get_settings
+from app.core.errors import AppError
 from app.db import async_session_factory
 from app.models.message import Message
 from app.models.report import CorrectionReport
@@ -13,7 +15,11 @@ from app.services.correction_service import (
     list_messages,
     submit_message,
 )
-from app.services.llm_client import MockLLMClient
+from app.services.llm_client import (
+    LLMTimeoutError,
+    LLMUnavailableError,
+    MockLLMClient,
+)
 
 
 async def _demo_user_id() -> uuid.UUID:
@@ -78,3 +84,31 @@ async def test_list_messages_orders_and_embeds_report():
         msgs = await list_messages(s, uid)
         assert [m.type for m in msgs] == ["correction", "report"]
         assert msgs[1].report["has_errors"] is True
+
+
+class _RaisingLLMClient:
+    def __init__(self, exc: Exception) -> None:
+        self._exc = exc
+
+    async def complete(self, messages: list[dict]) -> str:
+        raise self._exc
+
+
+async def test_submit_timeout_raises_504():
+    uid = await _demo_user_id()
+    async with async_session_factory() as s:
+        mock = _RaisingLLMClient(LLMTimeoutError())
+        with pytest.raises(AppError) as exc_info:
+            await submit_message(s, uid, "hello world", mock)
+        assert exc_info.value.status_code == 504
+        assert exc_info.value.code == "LLM_TIMEOUT"
+
+
+async def test_submit_llm_unavailable_raises_503():
+    uid = await _demo_user_id()
+    async with async_session_factory() as s:
+        mock = _RaisingLLMClient(LLMUnavailableError())
+        with pytest.raises(AppError) as exc_info:
+            await submit_message(s, uid, "hello world", mock)
+        assert exc_info.value.status_code == 503
+        assert exc_info.value.code == "LLM_SERVICE_UNAVAILABLE"
