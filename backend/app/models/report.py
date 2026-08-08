@@ -13,7 +13,7 @@ class CorrectionReport(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     message_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("messages.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("messages.id", name="fk_correction_reports_message_id", ondelete="SET NULL"), nullable=True
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     structure: Mapped[dict] = mapped_column(JSONB, nullable=False)
