@@ -12,10 +12,22 @@ from app.main import create_app
 from app.models.user import User, UserStatus
 
 
+async def drop_all_tables():
+    async with engine.begin() as conn:
+        for name in (
+            "messages",
+            "correction_reports",
+            "session_conversations",
+            "sessions",
+            "users",
+        ):
+            await conn.execute(text(f'DROP TABLE IF EXISTS "{name}" CASCADE'))
+
+
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_db():
+    await drop_all_tables()
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
         await conn.execute(text("DROP TYPE IF EXISTS user_status"))
         await conn.run_sync(Base.metadata.create_all)
     async with async_session_factory() as session:
@@ -40,8 +52,7 @@ async def setup_db():
         )
         await session.commit()
     yield
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    await drop_all_tables()
 
 
 @pytest_asyncio.fixture(autouse=True)
