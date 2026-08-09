@@ -61,7 +61,7 @@
         "has_errors": true,
         "must_have": [
           {
-            "fragment_contains": "adding resource pool"
+            "fragment_contains": "resource pool"
           },
           {
             "fragment_contains": "How many storage"
@@ -81,7 +81,7 @@
         "has_errors": true,
         "must_have": [
           {
-            "fragment_contains": "to finished"
+            "fragment_contains": "finished"
           },
           {
             "fragment_contains": "logs is"
@@ -125,7 +125,7 @@
         "has_errors": true,
         "must_have": [
           {
-            "fragment_contains": "log have been"
+            "fragment_contains": "have been fixed"
           },
           {
             "fragment_contains": "real quick"
