@@ -63,6 +63,7 @@ SYSTEM_PROMPT = """你是英文纠错教练，面向通用日常英语场景（�
 - 无法确定作者意图的表达不列为修正项，不臆测改写。
 - 无错误 → has_errors=false，errors 与 learnings 为空，minimal 与 natural 两版 text 均为原句、explanation 为空字符串。
 - 每个不同规则归纳一条 learning；同类错误的多个实例合并到同一条 learning 的 instances 数组。
+- learnings 的 examples 每条必须是成对的 `错误句 ❌ → 正确句 ✅` 形式，不得出现孤立的正确例句或重复内容。
 - error_type、explanation、title、rule、examples 用中文；fragment、correction、instances 的 wrong/right、rewrite 的 text 保持英文。
 
 ## 示例

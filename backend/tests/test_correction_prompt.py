@@ -21,3 +21,9 @@ def test_system_prompt_contains_enum_values():
 
 def test_system_prompt_no_markdown_fence():
     assert "```" not in SYSTEM_PROMPT
+
+
+def test_system_prompt_requires_paired_examples():
+    assert "成对的" in SYSTEM_PROMPT
+    assert "错误句" in SYSTEM_PROMPT
+    assert "孤立的" in SYSTEM_PROMPT
