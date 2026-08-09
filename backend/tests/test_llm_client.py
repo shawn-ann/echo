@@ -1,3 +1,5 @@
+import json
+
 import httpx
 
 from app.services.llm_client import (
@@ -18,6 +20,7 @@ async def test_real_llm_retries_then_succeeds():
 
     def handler(request: httpx.Request) -> httpx.Response:
         calls["n"] += 1
+        assert json.loads(request.content)["temperature"] == 0
         if calls["n"] < 3:
             raise httpx.ConnectError("boom")
         return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
