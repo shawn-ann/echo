@@ -50,7 +50,16 @@ def _default_responder(messages: list[dict[str, Any]]) -> str:
     last = user_contents[-1] if user_contents else ""
     if "没有错误" in last or "no-error" in last:
         return json.dumps(
-            {"intent": "correction", "correction": {"has_errors": False, "errors": [], "rewrite": None}, "reply": None},
+            {
+                "intent": "correction",
+                "correction": {
+                    "has_errors": False,
+                    "errors": [],
+                    "rewrite": {"minimal": {"text": "", "explanation": ""}, "natural": {"text": "", "explanation": ""}},
+                    "learnings": [],
+                },
+                "reply": None,
+            },
             ensure_ascii=False,
         )
     if re.search(r"[\u4e00-\u9fff]", last):
@@ -75,6 +84,14 @@ def _default_responder(messages: list[dict[str, Any]]) -> str:
                     "minimal": {"text": "Yesterday I went to the park.", "explanation": "修正时态，保留原句结构"},
                     "natural": {"text": "Yesterday I enjoyed the park.", "explanation": "用 enjoyed 更自然"},
                 },
+                "learnings": [
+                    {
+                        "title": "过去时间用过去式",
+                        "rule": "yesterday 表示过去时间，主句动词应用过去式（go→went）。",
+                        "instances": [{"wrong": "I go to", "right": "I went to"}],
+                        "examples": [{"wrong": "Yesterday I go to the park.", "right": "Yesterday I went to the park."}],
+                    }
+                ],
             },
             "reply": None,
         },

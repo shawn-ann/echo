@@ -30,10 +30,23 @@ class RewriteSection(BaseModel):
     natural: RewriteOption
 
 
+class WrongRightPair(BaseModel):
+    wrong: str
+    right: str
+
+
+class Learning(BaseModel):
+    title: str
+    rule: str
+    instances: list[WrongRightPair] = Field(default_factory=list)
+    examples: list[WrongRightPair] = Field(default_factory=list)
+
+
 class CorrectionBody(BaseModel):
     has_errors: bool
     errors: list[ErrorBlock] = Field(default_factory=list)
     rewrite: RewriteSection | None = None
+    learnings: list[Learning] = Field(default_factory=list)
 
 
 class LLMResponse(BaseModel):

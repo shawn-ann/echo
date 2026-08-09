@@ -1,5 +1,6 @@
 import type { CorrectionReport } from '@/api/messages'
 import ErrorCard from '@/components/correction/ErrorCard'
+import LearningsSection from '@/components/correction/LearningsSection'
 import RewriteSection from '@/components/correction/RewriteSection'
 
 export default function CorrectionReportCard({ report }: { report: CorrectionReport }) {
@@ -29,6 +30,9 @@ export default function CorrectionReportCard({ report }: { report: CorrectionRep
             <RewriteSection rewrite={report.rewrite} />
           </div>
         )}
+        <div className="mt-2">
+          <LearningsSection learnings={report.learnings ?? []} />
+        </div>
       </div>
     </div>
   )

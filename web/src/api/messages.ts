@@ -17,10 +17,23 @@ export interface RewriteSection {
   natural: RewriteOption
 }
 
+export interface WrongRightPair {
+  wrong: string
+  right: string
+}
+
+export interface Learning {
+  title: string
+  rule: string
+  instances: WrongRightPair[]
+  examples: WrongRightPair[]
+}
+
 export interface CorrectionReport {
   has_errors: boolean
   errors: ErrorBlock[]
   rewrite: RewriteSection | null
+  learnings: Learning[]
 }
 
 export interface Message {
