@@ -13,22 +13,14 @@ import argparse
 import asyncio
 
 from app.core.config import get_settings
-from app.prompts.correction_prompt import build_system_prompt
+from app.scripts.prompt_acceptance import build_messages
 from app.services.llm_client import get_llm_client
-
-
-def build_smoke_messages(input_text: str, style: str = "casual") -> list[dict]:
-    """构建冒烟 messages：system prompt（按场景）+ 用户原文。"""
-    return [
-        {"role": "system", "content": build_system_prompt(style)},
-        {"role": "user", "content": input_text},
-    ]
 
 
 async def run_smoke(llm_call, input_text: str, style: str) -> dict:
     """用给定 llm_call 跑一次纠错。返回 {ok, raw, error}。"""
     try:
-        raw = await llm_call(build_smoke_messages(input_text, style))
+        raw = await llm_call(build_messages(input_text, style))
         return {"ok": True, "raw": raw, "error": None}
     except Exception as exc:  # noqa: BLE001 - 冒烟脚本需兜底所有异常
         return {"ok": False, "raw": "", "error": f"{type(exc).__name__}: {exc}"}

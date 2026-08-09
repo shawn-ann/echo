@@ -1,8 +1,8 @@
-from app.scripts.llm_smoke import build_smoke_messages, run_smoke
+from app.scripts.llm_smoke import build_messages, run_smoke
 
 
-def test_build_smoke_messages_uses_system_prompt():
-    msgs = build_smoke_messages("She go to school yesterday.", "casual")
+def test_build_messages_uses_system_prompt():
+    msgs = build_messages("She go to school yesterday.", "casual")
     assert msgs[0]["role"] == "system"
     assert "correction" in msgs[0]["content"]
     assert msgs[-1] == {"role": "user", "content": "She go to school yesterday."}
