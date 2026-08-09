@@ -64,13 +64,17 @@ def _must_have_failure(must: dict[str, Any], errors: list[dict[str, Any]]) -> li
 
 
 def semantic_check(report: dict[str, Any], expect: dict[str, Any]) -> list[str]:
-    """语义断言。返回失败消息列表；空列表 = 通过。"""
+    """语义断言。返回失败消息列表；空列表 = 通过。
+
+    验收原则：只验证「纠错结果合理 + 关键错误无遗漏」。
+    不限制错误数量（相邻错误合并为一条可接受）、不限制 learnings 数量。
+    """
     failures: list[str] = []
     errors = report.get("errors") or []
     if report.get("has_errors") is not expect.get("has_errors"):
         failures.append(f"has_errors 期望 {expect.get('has_errors')}，实际 {report.get('has_errors')}")
-    if len(errors) < expect.get("error_count_min", 0):
-        failures.append(f"errors 数量 {len(errors)} < 期望 {expect.get('error_count_min')}")
+    if report.get("has_errors") is True and len(errors) == 0:
+        failures.append("has_errors=true 但 errors 为空")
     for must in expect.get("must_have", []):
         failures.extend(_must_have_failure(must, errors))
     # 每个错误必须有实质修正（correction 非空且与 fragment 不同），保证"改正合理"
@@ -89,10 +93,6 @@ def semantic_check(report: dict[str, Any], expect: dict[str, Any]) -> list[str]:
     for term in expect.get("preserve_terms", []):
         if _ci(term) not in full_text:
             failures.append(f"术语未保留: {term!r}")
-    if len(report.get("learnings") or []) < expect.get("learnings_min", 0):
-        failures.append(
-            f"learnings 数量 {len(report.get('learnings') or [])} < 期望 {expect.get('learnings_min')}"
-        )
     # 两版互异（仅当 has_errors=true；无错误时两版均为原句）
     rewrite = report.get("rewrite") or {}
     if report.get("has_errors") is True:

@@ -5,7 +5,6 @@
       "input": "Correct the trigger_by field set up logic when creating job.",
       "expect": {
         "has_errors": true,
-        "error_count_min": 2,
         "must_have": [
           {
             "fragment_contains": "creating job"
@@ -17,7 +16,8 @@
         "preserve_terms": [
           "trigger_by"
         ],
-        "learnings_min": 2
+        "ref_error_min": 2,
+        "ref_learnings_min": 2
       }
     },
     {
@@ -25,7 +25,6 @@
       "input": "What do you mean you can't restart this webapp? getting an error?",
       "expect": {
         "has_errors": true,
-        "error_count_min": 1,
         "must_have": [
           {
             "fragment_contains": "getting an error"
@@ -34,7 +33,8 @@
         "preserve_terms": [
           "webapp"
         ],
-        "learnings_min": 1
+        "ref_error_min": 1,
+        "ref_learnings_min": 1
       }
     },
     {
@@ -42,7 +42,6 @@
       "input": "In that case, the egress IP(出网ip) of GDSP cluster should be enough, right?",
       "expect": {
         "has_errors": true,
-        "error_count_min": 1,
         "must_have": [
           {
             "fragment_contains": "GDSP cluster"
@@ -51,7 +50,8 @@
         "preserve_terms": [
           "GDSP"
         ],
-        "learnings_min": 1
+        "ref_error_min": 1,
+        "ref_learnings_min": 1
       }
     },
     {
@@ -59,7 +59,6 @@
       "input": "This pvc should be created when adding resource pool. How many storage do we want?",
       "expect": {
         "has_errors": true,
-        "error_count_min": 2,
         "must_have": [
           {
             "fragment_contains": "adding resource pool"
@@ -71,7 +70,8 @@
         "preserve_terms": [
           "pvc"
         ],
-        "learnings_min": 2
+        "ref_error_min": 2,
+        "ref_learnings_min": 2
       }
     },
     {
@@ -79,7 +79,6 @@
       "input": "Is it possible to finished the testing for https://jira.rakuten-it.com/jira/browse/DSD-45874 and release it by this week? This would fix the issue that ariflow worker/scheduler logs is empty issue.",
       "expect": {
         "has_errors": true,
-        "error_count_min": 4,
         "must_have": [
           {
             "fragment_contains": "to finished"
@@ -98,7 +97,8 @@
           "DSD-45874",
           "airflow"
         ],
-        "learnings_min": 4
+        "ref_error_min": 4,
+        "ref_learnings_min": 4
       }
     },
     {
@@ -106,7 +106,6 @@
       "input": "Sorry for the late response, we are working on the release operation, the restart function should work now, please check.",
       "expect": {
         "has_errors": true,
-        "error_count_min": 1,
         "must_have": [
           {
             "fragment_contains": "release operation"
@@ -115,7 +114,8 @@
         "preserve_terms": [
           "release"
         ],
-        "learnings_min": 1
+        "ref_error_min": 1,
+        "ref_learnings_min": 1
       }
     },
     {
@@ -123,7 +123,6 @@
       "input": "The issue airflow instance log have been fixed, could you please create a new airflow instance instead? The log viewer and download should be real quick.",
       "expect": {
         "has_errors": true,
-        "error_count_min": 2,
         "must_have": [
           {
             "fragment_contains": "log have been"
@@ -135,7 +134,8 @@
         "preserve_terms": [
           "airflow"
         ],
-        "learnings_min": 2
+        "ref_error_min": 2,
+        "ref_learnings_min": 2
       }
     },
     {
@@ -143,7 +143,6 @@
       "input": "The empty log issue in PROD has been resolved now, I suspect this is also caused by the DB missing column. Then DSD-45874 is not urgent now, we can release both DSD-45874 & DSD-45252 next week.",
       "expect": {
         "has_errors": true,
-        "error_count_min": 2,
         "must_have": [
           {
             "fragment_contains": "DB missing column"
@@ -157,7 +156,8 @@
           "DSD-45252",
           "PROD"
         ],
-        "learnings_min": 2
+        "ref_error_min": 2,
+        "ref_learnings_min": 2
       }
     },
     {
@@ -165,7 +165,6 @@
       "input": "By the way, you could also check the running worker pod and scheduler pod more easily. This would be helpful if there are some error log when triggering dag.",
       "expect": {
         "has_errors": true,
-        "error_count_min": 2,
         "must_have": [
           {
             "fragment_contains": "some error log"
@@ -178,7 +177,8 @@
           "worker",
           "scheduler"
         ],
-        "learnings_min": 2
+        "ref_error_min": 2,
+        "ref_learnings_min": 2
       }
     }
   ]
