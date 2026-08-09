@@ -51,9 +51,10 @@ async def _call_llm(messages: list[dict]) -> str:
 
 
 async def run_case(llm_call, case: dict, style: str = "casual") -> dict:
-    """采集单个用例的 LLM 输出。返回 {id, input, output, elapsed, error}。"""
+    """采集单个用例的 LLM 输出。返回 {id, input, output, elapsed, error, note}。"""
     case_id = case["id"]
     case_input = case.get("input", "")
+    note = case.get("note")
     started = time.monotonic()
     raw = ""
     last_exc = None
@@ -66,8 +67,8 @@ async def run_case(llm_call, case: dict, style: str = "casual") -> dict:
     elapsed = round(time.monotonic() - started, 1)
     if not raw:
         detail = f"{type(last_exc).__name__}: {last_exc}" if last_exc else "未知错误"
-        return {"id": case_id, "input": case_input, "output": "", "elapsed": elapsed, "error": f"LLM 调用失败: {detail}"}
-    return {"id": case_id, "input": case_input, "output": raw, "elapsed": elapsed, "error": None}
+        return {"id": case_id, "input": case_input, "output": "", "elapsed": elapsed, "error": f"LLM 调用失败: {detail}", "note": note}
+    return {"id": case_id, "input": case_input, "output": raw, "elapsed": elapsed, "error": None, "note": note}
 
 
 async def run_acceptance(llm_call, cases: list[dict], style: str = "casual") -> dict:
@@ -113,6 +114,9 @@ def _render_report(summary: dict) -> str:
         lines.append(f"### {r['id']}（耗时 {r['elapsed']}s）")
         lines.append("")
         lines.append(f"**输入**：{r['input']}")
+        if r.get("note"):
+            lines.append("")
+            lines.append(f"**说明**：{r['note']}")
         lines.append("")
         if r.get("error"):
             lines.append(f"**输出**：（采集失败）{r['error']}")
