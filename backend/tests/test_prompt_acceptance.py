@@ -58,6 +58,14 @@ async def test_run_case_llm_bad_json():
     assert any("JSON" in f for f in result["failures"])
 
 
+async def test_run_case_llm_returns_non_object_json():
+    llm_call = _mock_llm(lambda msgs: "[1, 2, 3]")
+    case = {"id": "X", "input": "hello", "expect": {}}
+    result = await run_case(llm_call, case)
+    assert result["passed"] is False
+    assert any("对象" in f for f in result["failures"])
+
+
 async def test_run_acceptance_aggregates():
     calls = {"n": 0}
 

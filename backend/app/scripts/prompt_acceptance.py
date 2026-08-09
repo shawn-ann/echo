@@ -65,6 +65,9 @@ async def run_case(llm_call, case: dict) -> dict:
     except json.JSONDecodeError:
         return {"id": case_id, "passed": False, "failures": ["LLM 返回不是合法 JSON"], "raw": raw}
 
+    if not isinstance(payload, dict):
+        return {"id": case_id, "passed": False, "failures": ["LLM 返回 JSON 不是对象"], "raw": raw}
+
     report = _extract_correction(payload)
     failures = structure_check(report)
     failures.extend(semantic_check(report, case.get("expect", {})))
