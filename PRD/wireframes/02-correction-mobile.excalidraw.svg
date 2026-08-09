@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -20 415 1100" width="415" height="1100">
-  <rect x="0" y="0" width="375" height="1060" opacity="1" rx="0" ry="0" fill="#f0fdfa" stroke="#f0fdfa" stroke-width="1" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -20 415 1260" width="415" height="1260">
+  <rect x="0" y="0" width="375" height="1220" opacity="1" rx="0" ry="0" fill="#f0fdfa" stroke="#f0fdfa" stroke-width="1" />
   <rect x="0" y="0" width="375" height="52" opacity="1" rx="0" ry="0" fill="#ffffff" stroke="#ffffff" stroke-width="1" />
   <ellipse cx="28" cy="26" rx="12" ry="12" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
   <text opacity="1" x="46" text-anchor="start" font-size="14" font-weight="600" font-family="sans-serif" fill="#212529" y="25.75">地道英语纠错</text>
@@ -7,7 +7,7 @@
   <text opacity="1" x="327" text-anchor="middle" font-size="12" font-family="sans-serif" fill="#868e96" y="25.5">退出</text>
   <rect x="30" y="66" width="325" height="90" opacity="1" rx="8" ry="8" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
   <text opacity="1" x="45" text-anchor="start" font-size="11" font-family="sans-serif" fill="#ffffff"><tspan x="45" dy="0" y="84.8">Yesterday I go to the restaurant with my friend.</tspan><tspan x="45" dy="17.6">We eat a lot of food, the food is very delicious.</tspan><tspan x="45" dy="17.6">After dinner we walk in the park.</tspan></text>
-  <rect x="16" y="170" width="343" height="580" opacity="1" rx="10" ry="10" fill="#f8f9fa" stroke="#e9ecef" stroke-width="1.5" />
+  <rect x="16" y="170" width="343" height="732" opacity="1" rx="10" ry="10" fill="#f8f9fa" stroke="#e9ecef" stroke-width="1.5" />
   <rect x="26" y="182" width="323" height="256" opacity="1" rx="8" ry="8" fill="#ffffff" stroke="#e9ecef" stroke-width="1.5" />
   <text opacity="1" x="38" text-anchor="start" font-size="12" font-weight="600" font-family="sans-serif" fill="#343a40" y="199.5">错误分析</text>
   <rect x="38" y="216" width="299" height="92" opacity="1" rx="8" ry="8" fill="#ffffff" stroke="#e9ecef" stroke-width="1" />
@@ -34,14 +34,24 @@
   <rect x="303" y="634" width="24" height="24" opacity="1" rx="6" ry="6" fill="#ffffff" stroke="#0ca678" stroke-width="2" />
   <text opacity="1" x="314" text-anchor="middle" font-size="11" font-family="sans-serif" fill="#0ca678" y="643.875">📋</text>
   <text opacity="1" x="48" text-anchor="start" font-size="10" font-family="sans-serif" fill="#868e96" y="714.5">解释：更自然、更口语</text>
-  <rect x="75" y="780" width="280" height="38" opacity="1" rx="8" ry="8" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
-  <text opacity="1" x="90" text-anchor="start" font-size="12" font-family="sans-serif" fill="#ffffff" y="798.8">为什么 delicious 不能加 very？</text>
-  <rect x="16" y="830" width="343" height="54" opacity="1" rx="8" ry="8" fill="#f8f9fa" stroke="#e9ecef" stroke-width="1" />
-  <text opacity="1" x="30" text-anchor="start" font-size="12" font-family="sans-serif" fill="#343a40" y="851">delicious 是极限形容词…（纯文本讲解，不限次数）</text>
-  <rect x="0" y="920" width="375" height="120" opacity="1" rx="0" ry="0" fill="#ffffff" stroke="#e9ecef" stroke-width="1" />
-  <rect x="12" y="936" width="279" height="84" opacity="1" rx="8" ry="8" fill="#f8f9fa" stroke="#ced4da" stroke-width="2" />
-  <text opacity="1" x="26" text-anchor="start" font-size="11" font-family="sans-serif" fill="#343a40"><tspan x="26" dy="0" y="952.8">Yesterday I go to the restaurant...</tspan><tspan x="26" dy="17.6">We eat a lot of food, very delicious.</tspan><tspan x="26" dy="17.6">After dinner we walk in the park.</tspan></text>
-  <rect x="297" y="936" width="66" height="84" opacity="1" rx="8" ry="8" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
-  <text opacity="1" x="329" text-anchor="middle" font-size="13" font-weight="600" font-family="sans-serif" fill="#ffffff" y="980.125">发送</text>
-  <text opacity="1" x="26" text-anchor="start" font-size="10" font-family="sans-serif" fill="#adb5bd" y="1028.5">n/2000</text>
+  <rect x="16" y="738" width="323" height="152" opacity="1" rx="8" ry="8" fill="#f8f9fa" stroke="#e9ecef" stroke-width="1.5" />
+  <text opacity="1" x="26" text-anchor="start" font-size="12" font-weight="600" font-family="sans-serif" fill="#0a7053" y="757.8">📚 学到的规则</text>
+  <rect x="26" y="772" width="303" height="48" opacity="1" rx="8" ry="8" fill="#ffffff" stroke="#e9ecef" stroke-width="1.5" />
+  <text opacity="1" x="38" text-anchor="start" font-size="11" font-weight="600" font-family="sans-serif" fill="#343a40" y="787.15">可数名词单数不能裸用</text>
+  <text opacity="1" x="38" text-anchor="start" font-size="10" font-weight="400" font-family="sans-serif" fill="#495057" y="804.5">可数名词单数必须加冠词或改复数</text>
+  <text opacity="1" x="38" text-anchor="start" font-size="10" font-weight="400" font-family="sans-serif" fill="#2b8a3e" y="820.5">creating job ❌ → creating a job ✅</text>
+  <rect x="26" y="828" width="303" height="48" opacity="1" rx="8" ry="8" fill="#ffffff" stroke="#e9ecef" stroke-width="1.5" />
+  <text opacity="1" x="38" text-anchor="start" font-size="11" font-weight="600" font-family="sans-serif" fill="#343a40" y="843.15">动词短语作定语用名词形式</text>
+  <text opacity="1" x="38" text-anchor="start" font-size="10" font-weight="400" font-family="sans-serif" fill="#495057" y="860.5">set up 作定语应用 setup</text>
+  <text opacity="1" x="38" text-anchor="start" font-size="10" font-weight="400" font-family="sans-serif" fill="#2b8a3e" y="876.5">set up logic ❌ → setup logic ✅</text>
+  <rect x="75" y="942" width="280" height="38" opacity="1" rx="8" ry="8" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
+  <text opacity="1" x="90" text-anchor="start" font-size="12" font-family="sans-serif" fill="#ffffff" y="960.8">为什么 delicious 不能加 very？</text>
+  <rect x="16" y="992" width="343" height="54" opacity="1" rx="8" ry="8" fill="#f8f9fa" stroke="#e9ecef" stroke-width="1" />
+  <text opacity="1" x="30" text-anchor="start" font-size="12" font-family="sans-serif" fill="#343a40" y="1013">delicious 是极限形容词…（纯文本讲解，不限次数）</text>
+  <rect x="0" y="1082" width="375" height="120" opacity="1" rx="0" ry="0" fill="#ffffff" stroke="#e9ecef" stroke-width="1" />
+  <rect x="12" y="1098" width="279" height="84" opacity="1" rx="8" ry="8" fill="#f8f9fa" stroke="#ced4da" stroke-width="2" />
+  <text opacity="1" x="26" text-anchor="start" font-size="11" font-family="sans-serif" fill="#343a40"><tspan x="26" dy="0" y="1114.8">Yesterday I go to the restaurant...</tspan><tspan x="26" dy="17.6">We eat a lot of food, very delicious.</tspan><tspan x="26" dy="17.6">After dinner we walk in the park.</tspan></text>
+  <rect x="297" y="1098" width="66" height="84" opacity="1" rx="8" ry="8" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
+  <text opacity="1" x="329" text-anchor="middle" font-size="13" font-weight="600" font-family="sans-serif" fill="#ffffff" y="1142.125">发送</text>
+  <text opacity="1" x="26" text-anchor="start" font-size="10" font-family="sans-serif" fill="#adb5bd" y="1190.5">n/2000</text>
 </svg>

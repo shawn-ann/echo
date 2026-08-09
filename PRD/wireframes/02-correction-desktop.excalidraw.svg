@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -20 1320 1080" width="1320" height="1080">
-  <rect x="0" y="0" width="1280" height="1040" opacity="1" rx="0" ry="0" fill="#f0fdfa" stroke="#f0fdfa" stroke-width="1" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -20 1320 1280" width="1320" height="1280">
+  <rect x="0" y="0" width="1280" height="1240" opacity="1" rx="0" ry="0" fill="#f0fdfa" stroke="#f0fdfa" stroke-width="1" />
   <rect x="0" y="0" width="1280" height="56" opacity="1" rx="0" ry="0" fill="#ffffff" stroke="#ffffff" stroke-width="1" />
   <ellipse cx="37" cy="28" rx="13" ry="13" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
   <text opacity="1" x="58" text-anchor="start" font-size="15" font-weight="600" font-family="sans-serif" fill="#212529" y="27.375">地道英语纠错</text>
@@ -7,7 +7,7 @@
   <text opacity="1" x="1205" text-anchor="middle" font-size="13" font-family="sans-serif" fill="#868e96" y="27.125">退出</text>
   <rect x="540" y="80" width="580" height="100" opacity="1" rx="8" ry="8" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
   <text opacity="1" x="560" text-anchor="start" font-size="13" font-family="sans-serif" fill="#ffffff"><tspan x="560" dy="0" y="103.05">Yesterday I go to the restaurant with my friend.</tspan><tspan x="560" dy="22.099999999999998">We eat a lot of food, the food is very delicious.</tspan><tspan x="560" dy="22.099999999999998">After dinner we walk in the park.</tspan></text>
-  <rect x="160" y="200" width="700" height="560" opacity="1" rx="10" ry="10" fill="#f8f9fa" stroke="#e9ecef" stroke-width="1.5" />
+  <rect x="160" y="200" width="700" height="730" opacity="1" rx="10" ry="10" fill="#f8f9fa" stroke="#e9ecef" stroke-width="1.5" />
   <rect x="176" y="216" width="668" height="250" opacity="1" rx="8" ry="8" fill="#ffffff" stroke="#e9ecef" stroke-width="1.5" />
   <text opacity="1" x="192" text-anchor="start" font-size="13" font-weight="600" font-family="sans-serif" fill="#343a40" y="236.125">错误分析</text>
   <rect x="192" y="254" width="636" height="96" opacity="1" rx="8" ry="8" fill="#ffffff" stroke="#e9ecef" stroke-width="1" />
@@ -34,14 +34,24 @@
   <rect x="792" y="668" width="26" height="26" opacity="1" rx="6" ry="6" fill="#ffffff" stroke="#0ca678" stroke-width="2" />
   <text opacity="1" x="805" text-anchor="middle" font-size="12" font-family="sans-serif" fill="#0ca678" y="678.5">📋</text>
   <text opacity="1" x="204" text-anchor="start" font-size="11" font-family="sans-serif" fill="#868e96" y="745.15">解释：a friend 更自然、had 更口语、took a walk 是“散步”的地道说法</text>
-  <rect x="640" y="790" width="480" height="40" opacity="1" rx="8" ry="8" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
-  <text opacity="1" x="658" text-anchor="start" font-size="13" font-family="sans-serif" fill="#ffffff" y="810.45">为什么 delicious 前面不能加 very？</text>
-  <rect x="160" y="846" width="700" height="60" opacity="1" rx="8" ry="8" fill="#f8f9fa" stroke="#e9ecef" stroke-width="1" />
-  <text opacity="1" x="180" text-anchor="start" font-size="13" font-family="sans-serif" fill="#343a40" y="869.75">delicious 是极限形容词（absolute adjective）…（纯文本讲解，不限次数）</text>
-  <rect x="0" y="950" width="1280" height="90" opacity="1" rx="0" ry="0" fill="#ffffff" stroke="#e9ecef" stroke-width="1" />
-  <rect x="120" y="965" width="900" height="60" opacity="1" rx="8" ry="8" fill="#f8f9fa" stroke="#ced4da" stroke-width="2" />
-  <text opacity="1" x="138" text-anchor="start" font-size="13" font-family="sans-serif" fill="#343a40"><tspan x="138" dy="0" y="985.4">Yesterday I go to the restaurant with my friend.</tspan><tspan x="138" dy="20.8">We eat a lot of food, the food is very delicious.</tspan><tspan x="138" dy="20.8">After dinner we walk in the park.</tspan></text>
-  <text opacity="1" x="1030" text-anchor="start" font-size="11" font-family="sans-serif" fill="#adb5bd" y="992.15">n/2000</text>
-  <rect x="1096" y="965" width="80" height="60" opacity="1" rx="8" ry="8" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
-  <text opacity="1" x="1136" text-anchor="middle" font-size="13" font-weight="600" font-family="sans-serif" fill="#ffffff" y="993.125">发送</text>
+  <rect x="176" y="746" width="668" height="172" opacity="1" rx="8" ry="8" fill="#f8f9fa" stroke="#e9ecef" stroke-width="1.5" />
+  <text opacity="1" x="192" text-anchor="start" font-size="13" font-weight="600" font-family="sans-serif" fill="#0a7053" y="766.45">📚 学到的规则</text>
+  <rect x="192" y="782" width="636" height="56" opacity="1" rx="8" ry="8" fill="#ffffff" stroke="#e9ecef" stroke-width="1.5" />
+  <text opacity="1" x="208" text-anchor="start" font-size="12" font-weight="600" font-family="sans-serif" fill="#343a40" y="799.8">可数名词单数不能裸用</text>
+  <text opacity="1" x="208" text-anchor="start" font-size="11" font-weight="400" font-family="sans-serif" fill="#495057" y="819.15">可数名词单数必须加冠词（a/an/the）或改为复数</text>
+  <text opacity="1" x="208" text-anchor="start" font-size="11" font-weight="400" font-family="sans-serif" fill="#2b8a3e" y="837.15">creating job ❌ → creating a job ✅</text>
+  <rect x="192" y="846" width="636" height="56" opacity="1" rx="8" ry="8" fill="#ffffff" stroke="#e9ecef" stroke-width="1.5" />
+  <text opacity="1" x="208" text-anchor="start" font-size="12" font-weight="600" font-family="sans-serif" fill="#343a40" y="863.8">动词短语作定语用名词形式</text>
+  <text opacity="1" x="208" text-anchor="start" font-size="11" font-weight="400" font-family="sans-serif" fill="#495057" y="883.15">set up 是动词短语，作名词定语应用 setup</text>
+  <text opacity="1" x="208" text-anchor="start" font-size="11" font-weight="400" font-family="sans-serif" fill="#2b8a3e" y="901.15">set up logic ❌ → setup logic ✅</text>
+  <rect x="640" y="960" width="480" height="40" opacity="1" rx="8" ry="8" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
+  <text opacity="1" x="658" text-anchor="start" font-size="13" font-family="sans-serif" fill="#ffffff" y="980.45">为什么 delicious 前面不能加 very？</text>
+  <rect x="160" y="1016" width="700" height="60" opacity="1" rx="8" ry="8" fill="#f8f9fa" stroke="#e9ecef" stroke-width="1" />
+  <text opacity="1" x="180" text-anchor="start" font-size="13" font-family="sans-serif" fill="#343a40" y="1039.75">delicious 是极限形容词（absolute adjective）…（纯文本讲解，不限次数）</text>
+  <rect x="0" y="1120" width="1280" height="90" opacity="1" rx="0" ry="0" fill="#ffffff" stroke="#e9ecef" stroke-width="1" />
+  <rect x="120" y="1135" width="900" height="60" opacity="1" rx="8" ry="8" fill="#f8f9fa" stroke="#ced4da" stroke-width="2" />
+  <text opacity="1" x="138" text-anchor="start" font-size="13" font-family="sans-serif" fill="#343a40"><tspan x="138" dy="0" y="1155.4">Yesterday I go to the restaurant with my friend.</tspan><tspan x="138" dy="20.8">We eat a lot of food, the food is very delicious.</tspan><tspan x="138" dy="20.8">After dinner we walk in the park.</tspan></text>
+  <text opacity="1" x="1030" text-anchor="start" font-size="11" font-family="sans-serif" fill="#adb5bd" y="1162.15">n/2000</text>
+  <rect x="1096" y="1135" width="80" height="60" opacity="1" rx="8" ry="8" fill="#0ca678" stroke="#0ca678" stroke-width="2" />
+  <text opacity="1" x="1136" text-anchor="middle" font-size="13" font-weight="600" font-family="sans-serif" fill="#ffffff" y="1163.125">发送</text>
 </svg>
