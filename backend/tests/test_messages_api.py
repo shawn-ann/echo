@@ -90,12 +90,22 @@ async def test_post_messages_unauthorized(api):
     assert r.status_code == 401
 
 
-# T-C-07 LLM 未配置 → 503（使用默认 app，不覆盖依赖）
-async def test_post_messages_llm_not_configured(client):
-    token = await _token(client)
-    r = await client.post(POST_URL, json={"content": "hello world"}, headers=_auth(token))
-    assert r.status_code == 503
-    assert r.json()["code"] == "LLM_SERVICE_UNAVAILABLE"
+# T-C-07 LLM 未配置 → 503（显式覆盖依赖为抛 503，不依赖环境/.env）
+async def test_post_messages_llm_not_configured():
+    from app.core.errors import AppError
+
+    app = create_app()
+
+    def _unconfigured():
+        raise AppError(503, "LLM_SERVICE_UNAVAILABLE", "AI 服务未配置，请配置 LLM_BASE_URL/LLM_API_KEY")
+
+    app.dependency_overrides[get_llm_client] = _unconfigured
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        token = await _token(c)
+        r = await c.post(POST_URL, json={"content": "hello world"}, headers=_auth(token))
+        assert r.status_code == 503
+        assert r.json()["code"] == "LLM_SERVICE_UNAVAILABLE"
 
 
 # T-C-08 LLM 返回无效 JSON → 502（重试后）
