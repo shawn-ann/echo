@@ -20,14 +20,15 @@ def test_all_cases_have_unique_ids():
 
 
 def test_expect_sub_schema():
-    expect_keys = {"has_errors", "must_have", "preserve_terms"}
     must_keys = {"fragment_contains"}
     for case in load_golden_cases():
         expect = case["expect"]
-        assert expect_keys.issubset(expect.keys()), f"{case['id']} expect 缺字段"
-        assert isinstance(expect["has_errors"], bool)
-        assert isinstance(expect["must_have"], list)
-        assert isinstance(expect["preserve_terms"], list)
-        for must in expect["must_have"]:
-            assert must_keys.issubset(must.keys()), f"{case['id']} must_have 缺字段"
-            assert isinstance(must["fragment_contains"], str)
+        assert isinstance(expect["has_errors"], bool), f"{case['id']} has_errors 应为 bool"
+        if expect["has_errors"] is True:
+            assert "must_have" in expect, f"{case['id']} has_errors=true 需 must_have"
+            assert isinstance(expect["must_have"], list)
+            for must in expect["must_have"]:
+                assert must_keys.issubset(must.keys()), f"{case['id']} must_have 缺字段"
+                assert isinstance(must["fragment_contains"], str)
+        else:
+            assert "must_have" not in expect, f"{case['id']} has_errors=false 不应有 must_have"

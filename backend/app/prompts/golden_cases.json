@@ -23,18 +23,10 @@
     {
       "id": "C-02",
       "input": "What do you mean you can't restart this webapp? getting an error?",
+      "note": "口语省略疑问句 getting an error? 在 casual（日常/职场口语）场景下属正常表达，不判错；formal（正式书面）场景下应补全为 Are you getting an error?。",
       "expect": {
-        "has_errors": true,
-        "must_have": [
-          {
-            "fragment_contains": "getting an error"
-          }
-        ],
-        "preserve_terms": [
-          "webapp"
-        ],
-        "ref_error_min": 1,
-        "ref_learnings_min": 1
+        "has_errors": false,
+        "style": "casual"
       }
     },
     {
