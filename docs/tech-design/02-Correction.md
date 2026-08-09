@@ -1,6 +1,6 @@
 # 纠错功能详细设计文档（02-Correction）
 
-**所属**：地道英语纠错 · 智能笔记本 | **版本**：V0.2 | **状态**：草稿 | **日期**：2026年8月
+**所属**：地道英语纠错 · 智能笔记本 | **版本**：V0.3 | **状态**：草稿 | **日期**：2026年8月
 **对应 PRD**：`PRD/pages/02-Correction.md`（V2.5，含 PRD 同步更新）、`PRD/Overview.md` §1.1
 **依赖**：`00-Architecture.md`（顶层契约：接口风格、错误格式、鉴权、数据契约、LLM 接入契约）
 
@@ -54,7 +54,15 @@
     "rewrite": {
       "minimal":  { "text": "Yesterday I went to the park.", "explanation": "修正时态，保留原句结构" },
       "natural":  { "text": "Yesterday I enjoyed the park.", "explanation": "用 enjoyed 更自然" }
-    }
+    },
+    "learnings": [
+      {
+        "title": "过去时间用过去式",
+        "rule": "yesterday 表示过去时间，主句动词应用过去式（go→went）",
+        "instances": [ { "wrong": "I go to", "right": "I went to" } ],
+        "examples": [ { "wrong": "Yesterday I go to the park.", "right": "Yesterday I went to the park." } ]
+      }
+    ]
   },
   "reply": null
 }
@@ -63,6 +71,7 @@
 - `intent=correction` 时：返回 `correction` 对象；`has_errors=false` 时 `errors`/`rewrite` 可为空，前端展示鼓励文案（PRD §7.2）
 - `intent=follow_up` 时：返回 `reply`（纯文本），`correction` 为 null
 - **错误分类**（PRD §4.10）：`grammar`（语法）/ `collocation`（搭配）/ `chinglish`（中式英语，橙色展示）/ `style`（风格与语气）
+- **learnings**（学到的规则）：从本次错误归纳，每条含 `title`（规则一句话）/ `rule`（规则说明）/ `instances[{wrong,right}]`（错误·正确对照）/ `examples[{wrong,right}]`（例句）；同类错误合并到同一条的 instances
 - **真实提示词（另立文档）须满足的意图判定约束**（PRD §4.3）：纯中文 → follow_up；英文夹杂中文生词 → correction；疑问句式 → 结合上下文判断，不强制归为追问；纠错报告遵循「最小修正」原则、报告内不重复原文、无错误返回鼓励文案
 
 ### 1.3 解析与容错
@@ -157,7 +166,21 @@
       "text": "Yesterday I went to the park and enjoyed some delicious food.",
       "explanation": "用 enjoyed + some delicious food 更自然"
     }
-  }
+  },
+  "learnings": [
+    {
+      "title": "过去时间用过去式",
+      "rule": "yesterday 表示过去时间，主句动词应用过去式（go→went）",
+      "instances": [ { "wrong": "I go to", "right": "I went to" } ],
+      "examples": [ { "wrong": "Yesterday I go to the park.", "right": "Yesterday I went to the park." } ]
+    },
+    {
+      "title": "极限形容词不加 very",
+      "rule": "delicious 是极限形容词，本身已含程度，通常不加 very 修饰",
+      "instances": [ { "wrong": "very delicious", "right": "delicious / really delicious" } ],
+      "examples": [ { "wrong": "It is very delicious.", "right": "It is really delicious." } ]
+    }
+  ]
 }
 ```
 
@@ -259,9 +282,10 @@ User        Frontend          Backend              DB        LLM
 CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 ├── MessageList
 │   ├── UserBubble          （correction/follow_up：靠右，品牌色高亮）
-│   ├── CorrectionReportCard（type=report：整体大框，错误分析+改写 两分区）
+│   ├── CorrectionReportCard（type=report：整体大框，错误分析+改写+学到的规则 三分区）
 │   │   ├── ErrorCard       （fragment + explanation + correction；grammar 红条/chinglish 橙条）
-│   │   └── RewriteSection  （minimal 绿 ✏️ / natural 紫 ✨ 两虚线框 + CopyButton）
+│   │   ├── RewriteSection  （minimal 绿 ✏️ / natural 紫 ✨ 两虚线框 + CopyButton）
+│   │   └── LearningsSection（学到的规则：灰底分区，规则卡 title/rule/instances❌→✅/examples 例句）
 │   ├── ReplyBubble         （type=reply：靠左浅灰底纯文本）
 │   └── LoadingBubble       （「AI 正在分析，请稍候…」）
 └── Composer                （多行自动延伸输入框 + n/2000 字数 + 发送按钮三态）
@@ -357,5 +381,6 @@ CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 
 **变更记录**
 
+- V0.3 · 2026-08 · §1.2/§2.4 契约与数据示例新增 learnings（学到的规则）结构；§6.1 组件树补 LearningsSection（同步 Correction V2.6 / Overview V2.9）
 - V0.2 · 2026-08 · 明确本轮不实现真实 LLM 调用（仅 Mock 路径），真实提示词另行编写文档，此处写明意图与契约约束（§1.2）；真实 LLM 冒烟标注为不阻塞交付的可选环节（§9.3）
 - V0.1 · 2026-08 · 初稿：LLM 层（客户端抽象 + 单次调用契约 + 解析容错）、数据模型（session_conversations/messages/correction_reports）、API 契约、上下文策略、前端组件、场景矩阵与验证方式；关键决策（Mock 测试、只返回文本片段、单次调用意图判定、未配置 503、移除改写下划线、CONTEXT_LIMIT=40）已同步更新 PRD
