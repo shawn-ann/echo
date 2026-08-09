@@ -19,16 +19,16 @@ from pathlib import Path
 import httpx
 
 from app.core.config import get_settings
-from app.prompts.correction_prompt import SYSTEM_PROMPT
+from app.prompts.correction_prompt import build_system_prompt
 from app.prompts.golden_cases import load_golden_cases
 
 _REPORT_PATH = Path(__file__).resolve().parents[2] / "docs" / "prompts" / "prompt-acceptance-report.md"
 
 
-def build_messages(input_text: str) -> list[dict]:
-    """构建发给 LLM 的 messages：system prompt + 用户原文。"""
+def build_messages(input_text: str, style: str = "casual") -> list[dict]:
+    """构建发给 LLM 的 messages：system prompt（按场景）+ 用户原文。"""
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": build_system_prompt(style)},
         {"role": "user", "content": input_text},
     ]
 
@@ -50,7 +50,7 @@ async def _call_llm(messages: list[dict]) -> str:
         return r.json()["choices"][0]["message"]["content"]
 
 
-async def run_case(llm_call, case: dict) -> dict:
+async def run_case(llm_call, case: dict, style: str = "casual") -> dict:
     """采集单个用例的 LLM 输出。返回 {id, input, output, elapsed, error}。"""
     case_id = case["id"]
     case_input = case.get("input", "")
@@ -59,7 +59,7 @@ async def run_case(llm_call, case: dict) -> dict:
     last_exc = None
     for attempt in range(3):
         try:
-            raw = await llm_call(build_messages(case_input))
+            raw = await llm_call(build_messages(case_input, style))
             break
         except Exception as exc:  # noqa: BLE001 - 采集脚本需兜底所有网络/HTTP 异常
             last_exc = exc
@@ -70,16 +70,17 @@ async def run_case(llm_call, case: dict) -> dict:
     return {"id": case_id, "input": case_input, "output": raw, "elapsed": elapsed, "error": None}
 
 
-async def run_acceptance(llm_call, cases: list[dict]) -> dict:
-    """跑全部用例，返回 {total, results, elapsed, prompt, model}。"""
+async def run_acceptance(llm_call, cases: list[dict], style: str = "casual") -> dict:
+    """跑全部用例，返回 {total, results, elapsed, prompt, model, style}。"""
     started = time.monotonic()
-    results = [await run_case(llm_call, case) for case in cases]
+    results = [await run_case(llm_call, case, style) for case in cases]
     return {
         "total": len(results),
         "results": results,
         "elapsed": round(time.monotonic() - started, 1),
-        "prompt": SYSTEM_PROMPT,
+        "prompt": build_system_prompt(style),
         "model": get_settings().LLM_MODEL,
+        "style": style,
     }
 
 
@@ -96,6 +97,7 @@ def _render_report(summary: dict) -> str:
     lines.append("# 提示词输出采集报告（Prompt Output Report）")
     lines.append("")
     lines.append(f"- **模型**：`{summary['model']}`")
+    lines.append(f"- **场景**：{summary['style']}（{'日常/职场口语' if summary['style'] == 'casual' else '正式书面'}）")
     lines.append(f"- **用例数**：{summary['total']}")
     lines.append(f"- **总耗时**：{summary['elapsed']} 秒")
     lines.append("")
@@ -134,9 +136,10 @@ def write_report(summary: dict) -> str:
 
 async def main() -> int:
     cases = load_golden_cases()
-    summary = await run_acceptance(_call_llm, cases)
+    style = get_settings().CORRECTION_STYLE
+    summary = await run_acceptance(_call_llm, cases, style=style)
     report_path = write_report(summary)
-    print(f"\n=== 采集完成：{summary['total']} 条用例，总耗时 {summary['elapsed']}s ===")
+    print(f"\n=== 采集完成：{summary['total']} 条用例（场景 {style}），总耗时 {summary['elapsed']}s ===")
     for r in summary["results"]:
         status = "OK " if r.get("error") is None else "ERR"
         print(f"[{status}] {r['id']} ({r['elapsed']}s)")

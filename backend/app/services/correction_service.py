@@ -12,18 +12,11 @@ from app.models.conversation import SessionConversation
 from app.models.message import Message, MessageRole, MessageType
 from app.models.report import CorrectionReport
 from app.schemas.correction import LLMResponse, MessageOut
+from app.prompts.correction_prompt import build_system_prompt
 from app.services.llm_client import (
     LLMClient,
     LLMTimeoutError,
     LLMUnavailableError,
-)
-
-SYSTEM_PROMPT = (
-    "你是英文纠错教练。根据对话上下文判断用户意图："
-    "提交英文文本请判定为 correction 并输出结构化纠错报告；"
-    "纯中文或提问请判定为 follow_up 并输出纯文本讲解。"
-    "纠错报告遵循最小修正原则，报告内不重复展示原文；"
-    "若无错误则 has_errors=false。必须输出合法 JSON，结构为 {intent, correction, reply}。"
 )
 
 
@@ -115,7 +108,7 @@ async def submit_message(
     conv = await get_or_create_conversation(session, user_id)
     context = await build_context(session, conv.id, get_settings().CONTEXT_LIMIT)
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": build_system_prompt(get_settings().CORRECTION_STYLE)},
         *context,
         {"role": "user", "content": content},
     ]

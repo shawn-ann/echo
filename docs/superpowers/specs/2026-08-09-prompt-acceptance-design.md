@@ -18,17 +18,32 @@
 |---|--------|------|
 | 1 | 交付范围 | 提示词 + 验收 Python 脚本；9 示例做 golden 测试集 |
 | 2 | 运行配置 | 复用 pydantic-settings，`.env` 文件驱动（`LLM_BASE_URL`/`LLM_API_KEY`/`LLM_MODEL` 已存在 config.py） |
-| 3 | 提示词位置 | `backend/prompts/correction_prompt.py`（`SYSTEM_PROMPT` 常量） |
-| 4 | Golden 用例 | `backend/prompts/golden_cases.json` 独立数据文件 |
-| 5 | 验收脚本 | `backend/scripts/prompt_acceptance.py` |
-| 6 | 验收粒度 | 结构 + 语义双重断言；门槛 9/9 全过 |
+| 3 | 提示词位置 | `backend/app/prompts/correction_prompt.py`（`build_system_prompt(style)` 场景参数化 + 默认 `SYSTEM_PROMPT` 导出） |
+| 4 | Golden 用例 | `backend/app/prompts/golden_cases.json` 独立数据文件 |
+| 5 | 验收脚本 | `backend/app/scripts/prompt_acceptance.py`（纯输出采集，生成报告） |
+| 6 | 验收粒度 | 纯输出采集：只记录输入/实际输出（完整 JSON）/耗时，不做断言判定 |
 | 7 | PRD 同步 | 先不改，验收通过后同步 |
 | 8 | 领域定位 | 通用日常英语；技术术语/专有名词（GDSP、airflow、DSD-45874、pvc 等）原样保留 |
 | 9 | 顶层结构 | **保持原 `intent/correction/reply`** |
 | 10 | 错误对象 | **`category`（4 枚举）+ `error_type`（中文语法术语）同时由 LLM 输出（方案 A）** |
-| 11 | learnings | **放 `correction` 内部**，含 `title/rule/instances[{wrong,right}]/examples[]` |
-| 12 | rewrite | **保持原 `minimal`/`natural` 两版** |
+| 11 | learnings | **放 `correction` 内部**，含 `title/rule/instances[{wrong,right}]/examples[{wrong,right}]` |
+| 12 | rewrite | **保持原 `minimal`/`natural` 两版（允许相同）** |
 | 13 | severity | **不加** |
+| 14 | 场景参数化 | `build_system_prompt(style)`，style ∈ {casual（默认，日常/职场口语）, formal（正式书面）}；`CORRECTION_STYLE` 配置切换 |
+
+### 一.1 场景参数化设计
+
+提示词从静态常量改为 `build_system_prompt(style)` 函数，按场景生成提示词。切换通过 `CORRECTION_STYLE` 配置字段（`.env`）控制，用户可随时切换。
+
+| 维度 | casual（默认，日常/职场口语） | formal（正式书面） |
+|------|------------------------------|---------------------|
+| 场景描述 | 面向日常/职场口语场景（Slack/IM 工单对话、技术沟通） | 面向正式书面场景（邮件、技术文档、工单报告） |
+| 口语省略（如 `getting an error?`） | **不判错**（口语场景正常表达，不列为修正项） | 判错，补全为书面完整形式（`Are you getting an error?`） |
+| `natural` 改写风格 | 偏口语化（缩写、简短句） | 偏书面正式（完整句式、规范用词） |
+| 其他（结构/错误类型表/术语/保留术语/learnings 格式） | 两场景共用 | 两场景共用 |
+
+- 保留 `SYSTEM_PROMPT = build_system_prompt("casual")` 作为向后兼容导出
+- `correction_service.py` 统一使用 `build_system_prompt(get_settings().CORRECTION_STYLE)`，废弃旧的占位 SYSTEM_PROMPT
 
 ## 二、报告 JSON 契约（version 1，合并结构）
 
