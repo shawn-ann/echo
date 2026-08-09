@@ -24,6 +24,10 @@ def test_system_prompt_no_markdown_fence():
 
 
 def test_system_prompt_requires_paired_examples():
-    assert "成对的" in SYSTEM_PROMPT
-    assert "错误句" in SYSTEM_PROMPT
-    assert "孤立的" in SYSTEM_PROMPT
+    assert "examples" in SYSTEM_PROMPT
+    assert '"wrong"' in SYSTEM_PROMPT
+    assert '"right"' in SYSTEM_PROMPT
+
+
+def test_system_prompt_no_error_rewrite_empty():
+    assert "text 均为空字符串" in SYSTEM_PROMPT

@@ -57,7 +57,7 @@
         "title": "可数名词单数不能裸用",
         "rule": "可数名词单数必须加冠词（a/an/the）或改为复数",
         "instances": [ { "wrong": "creating job", "right": "creating a job" } ],
-        "examples": ["I'm deploying service ❌ → I'm deploying a service ✅"]
+        "examples": [ { "wrong": "I'm deploying service.", "right": "I'm deploying a service." } ]
       }
     ]
   },
@@ -77,12 +77,12 @@
 | `correction.errors[].explanation` | 为什么错（中文） |
 | `correction.errors[].correction` | 最小修正（英文） |
 | `correction.rewrite` | `minimal` + `natural` 两版，各含 `text`/`explanation`；两版互异 |
-| `correction.learnings[]` | 新增；每项 `title`/`rule`/`instances[{wrong,right}]`/`examples[]` |
+| `correction.learnings[]` | 新增；每项 `title`/`rule`/`instances[{wrong,right}]`/`examples[{wrong,right}]`（examples 为对象数组） |
 | `reply` | follow_up 时非空（保持原样） |
 
 ### 2.2 无错误表达
 
-- `has_errors: false` 时：`errors`/`learnings` 为空，`rewrite.minimal` 与 `natural` 均为原句（text=原句，explanation=""）。
+- `has_errors: false` 时：`errors`/`learnings` 为空，`rewrite.minimal` 与 `natural` 两版 `text` 均为**空字符串**、`explanation` 为空字符串。
 
 ### 2.3 术语与专名保留
 
@@ -124,16 +124,17 @@
     { "title": "规则一句话（中文）",
       "rule": "规则说明（中文）",
       "instances": [ { "wrong": "错误写法（英文）", "right": "正确写法（英文）" } ],
-      "examples": ["英文例句1~2条，含 ❌ → ✅"] } ] }
+      "examples": [ { "wrong": "错误写法（英文）", "right": "正确写法（英文）" } ] } ] }
 
 ## 关键约束
-- 改写两版（minimal/natural）必须互不相同
-- natural 提供一条比 minimal 更自然的整句改写，风格按上下文选择（正式或口语均可）
+- 改写两版（minimal/natural）允许相同（若 minimal 已足够自然）
+- natural 提供比 minimal 更自然/地道的整句改写，风格按上下文选择（正式或口语均可）
 - 技术术语/专有名词原样保留，不得改写或翻译
 - 区分"中式直译"（表达不存在/不自然）与"语域错配"（合法英语但语域不符）；error_type 相应标注
 - category 与 error_type 一致：冠词缺失/时态/主谓一致等 → grammar；用词不当 → collocation 或 style；中式直译 → chinglish；语域错配 → style
-- 无错误 → has_errors=false，errors/learnings 为空，两版 rewrite = 原句
+- 无错误 → has_errors=false，errors/learnings 为空，两版 rewrite 的 text 为空字符串
 - 每个不同规则归纳一条 learning；同类错误合并到同一条的 instances
+- learnings 的 examples 为对象数组，每项含 wrong/right
 
 ## 返回格式（严格）
 {"intent": "correction", "correction": { ... }, "reply": null}
@@ -162,7 +163,7 @@ prompt_acceptance.py
 - errors 每项 5 字段齐全：category / error_type / fragment / explanation / correction
 - category ∈ 4 枚举；error_type 非空中文
 - rewrite 有 `minimal`、`natural` 两键，各含 text/explanation
-- learnings 每项 4 字段：title / rule / instances / examples；instances 每项有 wrong/right
+- learnings 每项 4 字段：title / rule / instances / examples；instances 与 examples 每项有 wrong/right
 
 **语义断言（对照 golden_cases.json 的 expect）：**
 - `fragment_contains` 命中：LLM 的 error.fragment 含期望片段
