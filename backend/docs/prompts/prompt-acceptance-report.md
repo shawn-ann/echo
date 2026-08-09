@@ -1,13 +1,14 @@
 # 提示词输出采集报告（Prompt Output Report）
 
 - **模型**：`deepseek-v4-flash`
+- **场景**：casual（日常/职场口语）
 - **用例数**：9
-- **总耗时**：493.2 秒
+- **总耗时**：403.0 秒
 
 ## 一、测试提示词（SYSTEM_PROMPT）
 
 ```text
-你是英文纠错教练，面向通用日常英语场景（含技术/职场表达）。
+你是英文纠错教练，面向日常/职场口语场景（如 Slack/IM 工单对话、技术沟通）。
 结合对话上下文判断用户意图，只输出合法 JSON，不要用 markdown 代码块包裹，不要添加任何额外说明文字。
 
 ## 意图判定
@@ -58,7 +59,8 @@
 遇到无法确定作者意图的表达，不列为修正项，不得臆测改写。若两种写法母语者在某些语境下都会使用（如 "cannot" 与 "can not"），视为等价表达，不列为修正项。
 
 ## 关键约束
-- `natural` 改写应提供比 `minimal` 更自然/地道的整句表达，风格按上下文选择（正式或口语均可）；若 `minimal` 已经足够自然（如修正后已是唯一地道说法），则允许 `natural` 与 `minimal` 相同，无需强行制造差异。
+- `natural` 改写应提供比 `minimal` 更自然/地道的整句表达；natural 改写偏口语化（Slack/IM 风格，可用缩写、简短句）。若 `minimal` 已经足够自然（如修正后已是唯一地道说法），则允许 `natural` 与 `minimal` 相同，无需强行制造差异。
+- - 口语/即时消息场景中常见的省略表达（如省略主语/助动词的疑问句 `getting an error?`、`Hitting the same issue?`、`Seeing any logs?`）属于该场景的正常表达，**不列为修正项**，不判为语法错误。
 - 任何改写版本均不得保留被标记为错误的表达 — 若某项被标记为错误，所有改写版本（含 minimal）都必须替换。
 - 不改变时态意图、语气强度或归责对象。
 - 区分"中式直译"与"语域错配"：若表达是合法英语但不符合当前语境的正式程度，error_type 标记为"语域错配"而非"中式直译"；对应 learning 的 rule 必须注明适用场景。
@@ -92,7 +94,7 @@
 
 ## 二、测试用例与实际输出
 
-### C-01（耗时 23.3s）
+### C-01（耗时 43.8s）
 
 **输入**：Correct the trigger_by field set up logic when creating job.
 
@@ -106,16 +108,16 @@
     "errors": [
       {
         "category": "grammar",
-        "error_type": "动词误作名词",
-        "fragment": "set up logic",
-        "explanation": "set up 是动词短语，此处修饰名词 logic 应使用名词形式 setup，表示“设置逻辑”。",
-        "correction": "setup logic"
+        "error_type": "动词短语误作名词修饰语",
+        "fragment": "field set up logic",
+        "explanation": "在名词短语中修饰 logic 时，应使用名词形式的 setup（一个词），而不是动词短语 set up；动词短语不能直接放在名词前作定语。",
+        "correction": "field setup logic"
       },
       {
         "category": "grammar",
         "error_type": "冠词缺失",
         "fragment": "creating job",
-        "explanation": "job 是可数名词，单数形式前需加冠词 a，泛指“创建作业”时应写 creating a job。",
+        "explanation": "job 是可数名词单数，前面需要冠词 a 或 the。这里泛指创建任务，应使用不定冠词 a。",
         "correction": "creating a job"
       }
     ],
@@ -125,38 +127,14 @@
         "explanation": "仅修正语法和用词，保留原句结构和语气"
       },
       "natural": {
-        "text": "Fix the logic behind setting up the `trigger_by` field when creating a job.",
-        "explanation": "用 fix the logic behind... 更贴近技术沟通习惯，动名词 setting up 也更自然地引出设置动作。"
+        "text": "Fix the way the `trigger_by` field is set up when creating a job.",
+        "explanation": "用 fix the way ... is set up 更口语化，表达更自然，贴近日常技术沟通。"
       }
     },
     "learnings": [
       {
-        "title": "动词短语与名词形式",
-        "rule": "set up 是动词短语，表示“设置”；名词形式为 setup，表示“设置、配置”。修饰名词时用 setup，不能用动词短语 set up。",
-        "instances": [
-          {
-            "wrong": "set up logic",
-            "right": "setup logic"
-          },
-          {
-            "wrong": "field set up logic",
-            "right": "field setup logic"
-          }
-        ],
-        "examples": [
-          {
-            "wrong": "The set up process is complex.",
-            "right": "The setup process is complex."
-          },
-          {
-            "wrong": "Please review the field set up.",
-            "right": "Please review the field setup."
-          }
-        ]
-      },
-      {
-        "title": "可数名词前需冠词",
-        "rule": "单数可数名词前必须加冠词（a/an/the）或其他限定词，不能单独出现。",
+        "title": "可数名词单数前需要冠词",
+        "rule": "当名词是可数名词单数时，前面必须加不定冠词 a/an 或定冠词 the，不能裸用。",
         "instances": [
           {
             "wrong": "creating job",
@@ -165,12 +143,32 @@
         ],
         "examples": [
           {
-            "wrong": "When creating job, check the config.",
-            "right": "When creating a job, check the config."
+            "wrong": "when creating job",
+            "right": "when creating a job"
           },
           {
-            "wrong": "I need to create job.",
-            "right": "I need to create a job."
+            "wrong": "I need to check status.",
+            "right": "I need to check the status."
+          }
+        ]
+      },
+      {
+        "title": "setup 是名词/形容词，set up 是动词短语",
+        "rule": "表示“设置、安装”的名词或形容词形式是一个词 setup；动词短语是 set up（两个词）。作名词修饰语（如 setup logic）时应用 setup。",
+        "instances": [
+          {
+            "wrong": "field set up logic",
+            "right": "field setup logic"
+          }
+        ],
+        "examples": [
+          {
+            "wrong": "the set up instructions",
+            "right": "the setup instructions"
+          },
+          {
+            "wrong": "follow the set up process",
+            "right": "follow the setup process"
           }
         ]
       }
@@ -180,7 +178,7 @@
 }
 ```
 
-### C-02（耗时 63.9s）
+### C-02（耗时 6.4s）
 
 **输入**：What do you mean you can't restart this webapp? getting an error?
 
@@ -190,50 +188,25 @@
 {
   "intent": "correction",
   "correction": {
-    "has_errors": true,
-    "errors": [
-      {
-        "category": "grammar",
-        "error_type": "主语与助动词缺失",
-        "fragment": "getting an error?",
-        "explanation": "getting an error? 是省略了主语和助动词的疑问句，口语或即时消息中较常见，但在正式书面语中应补全为 Are you getting an error?。",
-        "correction": "Are you getting an error?"
-      }
-    ],
+    "has_errors": false,
+    "errors": [],
     "rewrite": {
       "minimal": {
-        "text": "What do you mean you can't restart this webapp? Are you getting an error?",
-        "explanation": "仅补全第二个问句，保留原句结构和口语语气"
+        "text": "",
+        "explanation": ""
       },
       "natural": {
-        "text": "What do you mean you can't restart this webapp? Are you seeing an error?",
-        "explanation": "改用 seeing an error，更贴近技术聊天中询问报错信息的常见说法，同时保持口语化。"
+        "text": "",
+        "explanation": ""
       }
     },
-    "learnings": [
-      {
-        "title": "口语省略疑问句在正式书面语中需补全",
-        "rule": "在英语口语或即时消息中，可以省略句首的 Are you 直接把现在分词短语用作疑问句（如 Getting an error?），但在正式书面语中应补全主语和助动词，写成 Are you getting an error? 等完整句。",
-        "instances": [
-          {
-            "wrong": "getting an error?",
-            "right": "Are you getting an error?"
-          }
-        ],
-        "examples": [
-          {
-            "wrong": "Working on it?",
-            "right": "Are you working on it?"
-          }
-        ]
-      }
-    ]
+    "learnings": []
   },
   "reply": null
 }
 ```
 
-### C-03（耗时 20.7s）
+### C-03（耗时 39.5s）
 
 **输入**：In that case, the egress IP(出网ip) of GDSP cluster should be enough, right?
 
@@ -249,34 +222,57 @@
         "category": "grammar",
         "error_type": "冠词缺失",
         "fragment": "GDSP cluster",
-        "explanation": "GDSP cluster 在此处指代具体且语境明确的集群，应加定冠词 the。",
+        "explanation": "GDSP 集群在本对话中是明确特指的对象，其前应加定冠词 the。",
         "correction": "the GDSP cluster"
+      },
+      {
+        "category": "style",
+        "error_type": "中英文混杂",
+        "fragment": "IP(出网ip)",
+        "explanation": "英文消息中插入中文注释不符合英文沟通习惯，应直接删除，必要时可在消息外单独解释。",
+        "correction": "IP"
       }
     ],
     "rewrite": {
       "minimal": {
         "text": "In that case, the egress IP of the GDSP cluster should be enough, right?",
-        "explanation": "仅修正冠词缺失，保留原句结构和语气"
+        "explanation": "仅补上冠词并删除中文注释，保留原句结构和语气"
       },
       "natural": {
-        "text": "In that case, the GDSP cluster's egress IP should suffice, right?",
-        "explanation": "用所有格 the GDSP cluster's 更自然紧凑，suffice 比 be enough 更书面简洁。"
+        "text": "In that case, the GDSP cluster's egress IP should be enough, right?",
+        "explanation": "用名词所有格 the GDSP cluster's 替代 of 结构，表达更紧凑，也更贴近日常技术聊天的口吻。"
       }
     },
     "learnings": [
       {
-        "title": "指代明确的普通名词前需加定冠词",
-        "rule": "当名词（如 cluster）在语境中特指某一具体对象时，必须使用定冠词 the，不能省略。",
+        "title": "特指对象前需加定冠词",
+        "rule": "当名词所指对象在上下文中已明确特指时，需在其前使用定冠词 the，例如 the GDSP cluster。",
         "instances": [
           {
-            "wrong": "GDSP cluster",
-            "right": "the GDSP cluster"
+            "wrong": "the egress IP of GDSP cluster",
+            "right": "the egress IP of the GDSP cluster"
           }
         ],
         "examples": [
           {
-            "wrong": "The request is handled by GDSP cluster.",
-            "right": "The request is handled by the GDSP cluster."
+            "wrong": "the egress IP of GDSP cluster",
+            "right": "the egress IP of the GDSP cluster"
+          }
+        ]
+      },
+      {
+        "title": "英文消息中避免夹带中文",
+        "rule": "在英文沟通中不应混入中文注释；如需说明术语含义，应使用英文解释或单独沟通，避免破坏可读性。",
+        "instances": [
+          {
+            "wrong": "egress IP(出网ip)",
+            "right": "egress IP"
+          }
+        ],
+        "examples": [
+          {
+            "wrong": "the egress IP(出网ip) of GDSP cluster",
+            "right": "the egress IP of the GDSP cluster"
           }
         ]
       }
@@ -286,7 +282,7 @@
 }
 ```
 
-### C-04（耗时 23.8s）
+### C-04（耗时 52.7s）
 
 **输入**：This pvc should be created when adding resource pool. How many storage do we want?
 
@@ -302,14 +298,14 @@
         "category": "grammar",
         "error_type": "冠词缺失",
         "fragment": "adding resource pool",
-        "explanation": "resource pool 是可数名词单数，前面缺少冠词，应加 a 或 the。",
+        "explanation": "resource pool 是可数名词单数，在泛指时前面缺少冠词，应使用 a resource pool。",
         "correction": "adding a resource pool"
       },
       {
         "category": "grammar",
         "error_type": "不可数名词误用",
         "fragment": "How many storage",
-        "explanation": "storage 是不可数名词，不能用 many 修饰，应用 much。",
+        "explanation": "storage 是不可数名词，表示数量时应用 how much 而不是 how many。",
         "correction": "How much storage"
       }
     ],
@@ -319,14 +315,14 @@
         "explanation": "仅修正语法和用词，保留原句结构和语气"
       },
       "natural": {
-        "text": "This `pvc` should be created when a resource pool is added. How much storage do we want?",
-        "explanation": "用完整被动从句 when a resource pool is added 替代 when adding，句子结构更正式清晰；同时修正不可数名词用法。"
+        "text": "We should create this `pvc` when we add a resource pool. How much storage do we want?",
+        "explanation": "把被动语态改为主动语态并补充 when 从句的主语，更符合日常技术聊天习惯，表达更直接自然。"
       }
     },
     "learnings": [
       {
-        "title": "可数名词单数需要冠词",
-        "rule": "可数名词单数前必须加冠词（a/an/the）或限定词，不能裸用。resource pool 是可数名词单数，所以应说 a resource pool 或 the resource pool。",
+        "title": "可数名词单数前需加冠词",
+        "rule": "可数名词单数在泛指时通常需要冠词 a/an，特指时用 the，不能裸用（除少数固定搭配）。",
         "instances": [
           {
             "wrong": "adding resource pool",
@@ -335,14 +331,14 @@
         ],
         "examples": [
           {
-            "wrong": "when adding resource pool",
-            "right": "when adding a resource pool"
+            "wrong": "Create the PVC when adding resource pool.",
+            "right": "Create the PVC when adding a resource pool."
           }
         ]
       },
       {
         "title": "不可数名词用 much 修饰",
-        "rule": "storage 是不可数名词，询问数量时用 How much，不能用 How many。How many 只能修饰可数名词复数。",
+        "rule": "storage 是不可数名词，表示数量时用 how much / much，不能用 how many / many；many 只修饰可数名词复数。",
         "instances": [
           {
             "wrong": "How many storage",
@@ -351,8 +347,8 @@
         ],
         "examples": [
           {
-            "wrong": "How many storage do we need?",
-            "right": "How much storage do we need?"
+            "wrong": "How many storage do we want?",
+            "right": "How much storage do we want?"
           }
         ]
       }
@@ -362,7 +358,7 @@
 }
 ```
 
-### C-05（耗时 94.9s）
+### C-05（耗时 105.3s）
 
 **输入**：Is it possible to finished the testing for https://jira.rakuten-it.com/jira/browse/DSD-45874 and release it by this week? This would fix the issue that ariflow worker/scheduler logs is empty issue.
 
@@ -378,35 +374,35 @@
         "category": "grammar",
         "error_type": "不定式误用",
         "fragment": "to finished",
-        "explanation": "不定式 to 后必须接动词原形，finished 是过去式，应改为 finish。",
+        "explanation": "possible to 后面的 to 是不定式标志，动词应使用原形，finished 应改为 finish。",
         "correction": "to finish"
       },
       {
-        "category": "chinglish",
-        "error_type": "中式直译",
+        "category": "collocation",
+        "error_type": "介词搭配不当",
         "fragment": "by this week",
-        "explanation": "by 表示截止时间时后接具体时间点，英语中不说 by this week；表示“本周内”应使用 this week，或明确截止时间用 by the end of this week。",
+        "explanation": "by 一般后接具体时间点（如 Friday、the end of this week），与 this week 搭配不自然；若表示“本周内”可用 within this week 或 by the end of this week。",
         "correction": "by the end of this week"
       },
       {
         "category": "grammar",
         "error_type": "拼写错误",
         "fragment": "ariflow",
-        "explanation": "Airflow 的正确拼写为 airflow，这里把 r 放到了错误位置。",
+        "explanation": "Airflow 拼写错误，r 与 i 位置颠倒。",
         "correction": "airflow"
       },
       {
         "category": "grammar",
         "error_type": "主谓不一致",
         "fragment": "logs is",
-        "explanation": "logs（日志）是复数，谓语应使用 are。",
+        "explanation": "主语 logs 是复数，be 动词应为 are，不能用 is。",
         "correction": "logs are"
       },
       {
-        "category": "collocation",
+        "category": "style",
         "error_type": "搭配冗余",
         "fragment": "empty issue",
-        "explanation": "the issue that 已包含“问题”的含义，从句末尾再写 issue 造成语义重复，应删去。",
+        "explanation": "前文 the issue that 已引出问题，句末再写 issue 造成重复，应删除。",
         "correction": "empty"
       }
     ],
@@ -416,14 +412,14 @@
         "explanation": "仅修正语法和用词，保留原句结构和语气"
       },
       "natural": {
-        "text": "Can we finish testing for https://jira.rakuten-it.com/jira/browse/DSD-45874 and release it this week? That would fix the issue where airflow worker/scheduler logs are empty.",
-        "explanation": "改用 Can we... 更口语化；用 this week 表达“本周内”，用 where 引导问题从句，表达更自然。"
+        "text": "Can we wrap up the testing for DSD-45874 and release it by the end of this week? That would fix the empty Airflow worker/scheduler logs.",
+        "explanation": "用 Can we 替代 Is it possible to，更口语化；并将 the issue that logs are empty 改为 the empty ... logs，避免冗长。"
       }
     },
     "learnings": [
       {
-        "title": "不定式后接动词原形",
-        "rule": "不定式符号 to 后面必须使用动词原形，不能使用过去式或其他形式。",
+        "title": "to 后接动词原形",
+        "rule": "在 possible to、need to、want to 等结构中，to 为不定式标志，后接动词原形，不随主语或时态改为过去式或过去分词。",
         "instances": [
           {
             "wrong": "to finished",
@@ -432,14 +428,18 @@
         ],
         "examples": [
           {
-            "wrong": "I want to finished the report.",
-            "right": "I want to finish the report."
+            "wrong": "It's possible to finished the task.",
+            "right": "It's possible to finish the task."
+          },
+          {
+            "wrong": "We need to confirmed the release.",
+            "right": "We need to confirm the release."
           }
         ]
       },
       {
-        "title": "截止时间用 by the end of this week",
-        "rule": "英语中表示“本周内”应使用 this week，表示“截至本周结束”用 by the end of this week；by 后接具体时间点，如 by Friday，不能说 by this week。",
+        "title": "表示“截止本周末”用 by the end of",
+        "rule": "介词 by 后需接一个具体时间点（如 Friday、noon、the end of the week），表示“本周内”应用 within this week 或 by the end of this week；by this week 不自然。",
         "instances": [
           {
             "wrong": "by this week",
@@ -448,14 +448,18 @@
         ],
         "examples": [
           {
-            "wrong": "Can we finish by this week?",
-            "right": "Can we finish by the end of this week?"
+            "wrong": "Please finish by this week.",
+            "right": "Please finish by the end of this week."
+          },
+          {
+            "wrong": "I can send it by this week.",
+            "right": "I can send it within this week."
           }
         ]
       },
       {
-        "title": "技术产品名拼写",
-        "rule": "技术产品名应使用官方拼写，Airflow 应写作 airflow，不要写成 ariflow。",
+        "title": "Airflow 的拼写",
+        "rule": "Airflow 是 Apache 工作流平台的专有名词，字母顺序是 a-i-r-f-l-o-w，不要写成 ariflow。",
         "instances": [
           {
             "wrong": "ariflow",
@@ -464,14 +468,14 @@
         ],
         "examples": [
           {
-            "wrong": "Check the ariflow logs.",
-            "right": "Check the airflow logs."
+            "wrong": "ariflow",
+            "right": "airflow"
           }
         ]
       },
       {
-        "title": "复数主语用复数谓语",
-        "rule": "logs 是复数名词，谓语要用 are，主语与谓语在数上保持一致。",
+        "title": "复数主语搭配复数谓语",
+        "rule": "主语是复数名词（如 logs）时，be 动词用 are，不能用 is；主谓需要一致。",
         "instances": [
           {
             "wrong": "logs is",
@@ -482,12 +486,16 @@
           {
             "wrong": "The logs is empty.",
             "right": "The logs are empty."
+          },
+          {
+            "wrong": "The workers is busy.",
+            "right": "The workers are busy."
           }
         ]
       },
       {
-        "title": "避免 issue 语义重复",
-        "rule": "the issue that 已表达“问题”，从句结尾不要再重复 issue，避免语义冗余。",
+        "title": "避免 issue 重复",
+        "rule": "用 the issue that ... 引出问题时，从句内部不要再重复 issue，否则句子冗余；直接描述问题内容即可。",
         "instances": [
           {
             "wrong": "the issue that logs are empty issue",
@@ -496,17 +504,22 @@
         ],
         "examples": [
           {
-            "wrong": "The issue that the file is missing issue should be fixed.",
-            "right": "The issue that the file is missing should be fixed."
+            "wrong": "This fixes the issue that the logs are empty issue.",
+            "right": "This fixes the issue that the logs are empty."
+          },
+          {
+            "wrong": "We have the problem that the disk is full problem.",
+            "right": "We have the problem that the disk is full."
           }
         ]
       }
     ]
-  }
+  },
+  "reply": null
 }
 ```
 
-### C-06（耗时 35.1s）
+### C-06（耗时 33.4s）
 
 **输入**：Sorry for the late response, we are working on the release operation, the restart function should work now, please check.
 
@@ -519,72 +532,37 @@
     "has_errors": true,
     "errors": [
       {
-        "category": "collocation",
-        "error_type": "搭配冗余",
+        "category": "chinglish",
+        "error_type": "中式直译",
         "fragment": "the release operation",
-        "explanation": "release 本身已可指代“发布”这一动作或事项，再加 operation 显得冗余；更自然的说法是 the release 或 the release process。",
+        "explanation": "“发布操作”直译为 release operation 不自然。英语中表示“正在处理发版相关事宜”通常直接说 working on the release 或 the release process；operation 常用在军事、医疗、救援等“行动”语境，用在软件发布上显得生硬。",
         "correction": "the release"
-      },
-      {
-        "category": "grammar",
-        "error_type": "逗号误用（comma splice）",
-        "fragment": "should work now, please check",
-        "explanation": "should work now 与 please check 是两个完整的独立分句，不能用逗号直接连接；应改用句号断开，或用 so 等连接词连接。",
-        "correction": "should work now. Please check"
       }
     ],
     "rewrite": {
       "minimal": {
-        "text": "Sorry for the late response. We are working on the release, so the restart function should work now. Please check.",
-        "explanation": "仅修正搭配冗余和逗号连接问题，保留原句结构和语气"
+        "text": "Sorry for the late response, we are working on the release, the restart function should work now, please check.",
+        "explanation": "仅将 release operation 改为地道的 the release，保留原句结构和语气"
       },
       "natural": {
-        "text": "Sorry for the late reply! We're working on the release, so the restart should work now — please give it a try.",
-        "explanation": "用 reply 更贴近聊天语境，we're 更口语化，restart 直接作名词使用，结尾用 give it a try 显得更自然友好。"
+        "text": "Sorry for the late reply — we're working on the release, so the restart should work now. Can you check again?",
+        "explanation": "用 we're 缩写、破折号连接因果并拆成短句，can you check again 更口语，整体更贴近 Slack/IM 的沟通风格。"
       }
     },
     "learnings": [
       {
-        "title": "动作名词不必叠加 operation",
-        "rule": "表示“正在做某个动作或流程”时，release、deployment 等词本身已可指代该动作，无需再加 operation；如需强调流程可说 the release process。",
+        "title": "发版相关事宜的地道表达",
+        "rule": "表示“正在处理发布/发版相关的事”时，英语习惯直接说 working on the release 或 the release process，不宜直译为 release operation；operation 在英文中多指军事、医疗、救援等“行动”，用在软件发布语境中不自然。",
         "instances": [
           {
             "wrong": "the release operation",
             "right": "the release"
-          },
-          {
-            "wrong": "working on the deployment operation",
-            "right": "working on the deployment"
           }
         ],
         "examples": [
           {
-            "wrong": "We are working on the deployment operation.",
-            "right": "We are working on the deployment."
-          },
-          {
-            "wrong": "The release operation is delayed.",
-            "right": "The release is delayed."
-          }
-        ]
-      },
-      {
-        "title": "逗号不能连接两个完整句子",
-        "rule": "两个完整的独立分句不能仅用逗号连接（comma splice），应改用句号、分号或连接词（so、and、but 等）。",
-        "instances": [
-          {
-            "wrong": "The restart function should work now, please check.",
-            "right": "The restart function should work now. Please check."
-          }
-        ],
-        "examples": [
-          {
-            "wrong": "The file is uploaded, you can download it.",
-            "right": "The file is uploaded. You can download it."
-          },
-          {
-            "wrong": "It's fixed now, please verify.",
-            "right": "It's fixed now. Please verify."
+            "wrong": "We are working on the release operation.",
+            "right": "We are working on the release."
           }
         ]
       }
@@ -594,7 +572,7 @@
 }
 ```
 
-### C-07（耗时 118.4s）
+### C-07（耗时 34.7s）
 
 **输入**：The issue airflow instance log have been fixed, could you please create a new airflow instance instead? The log viewer and download should be real quick.
 
@@ -608,105 +586,59 @@
     "errors": [
       {
         "category": "grammar",
-        "error_type": "词序不当",
-        "fragment": "issue airflow instance log",
-        "explanation": "名词短语中修饰语应放在被修饰名词之前，“airflow 实例日志的问题”应表达为 airflow instance log issue，而不是 issue airflow instance log。",
-        "correction": "airflow instance log issue"
+        "error_type": "介词缺失",
+        "fragment": "The issue airflow instance log",
+        "explanation": "名词 issue 后需要介词 with 引出具体对象，不能直接与对象名词并列；也可以把对象前置组成 the airflow instance log issue。",
+        "correction": "The issue with the airflow instance log"
       },
       {
         "category": "grammar",
         "error_type": "主谓不一致",
         "fragment": "have been fixed",
-        "explanation": "主语 The issue（或 The airflow instance log issue）是单数，现在完成时的助动词应用 has，而不是 have。",
+        "explanation": "主语 The issue 是单数，现在完成时的助动词应用 has，不能用 have。",
         "correction": "has been fixed"
-      },
-      {
-        "category": "grammar",
-        "error_type": "逗号拼接",
-        "fragment": "fixed, could you",
-        "explanation": "两个独立分句不能仅用逗号连接，应用句号、分号或连接词分隔。",
-        "correction": "fixed. Could you"
-      },
-      {
-        "category": "style",
-        "error_type": "语域错配",
-        "fragment": "real quick",
-        "explanation": "real quick 是口语化表达，在正式或书面沟通中显得过于随意；在 Slack 等即时消息中可使用，但正式场合建议用 really quick 或 very quick。",
-        "correction": "really quick"
       }
     ],
     "rewrite": {
       "minimal": {
-        "text": "The airflow instance log issue has been fixed. Could you please create a new airflow instance instead? The log viewer and download should be really quick.",
+        "text": "The issue with the `airflow` instance log has been fixed, could you please create a new `airflow` instance instead? The log viewer and download should be real quick.",
         "explanation": "仅修正语法和用词，保留原句结构和语气"
       },
       "natural": {
-        "text": "Since the airflow instance log issue has been fixed, could you please create a new airflow instance instead? The log viewer and download should be quick.",
-        "explanation": "用 Since 连接原因与请求，句子更连贯；去掉口语化的 really，整体更简洁自然。"
+        "text": "The issue with the `airflow` instance log is fixed now — could you create a new `airflow` instance instead? Viewing and downloading the logs should be pretty quick.",
+        "explanation": "用 is fixed now 更口语化，viewing and downloading the logs 更直接表达功能，pretty quick 比 real quick 在技术聊天中更自然。"
       }
     },
     "learnings": [
       {
-        "title": "名词修饰语放在被修饰名词之前",
-        "rule": "当一个名词修饰另一个名词时，修饰语要放在被修饰名词之前，不能颠倒顺序。",
+        "title": "issue 后需介词 with 或组成名词短语",
+        "rule": "表达“某对象的问题”时，英语用 the issue with + 对象，或将对象前置组成 the + 对象 + issue，不能把 issue 和对象直接并列。",
         "instances": [
           {
-            "wrong": "issue airflow instance log",
-            "right": "airflow instance log issue"
+            "wrong": "The issue airflow instance log",
+            "right": "The issue with the airflow instance log"
           }
         ],
         "examples": [
           {
-            "wrong": "problem the server",
-            "right": "server problem"
+            "wrong": "The issue the deployment has been fixed.",
+            "right": "The issue with the deployment has been fixed."
           }
         ]
       },
       {
-        "title": "单数主语用 has，复数主语用 have",
-        "rule": "现在完成时的助动词要与主语保持一致：单数主语用 has，复数主语用 have。",
+        "title": "主语单数时谓语用 has",
+        "rule": "主语是单数名词（如 the issue）时，现在完成时助动词用 has，不用 have；have 用于复数主语或 I/you/we/they。",
         "instances": [
           {
-            "wrong": "have been fixed",
-            "right": "has been fixed"
+            "wrong": "The issue ... have been fixed",
+            "right": "The issue ... has been fixed"
           }
         ],
         "examples": [
           {
             "wrong": "The issue have been fixed.",
             "right": "The issue has been fixed."
-          }
-        ]
-      },
-      {
-        "title": "两个独立分句不能仅用逗号连接",
-        "rule": "两个独立分句之间需要句号、分号或连接词，不能用逗号直接连接。",
-        "instances": [
-          {
-            "wrong": "fixed, could you",
-            "right": "fixed. Could you"
-          }
-        ],
-        "examples": [
-          {
-            "wrong": "The weather was nice, we went out.",
-            "right": "The weather was nice. We went out."
-          }
-        ]
-      },
-      {
-        "title": "口语化表达注意语域",
-        "rule": "real quick 是口语化的非正式表达，在即时消息中可以使用；在正式邮件或书面文档中应改用 really quick 或 very quick。",
-        "instances": [
-          {
-            "wrong": "real quick",
-            "right": "really quick"
-          }
-        ],
-        "examples": [
-          {
-            "wrong": "I'll respond real quick.",
-            "right": "I'll respond very quickly."
           }
         ]
       }
@@ -716,7 +648,7 @@
 }
 ```
 
-### C-08（耗时 82.0s）
+### C-08（耗时 73.9s）
 
 **输入**：The empty log issue in PROD has been resolved now, I suspect this is also caused by the DB missing column. Then DSD-45874 is not urgent now, we can release both DSD-45874 & DSD-45252 next week.
 
@@ -730,60 +662,64 @@
     "errors": [
       {
         "category": "grammar",
-        "error_type": "逗号拼接",
+        "error_type": "逗号误用",
         "fragment": "resolved now, I suspect",
-        "explanation": "两个独立分句用逗号连接不符合英语标点规则，应使用句号、分号或连接词。",
-        "correction": "resolved now; I suspect"
-      },
-      {
-        "category": "grammar",
-        "error_type": "逗号拼接",
-        "fragment": "urgent now, we can",
-        "explanation": "两个独立分句用逗号连接不符合英语标点规则，应使用句号、分号或连接词。",
-        "correction": "urgent now; we can"
+        "explanation": "两个独立的完整子句不能用逗号直接连接，应改为句号、分号或使用连接词。",
+        "correction": "resolved now. I suspect"
       },
       {
         "category": "grammar",
         "error_type": "冠词缺失",
         "fragment": "the DB missing column",
-        "explanation": "column 是可数名词单数，在动名词复合结构 the DB missing ... 中作宾语，需在前面加不定冠词 a。",
+        "explanation": "column 是可数名词单数，表示“缺少一列”时应在 column 前加不定冠词 a，或改用 a missing column in the DB。",
         "correction": "the DB missing a column"
+      },
+      {
+        "category": "grammar",
+        "error_type": "逗号误用",
+        "fragment": "not urgent now, we can",
+        "explanation": "两个独立的完整子句不能用逗号直接连接，此处应改为句号或用 so 等连接词。",
+        "correction": "not urgent now. We can"
       }
     ],
     "rewrite": {
       "minimal": {
-        "text": "The empty log issue in PROD has been resolved now; I suspect this is also caused by the DB missing a column. Then DSD-45874 is not urgent now; we can release both DSD-45874 & DSD-45252 next week.",
-        "explanation": "仅修正语法和用词，保留原句结构和语气"
+        "text": "The empty log issue in PROD has been resolved now. I suspect this is also caused by the DB missing a column. Then DSD-45874 is not urgent now. We can release both DSD-45874 & DSD-45252 next week.",
+        "explanation": "仅修正标点和冠词，保留原句结构和语气。"
       },
       "natural": {
-        "text": "The empty log issue in PROD has been resolved now. I suspect this is also caused by a missing column in the DB. Since DSD-45874 is no longer urgent, we can release both DSD-45874 and DSD-45252 next week.",
-        "explanation": "用 a missing column in the DB 更自然，Since 和 no longer urgent 让逻辑更清晰，整句更流畅。"
+        "text": "The empty log issue in PROD has been resolved now. I suspect it's also caused by a missing column in the DB. Since DSD-45874 isn't urgent anymore, we can release both DSD-45874 & DSD-45252 next week.",
+        "explanation": "用 since 替代 then 让逻辑更清晰，it's、isn't 更口语化；a missing column in the DB 比 the DB missing a column 更自然。"
       }
     },
     "learnings": [
       {
-        "title": "两个独立分句不能用逗号连接",
-        "rule": "在英语中，两个完整的独立分句不能仅用逗号连接（逗号拼接），应使用句号、分号或连词（and, so, but 等）。",
+        "title": "独立子句不能用逗号直接连接",
+        "rule": "两个独立的完整子句之间不能用逗号连接（comma splice），应使用句号、分号或加 and/so 等连接词。口语消息中虽常见，但书面表达建议写规范。",
         "instances": [
           {
             "wrong": "resolved now, I suspect",
-            "right": "resolved now; I suspect"
+            "right": "resolved now. I suspect"
           },
           {
-            "wrong": "urgent now, we can",
-            "right": "urgent now; we can"
+            "wrong": "not urgent now, we can",
+            "right": "not urgent now. We can"
           }
         ],
         "examples": [
           {
-            "wrong": "It is late, we should go.",
-            "right": "It is late; we should go."
+            "wrong": "The issue is fixed, we can close it.",
+            "right": "The issue is fixed. We can close it."
+          },
+          {
+            "wrong": "The quota is created, the config is applied.",
+            "right": "The quota is created and the config is applied."
           }
         ]
       },
       {
-        "title": "可数名词单数前需要冠词",
-        "rule": "可数名词的单数形式在句子中作宾语时，前面需要加不定冠词 a/an 或定冠词 the 等限定词；动名词复合结构中的宾语名词同样适用。",
+        "title": "可数名词单数前需冠词",
+        "rule": "可数名词单数在句中作宾语时通常需要冠词（a/an/the）。表示“缺少一列”应说 missing a column 或 a missing column。",
         "instances": [
           {
             "wrong": "the DB missing column",
@@ -792,8 +728,12 @@
         ],
         "examples": [
           {
-            "wrong": "The issue is caused by missing column.",
-            "right": "The issue is caused by a missing column."
+            "wrong": "The report is missing page.",
+            "right": "The report is missing a page."
+          },
+          {
+            "wrong": "The server has missing disk.",
+            "right": "The server has a missing disk."
           }
         ]
       }
@@ -803,7 +743,7 @@
 }
 ```
 
-### C-09（耗时 31.0s）
+### C-09（耗时 13.5s）
 
 **输入**：By the way, you could also check the running worker pod and scheduler pod more easily. This would be helpful if there are some error log when triggering dag.
 
@@ -819,31 +759,24 @@
         "category": "grammar",
         "error_type": "名词单复数误用",
         "fragment": "some error log",
-        "explanation": "there are 后接可数名词 error log 时应使用复数形式 error logs，也可用 any 更贴合条件句。",
+        "explanation": "some 后接可数名词时应用复数形式，error log 是可数名词，应改为 error logs。",
         "correction": "some error logs"
-      },
-      {
-        "category": "grammar",
-        "error_type": "冠词缺失",
-        "fragment": "when triggering dag",
-        "explanation": "DAG 指某个具体工作流，是可数名词，前面应加冠词，通常写作 the DAG 或 a DAG。",
-        "correction": "when triggering the DAG"
       }
     ],
     "rewrite": {
       "minimal": {
-        "text": "By the way, you could also check the running worker pod and scheduler pod more easily. This would be helpful if there are some error logs when triggering the DAG.",
+        "text": "By the way, you could also check the running worker pod and scheduler pod more easily. This would be helpful if there are some error logs when triggering dag.",
         "explanation": "仅修正语法和用词，保留原句结构和语气"
       },
       "natural": {
-        "text": "By the way, you could also check the running worker and scheduler pods more easily. That would help if any error logs come up when the DAG is triggered.",
-        "explanation": "将 worker pod and scheduler pod 合并为 worker and scheduler pods 更简洁；用 any 和 come up 更贴合条件句和口语沟通场景。"
+        "text": "By the way, checking the running worker pod and scheduler pod would make it easier. That way you can spot any error logs when triggering the dag.",
+        "explanation": "用 checking...would make it easier 更口语化，That way 链接上下文更自然，符合 Slack/IM 沟通风格。"
       }
     },
     "learnings": [
       {
         "title": "some 后接可数名词需用复数",
-        "rule": "some 修饰可数名词时必须使用复数形式，且与 there are 保持一致：there are some + 名词复数。",
+        "rule": "some 表示“一些”时，后接可数名词必须用复数形式；error log 是可数名词，应写作 error logs。",
         "instances": [
           {
             "wrong": "some error log",
@@ -852,24 +785,8 @@
         ],
         "examples": [
           {
-            "wrong": "There are some error log in the output.",
-            "right": "There are some error logs in the output."
-          }
-        ]
-      },
-      {
-        "title": "单数可数名词前需加冠词",
-        "rule": "单数可数名词前通常需要冠词（a/an/the）。DAG 在指某个具体工作流时用 the DAG。",
-        "instances": [
-          {
-            "wrong": "when triggering dag",
-            "right": "when triggering the DAG"
-          }
-        ],
-        "examples": [
-          {
-            "wrong": "The task fails when triggering dag.",
-            "right": "The task fails when triggering the DAG."
+            "wrong": "There are some error log in the file.",
+            "right": "There are some error logs in the file."
           }
         ]
       }
