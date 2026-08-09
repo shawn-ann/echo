@@ -228,6 +228,22 @@ def _render_report(summary: dict) -> str:
             for f in r["failures"]:
                 lines.append(f"- {f}")
             lines.append("")
+    lines.append("## 三、验收结论")
+    lines.append("")
+    lines.append(f"- **总体结果**：{summary['passed']}/{summary['total']} 通过（模型 `{summary['model']}`，总耗时 {summary['elapsed']}s）")
+    lines.append("- **验收原则**：只验证「纠错结果合理（关键错误无遗漏）+ 每个错误有实质修正 + minimal 修正后句子语法正确」；不限制错误数量（相邻错误合并可接受）、不限制 learnings 数量、不强制特定修正措辞。")
+    lines.append("")
+    failed = [r for r in summary["results"] if not r["passed"]]
+    if failed:
+        lines.append("**失败项**：")
+        lines.append("")
+        for r in failed:
+            lines.append(f"- **{r['id']}**（{r['elapsed']}s）：{'；'.join(r['failures'])}")
+        lines.append("")
+        lines.append("> 说明：温度 0 下 LLM 对相同输入的识别集合仍存在偶发波动。失败项中若错误实际被识别（仅 fragment 措辞或漏检差异），属已知波动，可重跑确认；关键指标为「识别到的错误修正合理 + minimal 语法正确」。")
+    else:
+        lines.append("**结果**：全部用例通过。")
+        lines.append("")
     return "\n".join(lines)
 
 
