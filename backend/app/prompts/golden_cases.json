@@ -1,0 +1,137 @@
+{
+  "cases": [
+    {
+      "id": "C-01",
+      "input": "Correct the trigger_by field set up logic when creating job.",
+      "expect": {
+        "has_errors": true,
+        "error_count_min": 2,
+        "must_have": [
+          { "fragment_contains": "creating job", "correction_contains": "a job", "category_expected": "grammar", "error_type_contains": "冠词" },
+          { "fragment_contains": "set up", "correction_contains": "setup" }
+        ],
+        "minimal_contains": "setup",
+        "preserve_terms": ["trigger_by"],
+        "learnings_min": 2
+      }
+    },
+    {
+      "id": "C-02",
+      "input": "What do you mean you can't restart this webapp? getting an error?",
+      "expect": {
+        "has_errors": true,
+        "error_count_min": 1,
+        "must_have": [
+          { "fragment_contains": "getting an error", "correction_contains": "are you getting", "category_expected": "grammar", "error_type_contains": "主语" }
+        ],
+        "minimal_contains": "Are you getting",
+        "preserve_terms": ["webapp"],
+        "learnings_min": 1
+      }
+    },
+    {
+      "id": "C-03",
+      "input": "In that case, the egress IP(出网ip) of GDSP cluster should be enough, right?",
+      "expect": {
+        "has_errors": true,
+        "error_count_min": 1,
+        "must_have": [
+          { "fragment_contains": "GDSP cluster", "correction_contains": "the GDSP cluster", "category_expected": "grammar", "error_type_contains": "冠词" }
+        ],
+        "minimal_contains": "the GDSP cluster",
+        "preserve_terms": ["GDSP"],
+        "learnings_min": 1
+      }
+    },
+    {
+      "id": "C-04",
+      "input": "This pvc should be created when adding resource pool. How many storage do we want?",
+      "expect": {
+        "has_errors": true,
+        "error_count_min": 2,
+        "must_have": [
+          { "fragment_contains": "adding resource pool", "correction_contains": "a resource pool", "category_expected": "grammar", "error_type_contains": "冠词" },
+          { "fragment_contains": "How many storage", "correction_contains": "How much storage", "category_expected": "grammar", "error_type_contains": "不可数" }
+        ],
+        "minimal_contains": "How much storage",
+        "preserve_terms": ["pvc"],
+        "learnings_min": 2
+      }
+    },
+    {
+      "id": "C-05",
+      "input": "Is it possible to finished the testing for https://jira.rakuten-it.com/jira/browse/DSD-45874 and release it by this week? This would fix the issue that ariflow worker/scheduler logs is empty issue.",
+      "expect": {
+        "has_errors": true,
+        "error_count_min": 3,
+        "must_have": [
+          { "fragment_contains": "to finished", "correction_contains": "to finish", "category_expected": "grammar", "error_type_contains": "不定式" },
+          { "fragment_contains": "logs is", "correction_contains": "logs are", "category_expected": "grammar", "error_type_contains": "主谓" },
+          { "fragment_contains": "empty issue", "correction_contains": "logs are empty", "category_expected": "grammar" }
+        ],
+        "minimal_contains": "by the end of this week",
+        "preserve_terms": ["DSD-45874", "ariflow"],
+        "learnings_min": 3
+      }
+    },
+    {
+      "id": "C-06",
+      "input": "Sorry for the late response, we are working on the release operation, the restart function should work now, please check.",
+      "expect": {
+        "has_errors": true,
+        "error_count_min": 1,
+        "must_have": [
+          { "fragment_contains": "release operation", "correction_contains": "release", "category_expected": "chinglish", "error_type_contains": "中式直译" }
+        ],
+        "minimal_contains": "the release",
+        "preserve_terms": ["release"],
+        "learnings_min": 1
+      }
+    },
+    {
+      "id": "C-07",
+      "input": "The issue airflow instance log have been fixed, could you please create a new airflow instance instead? The log viewer and download should be real quick.",
+      "expect": {
+        "has_errors": true,
+        "error_count_min": 2,
+        "must_have": [
+          { "fragment_contains": "log have been", "correction_contains": "log issue has been", "category_expected": "grammar", "error_type_contains": "主谓" },
+          { "fragment_contains": "real quick", "correction_contains": "really quick", "category_expected": "grammar", "error_type_contains": "用词" }
+        ],
+        "minimal_contains": "really quick",
+        "preserve_terms": ["airflow"],
+        "learnings_min": 2
+      }
+    },
+    {
+      "id": "C-08",
+      "input": "The empty log issue in PROD has been resolved now, I suspect this is also caused by the DB missing column. Then DSD-45874 is not urgent now, we can release both DSD-45874 & DSD-45252 next week.",
+      "expect": {
+        "has_errors": true,
+        "error_count_min": 2,
+        "must_have": [
+          { "fragment_contains": "DB missing column", "correction_contains": "missing DB column", "category_expected": "collocation", "error_type_contains": "词序" },
+          { "fragment_contains": "is not urgent", "correction_contains": "is no longer urgent", "category_expected": "style", "error_type_contains": "搭配" }
+        ],
+        "minimal_contains": "no longer urgent",
+        "preserve_terms": ["DSD-45874", "DSD-45252", "PROD"],
+        "learnings_min": 2
+      }
+    },
+    {
+      "id": "C-09",
+      "input": "By the way, you could also check the running worker pod and scheduler pod more easily. This would be helpful if there are some error log when triggering dag.",
+      "expect": {
+        "has_errors": true,
+        "error_count_min": 2,
+        "must_have": [
+          { "fragment_contains": "some error log", "correction_contains": "error logs", "category_expected": "grammar", "error_type_contains": "主谓" },
+          { "fragment_contains": "triggering dag", "correction_contains": "a dag", "category_expected": "grammar", "error_type_contains": "冠词" }
+        ],
+        "minimal_contains": "a DAG",
+        "preserve_terms": ["worker", "scheduler"],
+        "learnings_min": 2
+      }
+    }
+  ]
+}
