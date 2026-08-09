@@ -61,7 +61,7 @@ def _must_have_failure(must: dict[str, Any], errors: list[dict[str, Any]]) -> li
             ok = False
         if ok and "category_expected" in must and must["category_expected"] != e.get("category"):
             ok = False
-        if ok and "error_type_contains" in must and must["error_type_contains"] not in e.get("error_type", ""):
+        if ok and "error_type_contains" in must and _ci(must["error_type_contains"]) not in _ci(e.get("error_type", "")):
             ok = False
         if ok:
             return []
