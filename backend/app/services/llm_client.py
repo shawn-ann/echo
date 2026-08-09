@@ -23,25 +23,39 @@ class LLMUnavailableError(Exception):
 
 
 class RealLLMClient(LLMClient):
-    def __init__(self, base_url: str, api_key: str, model: str) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str,
+        model: str,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
+        self._transport = transport
 
     async def complete(self, messages: list[dict[str, Any]]) -> str:
-        try:
-            async with httpx.AsyncClient(timeout=120) as client:
-                r = await client.post(
-                    f"{self.base_url}/chat/completions",
-                    headers={"Authorization": f"Bearer {self.api_key}"},
-                    json={"model": self.model, "messages": messages},
-                )
-                r.raise_for_status()
-                return r.json()["choices"][0]["message"]["content"]
-        except httpx.TimeoutException as exc:
-            raise LLMTimeoutError from exc
-        except httpx.HTTPError as exc:
-            raise LLMUnavailableError from exc
+        last_exc: Exception | None = None
+        for _attempt in range(3):
+            try:
+                async with httpx.AsyncClient(timeout=120, transport=self._transport) as client:
+                    r = await client.post(
+                        f"{self.base_url}/chat/completions",
+                        headers={"Authorization": f"Bearer {self.api_key}"},
+                        json={"model": self.model, "messages": messages, "temperature": 0},
+                    )
+                    r.raise_for_status()
+                    return r.json()["choices"][0]["message"]["content"]
+            except httpx.TimeoutException as exc:
+                last_exc = exc
+                continue
+            except httpx.HTTPError as exc:
+                last_exc = exc
+                continue
+        if isinstance(last_exc, httpx.TimeoutException):
+            raise LLMTimeoutError from last_exc
+        raise LLMUnavailableError from last_exc
 
 
 def _default_responder(messages: list[dict[str, Any]]) -> str:
