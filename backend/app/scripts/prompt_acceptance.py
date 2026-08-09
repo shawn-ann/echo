@@ -57,7 +57,7 @@ async def run_case(llm_call, case: dict) -> dict:
     started = time.monotonic()
     raw = ""
     last_exc = None
-    for attempt in range(2):
+    for attempt in range(3):
         try:
             raw = await llm_call(build_messages(case_input))
             break
@@ -65,7 +65,8 @@ async def run_case(llm_call, case: dict) -> dict:
             last_exc = exc
     elapsed = round(time.monotonic() - started, 1)
     if not raw:
-        return {"id": case_id, "input": case_input, "output": "", "elapsed": elapsed, "error": f"LLM 调用失败: {last_exc}"}
+        detail = f"{type(last_exc).__name__}: {last_exc}" if last_exc else "未知错误"
+        return {"id": case_id, "input": case_input, "output": "", "elapsed": elapsed, "error": f"LLM 调用失败: {detail}"}
     return {"id": case_id, "input": case_input, "output": raw, "elapsed": elapsed, "error": None}
 
 
@@ -80,6 +81,14 @@ async def run_acceptance(llm_call, cases: list[dict]) -> dict:
         "prompt": SYSTEM_PROMPT,
         "model": get_settings().LLM_MODEL,
     }
+
+
+def _format_output(raw: str) -> str:
+    """若 raw 是合法 JSON，格式化为缩进形式；否则原样返回。"""
+    try:
+        return json.dumps(json.loads(raw), ensure_ascii=False, indent=2)
+    except (json.JSONDecodeError, TypeError):
+        return raw
 
 
 def _render_report(summary: dict) -> str:
@@ -110,7 +119,7 @@ def _render_report(summary: dict) -> str:
         lines.append("**输出**：")
         lines.append("")
         lines.append("```json")
-        lines.append(r["output"])
+        lines.append(_format_output(r["output"]))
         lines.append("```")
         lines.append("")
     return "\n".join(lines)
