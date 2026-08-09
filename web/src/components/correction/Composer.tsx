@@ -40,7 +40,7 @@ export default function Composer() {
 
   return (
     <div className="shrink-0 border-t border-[#dee2e6] bg-white px-4 py-3 md:px-8">
-      <div className="mx-auto w-full md:w-[70%] md:min-w-[600px]">
+      <div className="mx-auto w-full">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 md:flex-nowrap md:gap-3">
           <textarea
             ref={ref}
