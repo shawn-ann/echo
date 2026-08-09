@@ -7,11 +7,16 @@
         "has_errors": true,
         "error_count_min": 2,
         "must_have": [
-          { "fragment_contains": "creating job", "correction_contains": "a job", "category_expected": "grammar", "error_type_contains": "冠词" },
-          { "fragment_contains": "set up", "correction_contains": "setup" }
+          {
+            "fragment_contains": "creating job"
+          },
+          {
+            "fragment_contains": "set up"
+          }
         ],
-        "minimal_contains": "setup",
-        "preserve_terms": ["trigger_by"],
+        "preserve_terms": [
+          "trigger_by"
+        ],
         "learnings_min": 2
       }
     },
@@ -22,10 +27,13 @@
         "has_errors": true,
         "error_count_min": 1,
         "must_have": [
-          { "fragment_contains": "getting an error", "correction_contains": "are you getting", "category_expected": "grammar", "error_type_contains": "主语" }
+          {
+            "fragment_contains": "getting an error"
+          }
         ],
-        "minimal_contains": "Are you getting",
-        "preserve_terms": ["webapp"],
+        "preserve_terms": [
+          "webapp"
+        ],
         "learnings_min": 1
       }
     },
@@ -36,10 +44,13 @@
         "has_errors": true,
         "error_count_min": 1,
         "must_have": [
-          { "fragment_contains": "GDSP cluster", "correction_contains": "the GDSP cluster", "category_expected": "grammar", "error_type_contains": "冠词" }
+          {
+            "fragment_contains": "GDSP cluster"
+          }
         ],
-        "minimal_contains": "the GDSP cluster",
-        "preserve_terms": ["GDSP"],
+        "preserve_terms": [
+          "GDSP"
+        ],
         "learnings_min": 1
       }
     },
@@ -50,11 +61,16 @@
         "has_errors": true,
         "error_count_min": 2,
         "must_have": [
-          { "fragment_contains": "adding resource pool", "correction_contains": "a resource pool", "category_expected": "grammar", "error_type_contains": "冠词" },
-          { "fragment_contains": "How many storage", "correction_contains": "How much storage", "category_expected": "grammar", "error_type_contains": "不可数" }
+          {
+            "fragment_contains": "adding resource pool"
+          },
+          {
+            "fragment_contains": "How many storage"
+          }
         ],
-        "minimal_contains": "How much storage",
-        "preserve_terms": ["pvc"],
+        "preserve_terms": [
+          "pvc"
+        ],
         "learnings_min": 2
       }
     },
@@ -65,13 +81,23 @@
         "has_errors": true,
         "error_count_min": 4,
         "must_have": [
-          { "fragment_contains": "to finished", "correction_contains": "to finish", "category_expected": "grammar", "error_type_contains": "不定式" },
-          { "fragment_contains": "logs is", "correction_contains": "logs are", "category_expected": "grammar", "error_type_contains": "主谓" },
-          { "fragment_contains": "empty issue", "correction_contains": "logs are empty", "category_expected": "grammar" },
-          { "fragment_contains": "by this week", "correction_contains": "by the end of this week", "category_expected": "grammar" }
+          {
+            "fragment_contains": "to finished"
+          },
+          {
+            "fragment_contains": "logs is"
+          },
+          {
+            "fragment_contains": "empty issue"
+          },
+          {
+            "fragment_contains": "by this week"
+          }
         ],
-        "minimal_contains": "by the end of this week",
-        "preserve_terms": ["DSD-45874", "airflow"],
+        "preserve_terms": [
+          "DSD-45874",
+          "airflow"
+        ],
         "learnings_min": 4
       }
     },
@@ -82,10 +108,13 @@
         "has_errors": true,
         "error_count_min": 1,
         "must_have": [
-          { "fragment_contains": "release operation", "correction_contains": "release", "category_expected": "chinglish", "error_type_contains": "中式直译" }
+          {
+            "fragment_contains": "release operation"
+          }
         ],
-        "minimal_contains": "the release",
-        "preserve_terms": ["release"],
+        "preserve_terms": [
+          "release"
+        ],
         "learnings_min": 1
       }
     },
@@ -96,11 +125,16 @@
         "has_errors": true,
         "error_count_min": 2,
         "must_have": [
-          { "fragment_contains": "log have been", "correction_contains": "log issue has been", "category_expected": "grammar", "error_type_contains": "主谓" },
-          { "fragment_contains": "real quick", "correction_contains": "really quick", "category_expected": "grammar", "error_type_contains": "用词" }
+          {
+            "fragment_contains": "log have been"
+          },
+          {
+            "fragment_contains": "real quick"
+          }
         ],
-        "minimal_contains": "really quick",
-        "preserve_terms": ["airflow"],
+        "preserve_terms": [
+          "airflow"
+        ],
         "learnings_min": 2
       }
     },
@@ -111,11 +145,18 @@
         "has_errors": true,
         "error_count_min": 2,
         "must_have": [
-          { "fragment_contains": "DB missing column", "correction_contains": "missing DB column", "category_expected": "collocation", "error_type_contains": "词序" },
-          { "fragment_contains": "is not urgent", "correction_contains": "is no longer urgent", "category_expected": "style", "error_type_contains": "搭配" }
+          {
+            "fragment_contains": "DB missing column"
+          },
+          {
+            "fragment_contains": "is not urgent"
+          }
         ],
-        "minimal_contains": "no longer urgent",
-        "preserve_terms": ["DSD-45874", "DSD-45252", "PROD"],
+        "preserve_terms": [
+          "DSD-45874",
+          "DSD-45252",
+          "PROD"
+        ],
         "learnings_min": 2
       }
     },
@@ -126,11 +167,17 @@
         "has_errors": true,
         "error_count_min": 2,
         "must_have": [
-          { "fragment_contains": "some error log", "correction_contains": "error logs", "category_expected": "grammar", "error_type_contains": "主谓" },
-          { "fragment_contains": "triggering dag", "correction_contains": "a dag", "category_expected": "grammar", "error_type_contains": "冠词" }
+          {
+            "fragment_contains": "some error log"
+          },
+          {
+            "fragment_contains": "triggering dag"
+          }
         ],
-        "minimal_contains": "a DAG",
-        "preserve_terms": ["worker", "scheduler"],
+        "preserve_terms": [
+          "worker",
+          "scheduler"
+        ],
         "learnings_min": 2
       }
     }

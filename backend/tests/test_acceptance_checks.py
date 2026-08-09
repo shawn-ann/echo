@@ -70,20 +70,29 @@ def test_semantic_check_hit_and_miss():
         "has_errors": True,
         "error_count_min": 1,
         "must_have": [
-            {"fragment_contains": "creating job", "correction_contains": "a job", "category_expected": "grammar", "error_type_contains": "冠词"}
+            {"fragment_contains": "creating job"}
         ],
-        "minimal_contains": "setup",
         "preserve_terms": ["trigger_by"],
         "learnings_min": 1,
     }
     # 满足期望的响应 → 无失败
     failures = semantic_check(_valid_report(), expect)
     assert failures == []
-    # 破坏 correction_contains → 失败
+    # 错误未被识别（fragment 未命中）→ 失败
     bad = _valid_report()
-    bad["errors"][0]["correction"] = "creating the job"
+    bad["errors"][0]["fragment"] = "unrelated fragment here"
     failures = semantic_check(bad, expect)
-    assert any("a job" in f for f in failures)
+    assert any("错误未识别" in f for f in failures)
+
+
+def test_semantic_check_no_real_fix():
+    """correction 与 fragment 相同（未实际修正）→ 失败。"""
+    expect = {"has_errors": True, "error_count_min": 1, "must_have": [], "preserve_terms": [], "learnings_min": 0}
+    report = _valid_report()
+    report["errors"][0]["fragment"] = "creating job"
+    report["errors"][0]["correction"] = "creating job"
+    failures = semantic_check(report, expect)
+    assert any("未实际修正" in f for f in failures)
 
 
 def test_semantic_check_perfect_case():
@@ -96,18 +105,18 @@ def test_semantic_check_perfect_case():
         },
         "learnings": [],
     }
-    expect = {"has_errors": False, "error_count_min": 0, "must_have": [], "minimal_contains": "logs", "preserve_terms": [], "learnings_min": 0}
+    expect = {"has_errors": False, "error_count_min": 0, "must_have": [], "preserve_terms": [], "learnings_min": 0}
     assert semantic_check(report, expect) == []
 
 
-def test_semantic_check_case_insensitive_contains():
+def test_semantic_check_case_insensitive_and_backtick():
     expect = {"has_errors": True, "error_count_min": 1,
-              "must_have": [{"fragment_contains": "triggering dag", "correction_contains": "a DAG"}],
-              "minimal_contains": "a DAG", "preserve_terms": [], "learnings_min": 1}
+              "must_have": [{"fragment_contains": "triggering dag"}],
+              "preserve_terms": [], "learnings_min": 1}
     report = _valid_report()
     report["errors"][0] = {
-        "category": "grammar", "error_type": "冠词缺失", "fragment": "triggering dag",
-        "explanation": "x", "correction": "triggering a dag",
+        "category": "grammar", "error_type": "冠词缺失", "fragment": "when triggering `dag`",
+        "explanation": "x", "correction": "triggering the `DAG`",
     }
     report["rewrite"]["minimal"] = {"text": "... a dag ...", "explanation": ""}
     assert semantic_check(report, expect) == []

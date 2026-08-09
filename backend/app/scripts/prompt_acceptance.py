@@ -39,7 +39,7 @@ async def _call_llm(messages: list[dict]) -> str:
         r = await client.post(
             url,
             headers={"Authorization": f"Bearer {settings.LLM_API_KEY}"},
-            json={"model": settings.LLM_MODEL, "messages": messages},
+            json={"model": settings.LLM_MODEL, "messages": messages, "temperature": 0},
         )
         r.raise_for_status()
         return r.json()["choices"][0]["message"]["content"]
@@ -53,12 +53,18 @@ def _extract_correction(payload: dict) -> dict:
 
 
 async def run_case(llm_call, case: dict) -> dict:
-    """跑单个用例，返回 {id, passed, failures, raw}。"""
+    """跑单个用例，返回 {id, passed, failures, raw}。网络异常重试一次。"""
     case_id = case["id"]
-    try:
-        raw = await llm_call(build_messages(case["input"]))
-    except Exception as exc:  # noqa: BLE001 - 验收脚本需兜底所有网络/HTTP 异常
-        return {"id": case_id, "passed": False, "failures": [f"LLM 调用失败: {exc}"], "raw": ""}
+    raw = ""
+    last_exc = None
+    for attempt in range(2):
+        try:
+            raw = await llm_call(build_messages(case["input"]))
+            break
+        except Exception as exc:  # noqa: BLE001 - 验收脚本需兜底所有网络/HTTP 异常
+            last_exc = exc
+    else:
+        return {"id": case_id, "passed": False, "failures": [f"LLM 调用失败: {last_exc}"], "raw": ""}
 
     try:
         payload = json.loads(raw)

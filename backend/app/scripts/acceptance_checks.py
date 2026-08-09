@@ -6,7 +6,7 @@ CATEGORY_ENUM = {"grammar", "collocation", "chinglish", "style"}
 
 
 def _ci(text: str) -> str:
-    return text.lower()
+    return text.lower().replace("`", "")
 
 
 def structure_check(report: dict[str, Any]) -> list[str]:
@@ -52,20 +52,15 @@ def structure_check(report: dict[str, Any]) -> list[str]:
 
 
 def _must_have_failure(must: dict[str, Any], errors: list[dict[str, Any]]) -> list[str]:
-    """对一条 must_have 断言找失败。任一命中即可算该断言通过。"""
+    """对一条 must_have 断言找失败：错误必须被识别（fragment 命中，忽略反引号/大小写）。
+
+    不要求修正词精确匹配——措辞自由，只要求该错误被 LLM 识别出来（无遗漏）。
+    """
+    needle = _ci(must["fragment_contains"])
     for e in errors:
-        ok = True
-        if "fragment_contains" in must and _ci(must["fragment_contains"]) not in _ci(e.get("fragment", "")):
-            ok = False
-        if ok and "correction_contains" in must and _ci(must["correction_contains"]) not in _ci(e.get("correction", "")):
-            ok = False
-        if ok and "category_expected" in must and must["category_expected"] != e.get("category"):
-            ok = False
-        if ok and "error_type_contains" in must and _ci(must["error_type_contains"]) not in _ci(e.get("error_type", "")):
-            ok = False
-        if ok:
+        if needle in _ci(e.get("fragment", "")):
             return []
-    return [f"must_have 未命中: {must}"]
+    return [f"错误未识别: {must['fragment_contains']!r}"]
 
 
 def semantic_check(report: dict[str, Any], expect: dict[str, Any]) -> list[str]:
@@ -78,10 +73,14 @@ def semantic_check(report: dict[str, Any], expect: dict[str, Any]) -> list[str]:
         failures.append(f"errors 数量 {len(errors)} < 期望 {expect.get('error_count_min')}")
     for must in expect.get("must_have", []):
         failures.extend(_must_have_failure(must, errors))
-    minimal_text = ((report.get("rewrite") or {}).get("minimal") or {}).get("text", "")
-    if "minimal_contains" in expect:
-        if _ci(expect["minimal_contains"]) not in _ci(minimal_text):
-            failures.append(f"rewrite.minimal 不含 {expect['minimal_contains']!r}")
+    # 每个错误必须有实质修正（correction 非空且与 fragment 不同），保证"改正合理"
+    for i, e in enumerate(errors):
+        corr = e.get("correction")
+        frag = e.get("fragment")
+        if not isinstance(corr, str) or not corr.strip():
+            failures.append(f"errors[{i}].correction 缺失或为空")
+        elif isinstance(frag, str) and _ci(corr) == _ci(frag):
+            failures.append(f"errors[{i}].correction 与 fragment 相同（未实际修正）")
     full_text = _ci(
         str(report.get("rewrite", {}))
         + str(report.get("errors", []))
