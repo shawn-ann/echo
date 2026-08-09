@@ -63,15 +63,16 @@
       "input": "Is it possible to finished the testing for https://jira.rakuten-it.com/jira/browse/DSD-45874 and release it by this week? This would fix the issue that ariflow worker/scheduler logs is empty issue.",
       "expect": {
         "has_errors": true,
-        "error_count_min": 3,
+        "error_count_min": 4,
         "must_have": [
           { "fragment_contains": "to finished", "correction_contains": "to finish", "category_expected": "grammar", "error_type_contains": "不定式" },
           { "fragment_contains": "logs is", "correction_contains": "logs are", "category_expected": "grammar", "error_type_contains": "主谓" },
-          { "fragment_contains": "empty issue", "correction_contains": "logs are empty", "category_expected": "grammar" }
+          { "fragment_contains": "empty issue", "correction_contains": "logs are empty", "category_expected": "grammar" },
+          { "fragment_contains": "by this week", "correction_contains": "by the end of this week", "category_expected": "grammar" }
         ],
         "minimal_contains": "by the end of this week",
-        "preserve_terms": ["DSD-45874", "ariflow"],
-        "learnings_min": 3
+        "preserve_terms": ["DSD-45874", "airflow"],
+        "learnings_min": 4
       }
     },
     {
