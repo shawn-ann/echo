@@ -51,7 +51,7 @@ async def _probe(base_url: str, api_key: str, model_id: str, extra: dict) -> tup
     body = {"model": model_id, "messages": messages, "temperature": 0, **extra}
     started = time.monotonic()
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=120) as client:
             r = await client.post(
                 url,
                 headers={"Authorization": f"Bearer {api_key}"},
@@ -130,6 +130,9 @@ def _render_report(results: list[dict]) -> str:
         lines.append(f"### `{r['id']}`（{r['name']}）")
         lines.append("")
         for k, v in r.get("detail", {}).items():
+            if isinstance(v, str):
+                lines.append(f"- `{k}`：{v[:80]}")
+                continue
             status = v.get("status")
             mark = "✅" if status == 200 else "❌"
             snippet = (v.get("snippet") or "")[:60].replace("\n", " ")
