@@ -30,11 +30,14 @@ def test_case_hit_rate():
         "C-01": {"expect": {"must_have": [{"fragment_contains": "creating job"}, {"fragment_contains": "set up"}]}},
         "C-02": {"expect": {"must_have": [{"fragment_contains": "getting an error"}]}},
     }
-    # C-01 命中 2/2（CI 子串匹配）
-    summary = {"errors": [{"fragment": "creating job"}, {"fragment": "set up logic"}]}
-    assert _case_hit_rate("C-01", summary, cases) == (2, 2)
-    # C-01 部分命中 1/2
-    summary2 = {"errors": [{"fragment": "creating job"}]}
-    assert _case_hit_rate("C-01", summary2, cases) == (1, 2)
+    # 内容词匹配：golden "creating job" → creating/job，LLM "when creating a job" 含两者 → 命中
+    summary = {"errors": [{"fragment": "when creating a job"}]}
+    assert _case_hit_rate("C-01", summary, cases) == (1, 2)
+    # "set up" → 内容词 set/up，"setup" 含 "set" 子串 → 命中
+    summary2 = {"errors": [{"fragment": "when creating a job"}, {"fragment": "setup"}]}
+    assert _case_hit_rate("C-01", summary2, cases) == (2, 2)
+    # "getting an error" → getting/error，"Are you getting an error?" 含两者 → 命中
+    summary3 = {"errors": [{"fragment": "Are you getting an error?"}]}
+    assert _case_hit_rate("C-02", summary3, cases) == (1, 1)
     # 无 must_have → (0, 0)
     assert _case_hit_rate("C-03", {"errors": []}, {"C-03": {"expect": {}}}) == (0, 0)
