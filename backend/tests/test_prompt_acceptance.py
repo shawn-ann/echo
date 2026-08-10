@@ -4,8 +4,8 @@ from app.scripts.prompt_acceptance import build_messages, run_case, run_acceptan
 
 
 def _mock_llm(responder):
-    async def llm_call(messages, thinking="disabled"):
-        return responder(messages, thinking)
+    async def llm_call(messages, thinking="disabled", base_url=None, api_key=None, model=None):
+        return responder(messages, thinking, base_url, api_key, model)
     return llm_call
 
 
@@ -18,7 +18,7 @@ def test_build_messages_uses_system_prompt():
 
 async def test_run_case_collects_raw_output():
     raw_json = '{"intent": "correction", "correction": {"has_errors": true}}'
-    llm_call = _mock_llm(lambda msgs, thinking: raw_json)
+    llm_call = _mock_llm(lambda msgs, thinking, base_url, api_key, model: raw_json)
     case = {"id": "C-01", "input": "hello world", "expect": {}}
     result = await run_case(llm_call, case)
     assert result["id"] == "C-01"
@@ -31,7 +31,7 @@ async def test_run_case_collects_raw_output():
 async def test_run_case_forwards_thinking():
     seen = {}
 
-    async def llm_call(messages, thinking):
+    async def llm_call(messages, thinking, base_url=None, api_key=None, model=None):
         seen["thinking"] = thinking
         return '{"intent": "correction", "correction": {"has_errors": false}}'
 
@@ -40,8 +40,8 @@ async def test_run_case_forwards_thinking():
     assert seen["thinking"] == "enabled"
 
 
-async def test_run_case_llm_raises_marks_error():
-    async def llm_call(messages, thinking="disabled"):
+async def test_run_case_raises_marks_error():
+    async def llm_call(messages, thinking="disabled", base_url=None, api_key=None, model=None):
         raise ConnectionError("boom")
 
     case = {"id": "X", "input": "hello", "expect": {}}
@@ -54,7 +54,7 @@ async def test_run_case_llm_raises_marks_error():
 async def test_run_acceptance_aggregates_raw():
     calls = {"n": 0}
 
-    def responder(messages, thinking):
+    def responder(messages, thinking, base_url=None, api_key=None, model=None):
         calls["n"] += 1
         return '{"intent": "correction", "correction": {"has_errors": false}}'
 
