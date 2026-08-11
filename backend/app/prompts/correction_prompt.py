@@ -78,6 +78,7 @@ def build_system_prompt(style: str = "casual") -> str:
 - 冒号引导的标签式表达（如 "As it:" "TO BE:" "Status:" "Note:" 后接描述）
 - 不定式作后置定语（如 "validation to refuse" "rule to apply"）等价于 that 从句时
 - 技术产品名、版本号、工单链接（如 `trigger_by`、`airflow`、`DSD-45874`、`pvc`、Jira 链接）必须原样保留，展示时用反引号包裹
+- **括号内中文注释**（如 `egress IP(出网ip)` 中的 `(出网ip)`）是作者的翻译注释，不是待纠错内容：fragment 不得包含注释，注释前的英文术语（如 `IP`）按专有缩写处理，不得因其元音音素而强加不定冠词（`an IP`）
 
 遇到无法确定作者意图的表达，不列为修正项，不得臆测改写。若两种写法母语者在某些语境下都会使用（如 "cannot" 与 "can not"），视为等价表达，不列为修正项。
 
@@ -91,6 +92,7 @@ def build_system_prompt(style: str = "casual") -> str:
 - 无法确定作者意图的表达不列为修正项，不臆测改写。
 - 无错误 → has_errors=false，errors 与 learnings 为空，minimal 与 natural 两版 text 均为空字符串、explanation 为空字符串。
 - 每个不同规则归纳一条 learning；同类错误的多个实例合并到同一条 learning 的 instances 数组。
+- **errors 与 learnings 必须一致**：errors 列出**每一个**具体错误（含片段与最小修正）；learnings 归纳规则。凡在某规则下出现的错误实例，都必须在 errors 中有一条对应项——不得出现「learnings 有而 errors 没有」或「errors 有而 learnings 没有」的缺失。
 - learnings 的 examples 为对象数组，每项含 wrong 与 right 两版：{{"wrong": "错误写法（英文）", "right": "正确写法（英文）"}}。
 - error_type、explanation、title、rule 用中文；fragment、correction、instances 的 wrong/right、examples 的 wrong/right、rewrite 的 text 保持英文。
 
