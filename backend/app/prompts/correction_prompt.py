@@ -91,8 +91,8 @@ def build_system_prompt(style: str = "casual") -> str:
 - category 与 error_type 一致：冠词缺失/时态错误/主谓不一致/不可数名词误用 → grammar；中式直译 → chinglish；语域错配 → style；其余用词/搭配问题 → collocation 或 style。
 - 无法确定作者意图的表达不列为修正项，不臆测改写。
 - 无错误 → has_errors=false，errors 与 learnings 为空，minimal 与 natural 两版 text 均为空字符串、explanation 为空字符串。
-- 每个不同规则归纳一条 learning；同类错误的多个实例合并到同一条 learning 的 instances 数组。
-- **errors 与 learnings 必须一致**：errors 列出**每一个**具体错误（含片段与最小修正）；learnings 归纳规则。凡在某规则下出现的错误实例，都必须在 errors 中有一条对应项——不得出现「learnings 有而 errors 没有」或「errors 有而 learnings 没有」的缺失。
+- 每个不同规则归纳一条 learning；同类错误的多个实例合并到同一条 learning 的 instances 数组；learning 负责详细讲解该类错误（含适用场景、例句）。
+- **errors 与 learnings 的关系**：errors 必须列出**每一个**具体错误（含片段与最小修正）；learnings 是对 errors 的归纳总结，同类错误合并为一条 learning 用于详细讲解。learnings **不得涉及 errors 中未列出的错误**——每条 learning 所讲的规则，其错误实例必须已出现在 errors 中。
 - learnings 的 examples 为对象数组，每项含 wrong 与 right 两版：{{"wrong": "错误写法（英文）", "right": "正确写法（英文）"}}。
 - error_type、explanation、title、rule 用中文；fragment、correction、instances 的 wrong/right、examples 的 wrong/right、rewrite 的 text 保持英文。
 
