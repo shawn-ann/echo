@@ -18,6 +18,23 @@
         ],
         "ref_error_min": 2,
         "ref_learnings_min": 2
+      },
+      "ground_truth": {
+        "required_errors": [
+          {
+            "fragment": "creating job",
+            "category": "grammar",
+            "error_type": "冠词缺失",
+            "correction": "creating a job"
+          },
+          {
+            "fragment": "set up",
+            "category": "grammar",
+            "error_type": "词性误用",
+            "correction": "setup"
+          }
+        ],
+        "optional_errors": []
       }
     },
     {
@@ -27,6 +44,10 @@
       "expect": {
         "has_errors": false,
         "style": "casual"
+      },
+      "ground_truth": {
+        "required_errors": [],
+        "optional_errors": []
       }
     },
     {
@@ -44,6 +65,17 @@
         ],
         "ref_error_min": 1,
         "ref_learnings_min": 1
+      },
+      "ground_truth": {
+        "required_errors": [
+          {
+            "fragment": "GDSP cluster",
+            "category": "grammar",
+            "error_type": "冠词缺失",
+            "correction": "the GDSP cluster"
+          }
+        ],
+        "optional_errors": []
       }
     },
     {
@@ -64,6 +96,23 @@
         ],
         "ref_error_min": 2,
         "ref_learnings_min": 2
+      },
+      "ground_truth": {
+        "required_errors": [
+          {
+            "fragment": "adding resource pool",
+            "category": "grammar",
+            "error_type": "冠词缺失",
+            "correction": "adding a resource pool"
+          },
+          {
+            "fragment": "How many storage",
+            "category": "grammar",
+            "error_type": "不可数名词误用",
+            "correction": "How much storage"
+          }
+        ],
+        "optional_errors": []
       }
     },
     {
@@ -91,6 +140,42 @@
         ],
         "ref_error_min": 4,
         "ref_learnings_min": 4
+      },
+      "ground_truth": {
+        "required_errors": [
+          {
+            "fragment": "to finished",
+            "category": "grammar",
+            "error_type": "不定式错误",
+            "correction": "to finish"
+          },
+          {
+            "fragment": "ariflow",
+            "category": "grammar",
+            "error_type": "拼写错误",
+            "correction": "airflow"
+          },
+          {
+            "fragment": "logs is",
+            "category": "grammar",
+            "error_type": "主谓不一致",
+            "correction": "logs are"
+          },
+          {
+            "fragment": "empty issue",
+            "category": "collocation",
+            "error_type": "搭配冗余",
+            "correction": "删除句末 issue"
+          }
+        ],
+        "optional_errors": [
+          {
+            "fragment": "by this week",
+            "category": "collocation",
+            "error_type": "搭配冗余",
+            "correction": "this week"
+          }
+        ]
       }
     },
     {
@@ -108,6 +193,36 @@
         ],
         "ref_error_min": 1,
         "ref_learnings_min": 1
+      },
+      "ground_truth": {
+        "required_errors": [
+          {
+            "fragment": "release operation",
+            "category": "collocation",
+            "error_type": "搭配冗余",
+            "correction": "release"
+          }
+        ],
+        "optional_errors": [
+          {
+            "fragment": "response, we",
+            "category": "grammar",
+            "error_type": "逗号拼接",
+            "correction": "response. We"
+          },
+          {
+            "fragment": "operation, the",
+            "category": "grammar",
+            "error_type": "逗号拼接",
+            "correction": "operation. The"
+          },
+          {
+            "fragment": "now, please",
+            "category": "grammar",
+            "error_type": "逗号拼接",
+            "correction": "now. Please"
+          }
+        ]
       }
     },
     {
@@ -128,6 +243,30 @@
         ],
         "ref_error_min": 2,
         "ref_learnings_min": 2
+      },
+      "ground_truth": {
+        "required_errors": [
+          {
+            "fragment": "log have been",
+            "category": "grammar",
+            "error_type": "主谓不一致",
+            "correction": "log has been"
+          },
+          {
+            "fragment": "real quick",
+            "category": "collocation",
+            "error_type": "用词不当",
+            "correction": "really fast"
+          }
+        ],
+        "optional_errors": [
+          {
+            "fragment": "The issue airflow instance log",
+            "category": "grammar",
+            "error_type": "介词缺失",
+            "correction": "The issue with the airflow instance log"
+          }
+        ]
       }
     },
     {
@@ -150,6 +289,36 @@
         ],
         "ref_error_min": 2,
         "ref_learnings_min": 2
+      },
+      "ground_truth": {
+        "required_errors": [
+          {
+            "fragment": "DB missing column",
+            "category": "collocation",
+            "error_type": "词序不当",
+            "correction": "missing DB column"
+          },
+          {
+            "fragment": "is not urgent now",
+            "category": "collocation",
+            "error_type": "搭配不当",
+            "correction": "is no longer urgent"
+          }
+        ],
+        "optional_errors": [
+          {
+            "fragment": "resolved now, I",
+            "category": "grammar",
+            "error_type": "逗号拼接",
+            "correction": "resolved now. I"
+          },
+          {
+            "fragment": "urgent now, we",
+            "category": "grammar",
+            "error_type": "逗号拼接",
+            "correction": "urgent now. We"
+          }
+        ]
       }
     },
     {
@@ -171,6 +340,23 @@
         ],
         "ref_error_min": 2,
         "ref_learnings_min": 2
+      },
+      "ground_truth": {
+        "required_errors": [
+          {
+            "fragment": "some error log",
+            "category": "grammar",
+            "error_type": "单复数错误",
+            "correction": "some error logs"
+          },
+          {
+            "fragment": "triggering dag",
+            "category": "grammar",
+            "error_type": "冠词缺失",
+            "correction": "triggering a DAG"
+          }
+        ],
+        "optional_errors": []
       }
     }
   ]
