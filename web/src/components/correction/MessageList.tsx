@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react'
 
 import CorrectionReportCard from '@/components/correction/CorrectionReportCard'
 import LoadingBubble from '@/components/correction/LoadingBubble'
-import ReplyBubble from '@/components/correction/ReplyBubble'
 import UserBubble from '@/components/correction/UserBubble'
 import { useConversation } from '@/store/conversation-context'
 
@@ -20,7 +19,7 @@ export default function MessageList() {
     return (
       <div className="flex flex-1 items-center justify-center bg-[#f8f9fa] p-6">
         <p className="text-center text-[#868e96]">
-          输入英文，AI 将为你纠错；也可以随时提问
+          输入英文，AI 将为你纠错
         </p>
       </div>
     )
@@ -32,11 +31,9 @@ export default function MessageList() {
         {messages.map((m) =>
           m.role === 'user' ? (
             <UserBubble key={m.id} content={m.content ?? ''} />
-          ) : m.type === 'report' && m.report ? (
+          ) : m.report ? (
             <CorrectionReportCard key={m.id} report={m.report} />
-          ) : (
-            <ReplyBubble key={m.id} content={m.content ?? ''} />
-          ),
+          ) : null,
         )}
         {pending && <LoadingBubble />}
         {sessionExpired && (

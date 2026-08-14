@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     LLM_API_KEY: str = ""
     LLM_MODEL: str = ""
     LLM_MODE: str = ""  # ""=真实调用（需配置）; "mock"=测试/演示用确定性 Mock
+    LLM_TEMPERATURE: float = 0
+    LLM_ENABLE_THINKING: bool = False
     CONTEXT_LIMIT: int = 40
     CORRECTION_STYLE: str = "casual"  # 纠错场景：casual（日常/职场口语，默认）/ formal（正式书面）
 

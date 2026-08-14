@@ -50,7 +50,7 @@ export default function Composer() {
               setText(e.target.value)
               autoResize()
             }}
-            placeholder="输入英文，AI 将为你纠错；也可以随时提问"
+            placeholder="输入英文，AI 将为你纠错"
             rows={1}
             className="min-w-0 flex-1 resize-none rounded-lg border border-[#ced4da] bg-[#f8f9fa] px-3.5 py-2.5 text-base focus-visible:border-[#0ca678] focus-visible:ring-[#0ca678]/50"
           />

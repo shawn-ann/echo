@@ -1,24 +1,11 @@
 import type { ErrorBlock } from '@/api/messages'
 
-const CATEGORY_LABEL: Record<string, string> = {
-  grammar: '语法',
-  collocation: '搭配',
-  chinglish: '中式英语',
-  style: '风格与语气',
-}
-
 export default function ErrorCard({ error }: { error: ErrorBlock }) {
-  const isChinglish = error.category === 'chinglish'
-  const accent = isChinglish
-    ? 'border-l-[#f76707]'
-    : 'border-l-[#fa5252]'
   return (
-    <div className={`rounded-lg border border-[#dee2e6] border-l-4 bg-white p-3 ${accent}`}>
+    <div className="rounded-lg border border-[#dee2e6] border-l-4 border-l-[#fa5252] bg-white p-3">
       <div className="flex items-center gap-2">
-        <span
-          className={`rounded px-1.5 py-0.5 text-xs text-white ${isChinglish ? 'bg-[#f76707]' : 'bg-[#fa5252]'}`}
-        >
-          {CATEGORY_LABEL[error.category] ?? error.category}
+        <span className="rounded bg-[#fa5252] px-1.5 py-0.5 text-xs text-white">
+          {error.error_type}
         </span>
         <span className="text-sm font-medium text-[#c92a2a] line-through">
           {error.fragment}

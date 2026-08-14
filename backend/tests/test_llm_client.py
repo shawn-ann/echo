@@ -20,7 +20,10 @@ async def test_real_llm_retries_then_succeeds():
 
     def handler(request: httpx.Request) -> httpx.Response:
         calls["n"] += 1
-        assert json.loads(request.content)["temperature"] == 0
+        body = json.loads(request.content)
+        assert body["temperature"] == 0
+        assert body["response_format"] == {"type": "json_object"}
+        assert body["chat_template_kwargs"] == {"enable_thinking": False}
         if calls["n"] < 3:
             raise httpx.ConnectError("boom")
         return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})

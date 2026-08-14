@@ -12,14 +12,14 @@ async function login(page: Page) {
 }
 
 async function send(page: Page, text: string) {
-  await page.getByPlaceholder('输入英文，AI 将为你纠错；也可以随时提问').fill(text)
+  await page.getByPlaceholder('输入英文，AI 将为你纠错').fill(text)
   await page.getByRole('button', { name: '发送' }).click()
 }
 
 // U-C-01 首次进入空态
 test('U-C-01 首次进入纠错主页显示空态引导', async ({ page }) => {
   await login(page)
-  await expect(page.getByText('输入英文，AI 将为你纠错；也可以随时提问')).toBeVisible()
+  await expect(page.getByText('输入英文，AI 将为你纠错')).toBeVisible()
 })
 
 // U-C-02 提交含错英文 → 报告
@@ -40,27 +40,27 @@ test('U-C-03 无错误文本展示鼓励文案', async ({ page }) => {
   await expect(page.getByText(/这段英文写得不错/).first()).toBeVisible()
 })
 
-// U-C-04 纯中文 → 追问回复
-test('U-C-04 纯中文返回纯文本追问回复', async ({ page }) => {
+// U-C-04 纯中文也返回纠错报告（单轮纠错，无追问）
+test('U-C-04 纯中文返回纠错报告', async ({ page }) => {
   await login(page)
   await send(page, '为什么不能用 very？')
-  await expect(page.getByText('delicious 是极限形容词').first()).toBeVisible()
+  await expect(page.getByText('错误分析').first()).toBeVisible()
 })
 
-// U-C-05 连续追问
-test('U-C-05 连续追问多次均正常回复', async ({ page }) => {
+// U-C-05 连续提交均正常返回报告
+test('U-C-05 连续提交多次均正常返回报告', async ({ page }) => {
   await login(page)
-  await send(page, '为什么不能用 very？')
-  await expect(page.getByText('delicious 是极限形容词').first()).toBeVisible()
-  await send(page, '那 delicious 可以用什么词修饰？')
-  await expect(page.getByText(/delicious/).first()).toBeVisible()
+  await send(page, 'Yesterday I go to the park')
+  await expect(page.getByText('错误分析').first()).toBeVisible()
+  await send(page, 'She go to school')
+  await expect(page.getByText('错误分析').first()).toBeVisible()
 })
 
 // U-C-06 超 2000 字符 → 字数标红 + 发送禁用
 test('U-C-06 输入超 2000 字符发送禁用', async ({ page }) => {
   await login(page)
   const longText = 'x'.repeat(2001)
-  await page.getByPlaceholder('输入英文，AI 将为你纠错；也可以随时提问').fill(longText)
+  await page.getByPlaceholder('输入英文，AI 将为你纠错').fill(longText)
   await expect(page.getByText('请将文本缩短至 2000 字符以内再提交')).toBeVisible()
   await expect(page.getByRole('button', { name: '发送' })).toBeDisabled()
 })
@@ -68,7 +68,7 @@ test('U-C-06 输入超 2000 字符发送禁用', async ({ page }) => {
 // U-C-07 多行输入自动延伸
 test('U-C-07 多行输入输入框增高', async ({ page }) => {
   await login(page)
-  const ta = page.getByPlaceholder('输入英文，AI 将为你纠错；也可以随时提问')
+  const ta = page.getByPlaceholder('输入英文，AI 将为你纠错')
   await ta.fill('line one\nline two\nline three')
   const height = await ta.evaluate((el) => el.scrollHeight)
   expect(height).toBeGreaterThan(40)

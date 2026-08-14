@@ -55,14 +55,15 @@ async def test_submit_correction_writes_message_pair_and_report():
     assert await _count(CorrectionReport) == 1
 
 
-async def test_submit_follow_up_returns_reply():
+async def test_submit_chinese_still_returns_report():
+    # 单轮纠错：纯中文输入也返回纠错报告（不再有 follow_up/reply）
     uid = await _demo_user_id()
     async with async_session_factory() as s:
         mock = MockLLMClient()
         user_out, ai_out = await submit_message(s, uid, "为什么不能用 very？", mock)
-        assert user_out.type == "follow_up"
-        assert ai_out.type == "reply"
-        assert ai_out.content
+        assert user_out.type == "correction"
+        assert ai_out.type == "report"
+        assert ai_out.report["has_errors"] is True
 
 
 async def test_build_context_includes_report_structure():

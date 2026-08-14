@@ -46,23 +46,25 @@ async def test_post_messages_no_error(api):
     client, mock = api
     token = await _token(client)
     mock.responder = lambda msgs: (
-        '{"intent":"correction","correction":{"has_errors":false,"errors":[],"rewrite":null},"reply":null}'
+        '{"has_errors":false,"errors":[],"rewrite":null,"learnings":[]}'
     )
     r = await client.post(POST_URL, json={"content": "perfect english"}, headers=_auth(token))
     assert r.status_code == 200
-    assert r.json()["assistant_message"]["report"]["has_errors"] is False
+    data = r.json()
+    assert data["assistant_message"]["report"]["has_errors"] is False
+    assert data["assistant_message"]["report"]["rewrite"] is None
 
 
-# T-C-03 纯中文→追问
-async def test_post_messages_follow_up(api):
+# T-C-03 纯中文也返回纠错报告（单轮纠错，无 follow_up）
+async def test_post_messages_chinese_returns_report(api):
     client, _ = api
     token = await _token(client)
     r = await client.post(POST_URL, json={"content": "为什么不能用 very？"}, headers=_auth(token))
     assert r.status_code == 200
     data = r.json()
-    assert data["user_message"]["type"] == "follow_up"
-    assert data["assistant_message"]["type"] == "reply"
-    assert data["assistant_message"]["content"]
+    assert data["user_message"]["type"] == "correction"
+    assert data["assistant_message"]["type"] == "report"
+    assert data["assistant_message"]["report"]["has_errors"] is True
 
 
 # T-C-04 空内容

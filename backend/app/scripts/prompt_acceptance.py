@@ -53,9 +53,14 @@ async def _call_llm(
         print("请配置 LLM_BASE_URL 与 LLM_API_KEY（或 --base-url/--api-key）")
         sys.exit(1)
     url = eff_url + "/chat/completions"
-    body: dict = {"model": eff_model, "messages": messages, "temperature": 0}
+    body: dict = {
+        "model": eff_model,
+        "messages": messages,
+        "temperature": get_settings().LLM_TEMPERATURE,
+        "response_format": {"type": "json_object"},
+    }
     if thinking in ("enabled", "disabled"):
-        body["thinking"] = {"type": thinking}
+        body["chat_template_kwargs"] = {"enable_thinking": thinking == "enabled"}
     async with httpx.AsyncClient(timeout=120) as client:
         r = await client.post(
             url,

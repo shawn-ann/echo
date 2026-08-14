@@ -1,5 +1,4 @@
 import json
-import re
 from collections.abc import Callable
 from typing import Any
 
@@ -37,13 +36,20 @@ class RealLLMClient(LLMClient):
 
     async def complete(self, messages: list[dict[str, Any]]) -> str:
         last_exc: Exception | None = None
+        settings = get_settings()
         for _attempt in range(3):
             try:
                 async with httpx.AsyncClient(timeout=120, transport=self._transport) as client:
                     r = await client.post(
                         f"{self.base_url}/chat/completions",
                         headers={"Authorization": f"Bearer {self.api_key}"},
-                        json={"model": self.model, "messages": messages, "temperature": 0},
+                        json={
+                            "model": self.model,
+                            "messages": messages,
+                            "temperature": settings.LLM_TEMPERATURE,
+                            "chat_template_kwargs": {"enable_thinking": settings.LLM_ENABLE_THINKING},
+                            "response_format": {"type": "json_object"},
+                        },
                     )
                     r.raise_for_status()
                     return r.json()["choices"][0]["message"]["content"]
@@ -59,55 +65,40 @@ class RealLLMClient(LLMClient):
 
 
 def _default_responder(messages: list[dict[str, Any]]) -> str:
-    """Mock 默认响应：中文→追问；含 no-error 标记→无错误报告；其余→纠错报告。"""
+    """Mock 默认响应：含 no-error 标记→无错误报告（rewrite=null）；其余→纠错报告。"""
     user_contents = [m["content"] for m in messages if m.get("role") == "user"]
     last = user_contents[-1] if user_contents else ""
     if "没有错误" in last or "no-error" in last:
         return json.dumps(
             {
-                "intent": "correction",
-                "correction": {
-                    "has_errors": False,
-                    "errors": [],
-                    "rewrite": {"minimal": {"text": "", "explanation": ""}, "natural": {"text": "", "explanation": ""}},
-                    "learnings": [],
-                },
-                "reply": None,
+                "has_errors": False,
+                "errors": [],
+                "rewrite": None,
+                "learnings": [],
             },
-            ensure_ascii=False,
-        )
-    if re.search(r"[\u4e00-\u9fff]", last):
-        return json.dumps(
-            {"intent": "follow_up", "reply": "delicious 是极限形容词，通常不加 very。", "correction": None},
             ensure_ascii=False,
         )
     return json.dumps(
         {
-            "intent": "correction",
-            "correction": {
-                "has_errors": True,
-                "errors": [
-                    {
-                        "category": "grammar",
-                        "fragment": "I go to",
-                        "explanation": "yesterday 表示过去，故用过去式 went",
-                        "correction": "I went to",
-                    }
-                ],
-                "rewrite": {
-                    "minimal": {"text": "Yesterday I went to the park.", "explanation": "修正时态，保留原句结构"},
-                    "natural": {"text": "Yesterday I enjoyed the park.", "explanation": "用 enjoyed 更自然"},
-                },
-                "learnings": [
-                    {
-                        "title": "过去时间用过去式",
-                        "rule": "yesterday 表示过去时间，主句动词应用过去式（go→went）。",
-                        "instances": [{"wrong": "I go to", "right": "I went to"}],
-                        "examples": [{"wrong": "Yesterday I go to the park.", "right": "Yesterday I went to the park."}],
-                    }
-                ],
+            "has_errors": True,
+            "errors": [
+                {
+                    "error_type": "时态错误",
+                    "fragment": "I go to",
+                    "explanation": "yesterday 表示过去，故用过去式 went",
+                    "correction": "I went to",
+                }
+            ],
+            "rewrite": {
+                "minimal": {"text": "Yesterday I went to the park.", "note": "修正时态，保留原句结构"},
+                "natural": {"text": "Yesterday I enjoyed the park.", "note": "用 enjoyed 更自然"},
             },
-            "reply": None,
+            "learnings": [
+                {
+                    "rule": "yesterday 表示过去时间，主句动词应用过去式（go→went）。",
+                    "example": "I go to → I went to",
+                }
+            ],
         },
         ensure_ascii=False,
     )

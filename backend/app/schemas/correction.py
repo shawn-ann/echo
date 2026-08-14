@@ -1,20 +1,11 @@
 import uuid
 from datetime import datetime
-from enum import Enum
-from typing import Literal
 
 from pydantic import BaseModel, Field
 
 
-class ErrorCategory(str, Enum):
-    grammar = "grammar"
-    collocation = "collocation"
-    chinglish = "chinglish"
-    style = "style"
-
-
 class ErrorBlock(BaseModel):
-    category: ErrorCategory
+    error_type: str
     fragment: str
     explanation: str
     correction: str
@@ -22,7 +13,7 @@ class ErrorBlock(BaseModel):
 
 class RewriteOption(BaseModel):
     text: str
-    explanation: str
+    note: str
 
 
 class RewriteSection(BaseModel):
@@ -30,29 +21,18 @@ class RewriteSection(BaseModel):
     natural: RewriteOption
 
 
-class WrongRightPair(BaseModel):
-    wrong: str
-    right: str
-
-
 class Learning(BaseModel):
-    title: str
     rule: str
-    instances: list[WrongRightPair] = Field(default_factory=list)
-    examples: list[WrongRightPair] = Field(default_factory=list)
+    example: str
 
 
 class CorrectionBody(BaseModel):
+    """LLM 单轮纠错输出（无 intent/reply）。"""
+
     has_errors: bool
     errors: list[ErrorBlock] = Field(default_factory=list)
     rewrite: RewriteSection | None = None
     learnings: list[Learning] = Field(default_factory=list)
-
-
-class LLMResponse(BaseModel):
-    intent: Literal["correction", "follow_up"]
-    correction: CorrectionBody | None = None
-    reply: str | None = None
 
 
 class SubmitRequest(BaseModel):

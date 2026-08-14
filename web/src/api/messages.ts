@@ -1,7 +1,7 @@
 import { http } from './client'
 
 export interface ErrorBlock {
-  category: string
+  error_type: string
   fragment: string
   explanation: string
   correction: string
@@ -9,7 +9,7 @@ export interface ErrorBlock {
 
 export interface RewriteOption {
   text: string
-  explanation: string
+  note: string
 }
 
 export interface RewriteSection {
@@ -17,16 +17,9 @@ export interface RewriteSection {
   natural: RewriteOption
 }
 
-export interface WrongRightPair {
-  wrong: string
-  right: string
-}
-
 export interface Learning {
-  title: string
   rule: string
-  instances: WrongRightPair[]
-  examples: WrongRightPair[]
+  example: string
 }
 
 export interface CorrectionReport {
@@ -39,7 +32,7 @@ export interface CorrectionReport {
 export interface Message {
   id: string
   role: 'user' | 'assistant'
-  type: string
+  type: 'correction' | 'report'
   content: string | null
   report: CorrectionReport | null
   created_at: string

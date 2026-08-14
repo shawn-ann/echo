@@ -10,7 +10,7 @@ def test_build_messages_uses_system_prompt():
 
 async def test_run_smoke_with_fake_llm():
     async def fake_llm(messages):
-        return '{"intent":"correction","correction":{"has_errors":true,"errors":[],"rewrite":{"minimal":{"text":"ok","explanation":""},"natural":{"text":"ok","explanation":""}},"learnings":[]},"reply":null}'
+        return '{"has_errors":true,"errors":[{"error_type":"时态错误","fragment":"go","explanation":"","correction":"went"}],"rewrite":{"minimal":{"text":"ok","note":""},"natural":{"text":"ok","note":""}},"learnings":[]}'
 
     result = await run_smoke(fake_llm, "She go to school yesterday.", "casual")
     assert result["ok"] is True

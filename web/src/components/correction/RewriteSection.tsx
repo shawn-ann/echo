@@ -50,7 +50,7 @@ function RewriteBox({
         </button>
         <p className="whitespace-pre-wrap text-[#212529]">{option.text}</p>
       </div>
-      <p className="mt-1 text-xs text-[#868e96]">{option.explanation}</p>
+      <p className="mt-1 text-xs text-[#868e96]">{option.note}</p>
     </div>
   )
 }

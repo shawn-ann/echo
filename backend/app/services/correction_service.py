@@ -11,7 +11,7 @@ from app.core.errors import AppError
 from app.models.conversation import SessionConversation
 from app.models.message import Message, MessageRole, MessageType
 from app.models.report import CorrectionReport
-from app.schemas.correction import LLMResponse, MessageOut
+from app.schemas.correction import CorrectionBody, MessageOut
 from app.prompts.correction_prompt import build_system_prompt
 from app.services.llm_client import (
     LLMClient,
@@ -70,7 +70,7 @@ async def build_context(session: AsyncSession, conversation_id: uuid.UUID, limit
     return result
 
 
-async def _call_and_parse(llm_client: LLMClient, messages: list[dict]) -> LLMResponse:
+async def _call_and_parse(llm_client: LLMClient, messages: list[dict]) -> CorrectionBody:
     for attempt in range(2):
         try:
             raw = await llm_client.complete(messages)
@@ -79,7 +79,7 @@ async def _call_and_parse(llm_client: LLMClient, messages: list[dict]) -> LLMRes
         except LLMUnavailableError:
             raise AppError(503, "LLM_SERVICE_UNAVAILABLE", "AI 服务不可用，请稍后重试")
         try:
-            return LLMResponse.model_validate_json(raw)
+            return CorrectionBody.model_validate_json(raw)
         except ValidationError:
             if attempt == 0:
                 continue
@@ -115,48 +115,31 @@ async def submit_message(
     parsed = await _call_and_parse(llm_client, messages)
 
     user_created_at = _utcnow()
-    user_type = MessageType.follow_up if parsed.intent == "follow_up" else MessageType.correction
     user_msg = Message(
         conversation_id=conv.id,
         role=MessageRole.user,
-        type=user_type,
+        type=MessageType.correction,
         content=content,
         created_at=user_created_at,
     )
     session.add(user_msg)
     await session.flush()
 
-    report_structure: dict | None = None
-    if parsed.intent == "correction":
-        if parsed.correction is None:
-            raise AppError(502, "LLM_RESPONSE_INVALID", "AI 返回内容无效，请重试")
-        report_structure = parsed.correction.model_dump()
-        report = CorrectionReport(version=1, structure=report_structure)
-        session.add(report)
-        await session.flush()
-        ai_msg = Message(
-            conversation_id=conv.id,
-            role=MessageRole.assistant,
-            type=MessageType.report,
-            content=None,
-            report_id=report.id,
-            created_at=user_created_at + timedelta(microseconds=1),
-        )
-        session.add(ai_msg)
-        await session.flush()
-        report.message_id = ai_msg.id
-    else:
-        if parsed.reply is None:
-            raise AppError(502, "LLM_RESPONSE_INVALID", "AI 返回内容无效，请重试")
-        ai_msg = Message(
-            conversation_id=conv.id,
-            role=MessageRole.assistant,
-            type=MessageType.reply,
-            content=parsed.reply,
-            created_at=user_created_at + timedelta(microseconds=1),
-        )
-        session.add(ai_msg)
-        await session.flush()
+    report_structure = parsed.model_dump()
+    report = CorrectionReport(version=1, structure=report_structure)
+    session.add(report)
+    await session.flush()
+    ai_msg = Message(
+        conversation_id=conv.id,
+        role=MessageRole.assistant,
+        type=MessageType.report,
+        content=None,
+        report_id=report.id,
+        created_at=user_created_at + timedelta(microseconds=1),
+    )
+    session.add(ai_msg)
+    await session.flush()
+    report.message_id = ai_msg.id
 
     await session.commit()
     return _to_out(user_msg, None), _to_out(ai_msg, report_structure)

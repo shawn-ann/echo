@@ -16,8 +16,6 @@ class MessageRole(str, enum.Enum):
 class MessageType(str, enum.Enum):
     correction = "correction"
     report = "report"
-    follow_up = "follow_up"
-    reply = "reply"
 
 
 class Message(Base):
