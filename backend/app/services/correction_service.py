@@ -63,11 +63,29 @@ async def build_context(session: AsyncSession, conversation_id: uuid.UUID, limit
     result = []
     for m in rows:
         if m.type == MessageType.report and m.report_id in reports:
-            content = json.dumps({"report": reports[m.report_id]}, ensure_ascii=False)
+            # 历史报告直接以纠错结构体呈现（不再用 {"report": ...} 包装，
+            # 避免 LLM 回显包装格式导致校验失败）
+            content = json.dumps(reports[m.report_id], ensure_ascii=False)
         else:
             content = m.content or ""
         result.append({"role": m.role.value, "content": content})
     return result
+
+
+def _try_parse_correction(raw: str) -> CorrectionBody | None:
+    """解析纠错报告，兼容 LLM 回显的 {"report": {...}} 包装格式。"""
+    try:
+        return CorrectionBody.model_validate_json(raw)
+    except ValidationError:
+        pass
+    try:
+        outer = json.loads(raw)
+        inner = outer.get("report")
+        if isinstance(inner, dict):
+            return CorrectionBody.model_validate(inner)
+    except (json.JSONDecodeError, ValidationError):
+        pass
+    return None
 
 
 async def _call_and_parse(llm_client: LLMClient, messages: list[dict]) -> CorrectionBody:
@@ -78,12 +96,12 @@ async def _call_and_parse(llm_client: LLMClient, messages: list[dict]) -> Correc
             raise AppError(504, "LLM_TIMEOUT", "AI 响应超时，请重试")
         except LLMUnavailableError:
             raise AppError(503, "LLM_SERVICE_UNAVAILABLE", "AI 服务不可用，请稍后重试")
-        try:
-            return CorrectionBody.model_validate_json(raw)
-        except ValidationError:
-            if attempt == 0:
-                continue
-            raise AppError(502, "LLM_RESPONSE_INVALID", "AI 返回内容无效，请重试")
+        parsed = _try_parse_correction(raw)
+        if parsed is not None:
+            return parsed
+        if attempt == 0:
+            continue
+        raise AppError(502, "LLM_RESPONSE_INVALID", "AI 返回内容无效，请重试")
     raise AssertionError("unreachable")
 
 

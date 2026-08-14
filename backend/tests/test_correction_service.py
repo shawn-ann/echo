@@ -74,7 +74,26 @@ async def test_build_context_includes_report_structure():
         conv = await get_or_create_conversation(s, uid)
         ctx = await build_context(s, conv.id, get_settings().CONTEXT_LIMIT)
         assert len(ctx) == 2
-        assert "report" in ctx[1]["content"]
+        # 历史报告直接以纠错结构体呈现（不包 {"report": ...}）
+        assert "has_errors" in ctx[1]["content"]
+        assert '"report"' not in ctx[1]["content"]
+
+
+async def test_submit_llm_wrapped_report_unwraps():
+    # LLM 回显 {"report": {...}} 包装时，服务应自动解包并正常入库
+    uid = await _demo_user_id()
+    async with async_session_factory() as s:
+        mock = MockLLMClient(
+            responder=lambda msgs: (
+                '{"report": {"has_errors": true, "errors": [{"error_type": "时态错误", "fragment": "go", '
+                '"explanation": "x", "correction": "went"}], "rewrite": null, "learnings": []}}'
+            )
+        )
+        user_out, ai_out = await submit_message(s, uid, "She go to school", mock)
+        assert user_out.type == "correction"
+        assert ai_out.type == "report"
+        assert ai_out.report["has_errors"] is True
+        assert ai_out.report["errors"][0]["error_type"] == "时态错误"
 
 
 async def test_list_messages_orders_and_embeds_report():
