@@ -21,9 +21,21 @@ db/api 不对公网暴露端口，仅 proxy 映射 80/443。
 ### 1. 服务器初始化（SSH 登录服务器执行）
 
 ```bash
-# ① 安装 Docker Engine + compose 插件（Ubuntu/Debian）
+# ① 安装 Docker Engine + compose 插件
+
+## Ubuntu/Debian
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER   # 当前用户加入 docker 组（root 可跳过）
+
+## 阿里云服务器（Aliyun Linux / alinux）——get.docker.com 不支持，改用阿里云镜像源
+cat /etc/os-release        # 确认 alinux2(对应 CentOS7) 或 alinux3(对应 CentOS8)
+yum install -y yum-utils
+yum-config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+# alinux3 → sed 用 8；alinux2 → sed 用 7
+sed -i 's/\$releasever/8/g' /etc/yum.repos.d/docker-ce.repo
+yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+systemctl enable --now docker
+docker version && docker compose version   # 两个都有输出即就绪
 
 # ② 加 2G swap（2G 内存兜底）
 sudo fallocate -l 2G /swapfile
