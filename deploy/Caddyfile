@@ -1,0 +1,3 @@
+echo.hootooa.com {
+	reverse_proxy web:80
+}
