@@ -110,17 +110,19 @@ jobs:
             echo "==> [1/6] 准备目录与 deploy key"
             mkdir -p "$DIR" "$HOME/.ssh"
             umask 077
-            # 兼容两种 REPO_DEPLOY_KEY 格式：base64 编码（推荐，单行无特殊字符）或原样多行私钥
-            printf '%s' "$REPO_DEPLOY_KEY" | base64 -d > "$KEY_FILE" 2>/dev/null || true
-            if ! grep -q 'PRIVATE KEY' "$KEY_FILE" 2>/dev/null; then
-              printf '%s\n' "$REPO_DEPLOY_KEY" | tr -d '\r' > "$KEY_FILE"
+            if [ ! -s "$KEY_FILE" ]; then
+              # 服务器无 key 时回退：从 REPO_DEPLOY_KEY secret 写入（优先 base64，兼容原样）
+              printf '%s' "$REPO_DEPLOY_KEY" | base64 -d > "$KEY_FILE" 2>/dev/null || true
+              if ! grep -q 'PRIVATE KEY' "$KEY_FILE" 2>/dev/null; then
+                printf '%s\n' "$REPO_DEPLOY_KEY" | tr -d '\r' > "$KEY_FILE"
+              fi
             fi
-            chmod 600 "$KEY_FILE"
-            if ! grep -q 'PRIVATE KEY' "$KEY_FILE"; then
-              echo "::error::REPO_DEPLOY_KEY 无效：请设置为私钥完整内容（推荐先 base64 编码）。当前写入文件无法解析。"
+            chmod 600 "$KEY_FILE" 2>/dev/null || true
+            if ! grep -q 'PRIVATE KEY' "$KEY_FILE" 2>/dev/null; then
+              echo "::error::缺少可用 deploy key：请手动放置 $KEY_FILE（scp ~/.ssh/echo_deploy root@IP:~/.ssh/echo_deploy_key）或正确配置 REPO_DEPLOY_KEY secret"
               exit 1
             fi
-            echo "==> deploy key 已写入并校验通过"
+            echo "==> deploy key 可用：$KEY_FILE"
 
             echo "==> [2/6] 同步 github.com host key 并验证认证"
             touch "$HOME/.ssh/known_hosts"
