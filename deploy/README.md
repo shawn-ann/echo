@@ -47,7 +47,7 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 # ③ SSH 建议改为密钥登录并禁用密码（可选但推荐）
 ```
 
-要求：Docker Engine + Docker Compose 插件（`docker compose version` 可用即可）。
+要求：Docker Engine + Docker Compose 插件（`docker compose version` 可用即可；`git` 若缺失，CI 部署时会在服务器自动安装）。
 
 ### 2. DNS 解析
 

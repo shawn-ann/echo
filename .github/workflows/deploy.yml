@@ -96,18 +96,29 @@ jobs:
             REPO_URL=git@github.com:shawn-ann/echo.git
             KEY_FILE="$HOME/.ssh/echo_deploy_key"
 
-            echo "==> [1/5] 准备目录与 deploy key"
+            echo "==> [0/6] 确保基础工具可用"
+            if ! command -v git >/dev/null 2>&1; then
+              echo "==>   安装 git ..."
+              (yum install -y git >/dev/null 2>&1) || (apt-get install -y git >/dev/null 2>&1) || { echo "::error::无法自动安装 git"; exit 1; }
+            fi
+            if ! docker compose version >/dev/null 2>&1; then
+              echo "==>   安装 docker compose 插件 ..."
+              (yum install -y docker-compose-plugin >/dev/null 2>&1) || { echo "::error::docker compose 不可用"; exit 1; }
+            fi
+            echo "==> git: $(git --version) | docker compose: $(docker compose version --short)"
+
+            echo "==> [1/6] 准备目录与 deploy key"
             mkdir -p "$DIR" "$HOME/.ssh"
             umask 077
             printf '%s\n' "$REPO_DEPLOY_KEY" > "$KEY_FILE"
             chmod 600 "$KEY_FILE"
 
-            echo "==> [2/5] 同步 github.com host key"
+            echo "==> [2/6] 同步 github.com host key"
             touch "$HOME/.ssh/known_hosts"
             grep -q 'github.com' "$HOME/.ssh/known_hosts" || ssh-keyscan github.com >> "$HOME/.ssh/known_hosts" 2>/dev/null
             export GIT_SSH_COMMAND="ssh -i $KEY_FILE -o IdentitiesOnly=yes"
 
-            echo "==> [3/5] clone / pull 仓库"
+            echo "==> [3/6] clone / pull 仓库"
             if [ ! -d "$DIR/.git" ]; then
               git clone --depth 1 -b "$BRANCH" "$REPO_URL" "$DIR"
             else
@@ -115,13 +126,13 @@ jobs:
               git pull --ff-only
             fi
 
-            echo "==> [4/5] 写入 .env（不进 git）"
+            echo "==> [4/6] 写入 .env（不进 git）"
             cd "$DIR"
             umask 077
             printf 'DB_PASSWORD=%s\nLLM_BASE_URL=%s\nLLM_API_KEY=%s\nLLM_MODEL=%s\n' \
               "$DB_PASSWORD" "$LLM_BASE_URL" "$LLM_API_KEY" "$LLM_MODEL" > .env
 
-            echo "==> [5/5] 拉镜像并部署"
+            echo "==> [5/6] 拉镜像并部署"
             docker compose -f "$DIR/deploy/docker-compose.prod.yml" pull
             docker compose -f "$DIR/deploy/docker-compose.prod.yml" up -d
             docker compose -f "$DIR/deploy/docker-compose.prod.yml" ps
