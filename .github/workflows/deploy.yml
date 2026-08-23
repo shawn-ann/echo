@@ -48,9 +48,41 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Validate required secrets
+        run: |
+          echo "==> GitHub Secrets 检查（true=已配置）"
+          echo "  SSH_HOST=${{ secrets.SSH_HOST != '' }}"
+          echo "  SSH_USER=${{ secrets.SSH_USER != '' }}"
+          echo "  SSH_KEY=${{ secrets.SSH_KEY != '' }}"
+          echo "  REPO_DEPLOY_KEY=${{ secrets.REPO_DEPLOY_KEY != '' }}"
+          echo "  DB_PASSWORD=${{ secrets.DB_PASSWORD != '' }}"
+          echo "  LLM_BASE_URL=${{ secrets.LLM_BASE_URL != '' }}"
+          echo "  LLM_API_KEY=${{ secrets.LLM_API_KEY != '' }}"
+          echo "  LLM_MODEL=${{ secrets.LLM_MODEL != '' }}"
+          missing=""
+          for name in SSH_HOST SSH_USER SSH_KEY REPO_DEPLOY_KEY DB_PASSWORD LLM_BASE_URL LLM_API_KEY LLM_MODEL; do
+            case "$name" in
+              SSH_HOST)          v="${{ secrets.SSH_HOST }}" ;;
+              SSH_USER)          v="${{ secrets.SSH_USER }}" ;;
+              SSH_KEY)           v="${{ secrets.SSH_KEY }}" ;;
+              REPO_DEPLOY_KEY)   v="${{ secrets.REPO_DEPLOY_KEY }}" ;;
+              DB_PASSWORD)       v="${{ secrets.DB_PASSWORD }}" ;;
+              LLM_BASE_URL)      v="${{ secrets.LLM_BASE_URL }}" ;;
+              LLM_API_KEY)       v="${{ secrets.LLM_API_KEY }}" ;;
+              LLM_MODEL)         v="${{ secrets.LLM_MODEL }}" ;;
+            esac
+            if [ -z "$v" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::以下 Secret 未配置或为空:${missing}"
+            exit 1
+          fi
+          echo "==> 全部 Secret 已就绪"
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.2.0
         with:
+          debug: true
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
