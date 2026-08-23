@@ -71,7 +71,13 @@ cat ~/.ssh/echo_deploy.pub
 ```
 
 - GitHub 仓库 → `Settings → Deploy keys → Add deploy key`：粘贴公钥，勾选 **Allow write access 不勾选**（只读）
-- 私钥 `~/.ssh/echo_deploy` 内容作为 secret `REPO_DEPLOY_KEY`
+- 私钥内容作为 secret `REPO_DEPLOY_KEY`，**推荐先 base64 编码**（多行私钥经 Actions 环境变量传递易损坏）：
+
+```bash
+base64 < ~/.ssh/echo_deploy | pbcopy   # macOS 进剪贴板；Linux 用 base64 ~/.ssh/echo_deploy
+```
+
+> 也支持直接粘贴私钥原样内容（脚本会自动兼容），但 base64 单行传递最可靠。
 
 ### 5. GitHub 仓库 Secrets
 

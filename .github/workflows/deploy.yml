@@ -110,13 +110,27 @@ jobs:
             echo "==> [1/6] 准备目录与 deploy key"
             mkdir -p "$DIR" "$HOME/.ssh"
             umask 077
-            printf '%s\n' "$REPO_DEPLOY_KEY" > "$KEY_FILE"
+            # 兼容两种 REPO_DEPLOY_KEY 格式：base64 编码（推荐，单行无特殊字符）或原样多行私钥
+            printf '%s' "$REPO_DEPLOY_KEY" | base64 -d > "$KEY_FILE" 2>/dev/null || true
+            if ! grep -q 'PRIVATE KEY' "$KEY_FILE" 2>/dev/null; then
+              printf '%s\n' "$REPO_DEPLOY_KEY" | tr -d '\r' > "$KEY_FILE"
+            fi
             chmod 600 "$KEY_FILE"
+            if ! grep -q 'PRIVATE KEY' "$KEY_FILE"; then
+              echo "::error::REPO_DEPLOY_KEY 无效：请设置为私钥完整内容（推荐先 base64 编码）。当前写入文件无法解析。"
+              exit 1
+            fi
+            echo "==> deploy key 已写入并校验通过"
 
-            echo "==> [2/6] 同步 github.com host key"
+            echo "==> [2/6] 同步 github.com host key 并验证认证"
             touch "$HOME/.ssh/known_hosts"
             grep -q 'github.com' "$HOME/.ssh/known_hosts" || ssh-keyscan github.com >> "$HOME/.ssh/known_hosts" 2>/dev/null
             export GIT_SSH_COMMAND="ssh -i $KEY_FILE -o IdentitiesOnly=yes"
+            if ! ssh -i "$KEY_FILE" -o IdentitiesOnly=yes -o ConnectTimeout=15 -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+              echo "::error::GitHub 认证失败：deploy key 私钥与仓库 Deploy keys 中的公钥不匹配，或公钥未添加。"
+              exit 1
+            fi
+            echo "==> GitHub deploy key 认证成功"
 
             echo "==> [3/6] clone / pull 仓库"
             if [ ! -d "$DIR/.git" ]; then
