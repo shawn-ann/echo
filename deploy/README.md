@@ -11,7 +11,7 @@
 ECS 2C2G: 80/443 ─▶ caddy(自动 HTTPS) ─▶ web:80(nginx) ─▶ api:8000 ─▶ db:5432
 ```
 
-镜像仓库：阿里云 ACR 个人版 `crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com`，命名空间 `echo`（api/web）。
+镜像仓库：阿里云 ACR 个人版 `crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com`，命名空间 `echo-rep`（api/web）。
 
 服务器使用自包含生产编排文件 `deploy/docker-compose.prod.yml`（db/api/web/proxy），
 db/api 不对公网暴露端口，仅 proxy 映射 80/443。

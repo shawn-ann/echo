@@ -6,8 +6,8 @@ on:
 
 env:
   REGISTRY: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com
-  API_IMAGE: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com/echo/api
-  WEB_IMAGE: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com/echo/web
+  API_IMAGE: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com/echo-rep/api
+  WEB_IMAGE: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com/echo-rep/web
 
 jobs:
   deploy:
@@ -160,10 +160,10 @@ jobs:
             fi
             echo "==> ACR 登录成功"
             echo "==> 检查 api 镜像可拉取性 ..."
-            if docker manifest inspect "$REGISTRY/echo/api:latest" >/dev/null 2>&1; then
+            if docker manifest inspect "$REGISTRY/echo-rep/api:latest" >/dev/null 2>&1; then
               echo "==> api 镜像可读"
             else
-              echo "::error::ACR 拉取失败：$REGISTRY/echo/api:latest 不可读，请确认命名空间 echo 与镜像已推送。"
+              echo "::error::ACR 拉取失败：$REGISTRY/echo-rep/api:latest 不可读，请确认命名空间 echo-rep 与镜像已推送。"
               exit 1
             fi
             compose_up() {

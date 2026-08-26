@@ -15,7 +15,7 @@ services:
       retries: 10
 
   api:
-    image: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com/echo/api:latest
+    image: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com/echo-rep/api:latest
     restart: always
     depends_on:
       db:
@@ -29,7 +29,7 @@ services:
       LLM_ENABLE_THINKING: ${LLM_ENABLE_THINKING:-false}
 
   web:
-    image: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com/echo/web:latest
+    image: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com/echo-rep/web:latest
     restart: always
     depends_on:
       - api
