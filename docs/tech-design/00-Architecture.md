@@ -238,6 +238,10 @@ correction_reports（纠错报告表，DB 持久化）
 
 > **开发环境（本地 Vite dev server）**：本地开发前端直连 `http://localhost:8000`（跨源），需 FastAPI 启用 CORS 中间件，仅放行开发源（如 `http://localhost:5173`）；生产经 nginx 同源反代，无需 CORS。
 
+> **生产环境（阿里云 ECS）**：采用 `deploy/docker-compose.prod.yml`（自包含：db/api/web/proxy），
+> 镜像由 GitHub Actions 构建推送阿里云 ACR，`proxy`（Caddy）在 web 前提供自动 HTTPS（域名 `echo.hootooa.com`），
+> db/api 不对公网暴露端口。完整部署说明见 [`deploy/README.md`](../../deploy/README.md)。
+
 ### 7.2 环境变量清单
 
 | 变量 | 用途 |
