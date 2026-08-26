@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 const USERNAME = 'demo'
-const PASSWORD = 'demo1234'
+const PASSWORD = 'anshuai1234567'
 
 async function fillAndSubmit(page: Page, username: string, password: string) {
   await page.getByLabel('用户名').fill(username)

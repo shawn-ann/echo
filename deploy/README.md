@@ -127,7 +127,7 @@ curl https://echo.hootooa.com/api/v1/health
 # {"status":"ok","db":"connected"}
 ```
 
-浏览器打开 `https://echo.hootooa.com` → `demo / demo1234` 登录 → 发一条英文纠错验证真实 LLM 链路。
+浏览器打开 `https://echo.hootooa.com` → 登录（内置账号 `demo`，密码见仓库 `backend/app/core/config.py` 的 `SEED_PASSWORD`）→ 发一条英文纠错验证真实 LLM 链路。
 ## 四、日常更新
 
 ```bash

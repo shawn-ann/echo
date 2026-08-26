@@ -123,7 +123,7 @@ User        Frontend          Backend              DB
 
 请求：
 ```json
-{ "username": "demo", "password": "demo1234" }
+{ "username": "demo", "password": "anshuai1234567" }
 ```
 响应 200：
 ```json

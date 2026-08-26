@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 const USERNAME = 'demo'
-const PASSWORD = 'demo1234'
+const PASSWORD = 'anshuai1234567'
 
 async function login(page: Page) {
   await page.goto('/login')

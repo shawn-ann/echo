@@ -7,7 +7,7 @@ from app.models.user import User, UserStatus
 
 
 async def seed_default_user(session: AsyncSession) -> None:
-    """幂等创建 MVP 固定种子账号（demo/demo1234，active）。"""
+    """幂等创建 MVP 固定种子账号（demo/anshuai1234567，active）。"""
     settings = get_settings()
     existing = await session.execute(
         select(User).where(User.username == settings.SEED_USERNAME)

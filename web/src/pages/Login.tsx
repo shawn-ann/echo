@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -113,9 +112,6 @@ export default function Login() {
           <Card className="w-full max-w-[400px] rounded-[14px] bg-white p-8 shadow-[0_2px_8px_rgba(33,37,41,0.06)]">
             <CardHeader className="px-0 pt-0">
               <CardTitle className="text-xl font-semibold">登录</CardTitle>
-              <CardDescription className="text-sm text-[#868e96]">
-                使用内置账号体验（demo / demo1234）
-              </CardDescription>
             </CardHeader>
             <CardContent className="px-0">
               <form onSubmit={handleSubmit} className="space-y-4">

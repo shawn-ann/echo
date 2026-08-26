@@ -33,7 +33,7 @@ alembic upgrade head      # 建表（首次或迁移后）
 uvicorn app.main:app --reload --port 8000
 ```
 
-服务启动后自动种子化内置固定账号 `demo / demo1234`。
+服务启动后自动种子化内置固定账号 `demo`（密码见 `backend/app/core/config.py`）。
 
 ### 3. 前端
 

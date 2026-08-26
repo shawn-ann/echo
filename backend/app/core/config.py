@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     # MVP 固定种子账号
     SEED_USERNAME: str = "demo"
-    SEED_PASSWORD: str = "demo1234"
+    SEED_PASSWORD: str = "anshuai1234567"
 
     @property
     def cors_origins(self) -> list[str]:
