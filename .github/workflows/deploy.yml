@@ -159,6 +159,14 @@ jobs:
               exit 1
             fi
             echo "==> GHCR 登录成功"
+            echo "==> 检查 api 镜像可拉取性 ..."
+            if docker manifest inspect "ghcr.io/shawn-ann/echo/api:latest" >/dev/null 2>&1; then
+              echo "==> api 镜像可读"
+            else
+              echo "::error::GHCR 拉取被拒：GHCR_PAT 无法读取 ghcr.io/shawn-ann/echo/api。"
+              echo "::error::请改用 Classic PAT（scopes: read:packages + write:packages），Fine-grained token 常对用户级包返回 denied。"
+              exit 1
+            fi
             compose_up() {
               docker compose --env-file "$DIR/.env" -f "$DIR/deploy/docker-compose.prod.yml" "$@"
             }
