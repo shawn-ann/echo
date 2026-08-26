@@ -5,9 +5,9 @@ on:
     branches: [v0.1]
 
 env:
-  REGISTRY: ghcr.io
-  API_IMAGE: ghcr.io/shawn-ann/echo/api
-  WEB_IMAGE: ghcr.io/shawn-ann/echo/web
+  REGISTRY: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com
+  API_IMAGE: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com/echo/api
+  WEB_IMAGE: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com/echo/web
 
 jobs:
   deploy:
@@ -15,7 +15,6 @@ jobs:
     environment: prod
     permissions:
       contents: read
-      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,12 +22,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to GHCR
+      - name: Login to Aliyun ACR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.ACR_USER }}
+          password: ${{ secrets.ACR_PASSWORD }}
 
       - name: Build & push api image
         uses: docker/build-push-action@v6
@@ -60,10 +59,10 @@ jobs:
           echo "  LLM_BASE_URL=${{ secrets.LLM_BASE_URL != '' }}"
           echo "  LLM_API_KEY=${{ secrets.LLM_API_KEY != '' }}"
           echo "  LLM_MODEL=${{ secrets.LLM_MODEL != '' }}"
-          echo "  GHCR_USER=${{ secrets.GHCR_USER != '' }}"
-          echo "  GHCR_PAT=${{ secrets.GHCR_PAT != '' }}"
+          echo "  ACR_USER=${{ secrets.ACR_USER != '' }}"
+          echo "  ACR_PASSWORD=${{ secrets.ACR_PASSWORD != '' }}"
           missing=""
-          for name in SSH_HOST SSH_USER SSH_KEY REPO_DEPLOY_KEY DB_PASSWORD LLM_BASE_URL LLM_API_KEY LLM_MODEL GHCR_USER GHCR_PAT; do
+          for name in SSH_HOST SSH_USER SSH_KEY REPO_DEPLOY_KEY DB_PASSWORD LLM_BASE_URL LLM_API_KEY LLM_MODEL ACR_USER ACR_PASSWORD; do
             case "$name" in
               SSH_HOST)          v="${{ secrets.SSH_HOST }}" ;;
               SSH_USER)          v="${{ secrets.SSH_USER }}" ;;
@@ -73,8 +72,8 @@ jobs:
               LLM_BASE_URL)      v="${{ secrets.LLM_BASE_URL }}" ;;
               LLM_API_KEY)       v="${{ secrets.LLM_API_KEY }}" ;;
               LLM_MODEL)         v="${{ secrets.LLM_MODEL }}" ;;
-              GHCR_USER)         v="${{ secrets.GHCR_USER }}" ;;
-              GHCR_PAT)          v="${{ secrets.GHCR_PAT }}" ;;
+              ACR_USER)          v="${{ secrets.ACR_USER }}" ;;
+              ACR_PASSWORD)      v="${{ secrets.ACR_PASSWORD }}" ;;
             esac
             if [ -z "$v" ]; then missing="$missing $name"; fi
           done
@@ -91,7 +90,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          envs: REPO_DEPLOY_KEY,DB_PASSWORD,LLM_BASE_URL,LLM_API_KEY,LLM_MODEL,GHCR_USER,GHCR_PAT
+          envs: REPO_DEPLOY_KEY,DB_PASSWORD,LLM_BASE_URL,LLM_API_KEY,LLM_MODEL,ACR_USER,ACR_PASSWORD
           script: |
             set -e
 
@@ -99,6 +98,7 @@ jobs:
             BRANCH=v0.1
             REPO_URL=git@github.com:shawn-ann/echo.git
             KEY_FILE="$HOME/.ssh/echo_deploy_key"
+            REGISTRY="crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com"
 
             echo "==> [0/6] 确保基础工具可用"
             if ! command -v git >/dev/null 2>&1; then
@@ -153,18 +153,17 @@ jobs:
               "$DB_PASSWORD" "$LLM_BASE_URL" "$LLM_API_KEY" "$LLM_MODEL" > .env
             echo "==> .env 已写入"
 
-            echo "==> [5/6] 登录 GHCR 并拉镜像部署"
-            if ! echo "$GHCR_PAT" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null 2>&1; then
-              echo "::error::GHCR 登录失败：检查 GHCR_USER/GHCR_PAT（PAT 需 read:packages 权限）"
+            echo "==> [5/6] 登录 ACR 并拉镜像部署"
+            if ! echo "$ACR_PASSWORD" | docker login "$REGISTRY" -u "$ACR_USER" --password-stdin >/dev/null 2>&1; then
+              echo "::error::ACR 登录失败：检查 ACR_USER/ACR_PASSWORD（需设置固定密码）"
               exit 1
             fi
-            echo "==> GHCR 登录成功"
+            echo "==> ACR 登录成功"
             echo "==> 检查 api 镜像可拉取性 ..."
-            if docker manifest inspect "ghcr.io/shawn-ann/echo/api:latest" >/dev/null 2>&1; then
+            if docker manifest inspect "$REGISTRY/echo/api:latest" >/dev/null 2>&1; then
               echo "==> api 镜像可读"
             else
-              echo "::error::GHCR 拉取被拒：GHCR_PAT 无法读取 ghcr.io/shawn-ann/echo/api。"
-              echo "::error::请改用 Classic PAT（scopes: read:packages + write:packages），Fine-grained token 常对用户级包返回 denied。"
+              echo "::error::ACR 拉取失败：$REGISTRY/echo/api:latest 不可读，请确认命名空间 echo 与镜像已推送。"
               exit 1
             fi
             compose_up() {
@@ -179,5 +178,5 @@ jobs:
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
-          GHCR_USER: ${{ secrets.GHCR_USER }}
-          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+          ACR_USER: ${{ secrets.ACR_USER }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}

@@ -1,15 +1,17 @@
-# 部署指南（阿里云 ECS · 单机 Docker Compose + GHCR + Caddy）
+# 部署指南（阿里云 ECS · 单机 Docker Compose + ACR + Caddy）
 
-**目标**：`git push origin v0.1` → GitHub Actions 自动构建镜像、推送到 GHCR、SSH 到服务器完成部署。
+**目标**：`git push origin v0.1` → GitHub Actions 自动构建镜像、推送到阿里云 ACR、SSH 到服务器完成部署。
 
 ## 架构
 
 ```
 开发者 ── git push v0.1 ─▶ GitHub Actions
-                             │ ① build api/web 镜像 → push GHCR
+                             │ ① build api/web 镜像 → push 阿里云 ACR
                              │ ② SSH 服务器: clone/pull → 写 .env → pull 镜像 → up -d
 ECS 2C2G: 80/443 ─▶ caddy(自动 HTTPS) ─▶ web:80(nginx) ─▶ api:8000 ─▶ db:5432
 ```
+
+镜像仓库：阿里云 ACR 个人版 `crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com`，命名空间 `echo`（api/web）。
 
 服务器使用自包含生产编排文件 `deploy/docker-compose.prod.yml`（db/api/web/proxy），
 db/api 不对公网暴露端口，仅 proxy 映射 80/443。
@@ -93,13 +95,8 @@ base64 < ~/.ssh/echo_deploy | pbcopy   # macOS 进剪贴板；Linux 用 base64 ~
 | `LLM_BASE_URL` | 百炼 compatible-mode 地址 |
 | `LLM_API_KEY` | 百炼 API Key |
 | `LLM_MODEL` | 如 `glm-5.2` |
-| `GHCR_USER` | GitHub 用户名（推送/拉取 GHCR 用） |
-| `GHCR_PAT` | GitHub PAT，需 `read:packages` 权限（服务器拉取私有镜像） |
-
-`GHCR_PAT` 创建：GitHub → `Settings → Developer settings → Personal access tokens → **Tokens (classic)** → Generate new token`，
-勾选 **`read:packages`** 和 **`write:packages`**（有效期按需），生成后复制为 secret。
-
-> ⚠️ 必须用 **Classic PAT**：Fine-grained token 对用户级 GHCR 包（`ghcr.io/shawn-ann/echo/*`）常出现「登录成功但拉取返回 denied」的问题。
+| `ACR_USER` | ACR 登录用户名（阿里云账号，如 `夏明湖畔的大雨荷`） |
+| `ACR_PASSWORD` | ACR **固定密码**（容器镜像服务 → 访问凭证 → 固定密码） |
 
 > 说明：secrets 配在 `prod` **环境**中（workflow 已 `environment: prod`）。`appleboy/ssh-action` 的 `envs` 需要配合步骤级 `env:` 映射才能把变量转发到服务器，已在 deploy.yml 中配置。
 
@@ -109,7 +106,7 @@ base64 < ~/.ssh/echo_deploy | pbcopy   # macOS 进剪贴板；Linux 用 base64 ~
 git push origin v0.1
 ```
 
-Actions 自动：构建 api/web 镜像 → 推 GHCR → SSH 服务器（首次自动 clone）→ 写 `.env` → `pull + up -d`。
+Actions 自动：构建 api/web 镜像 → 推阿里云 ACR → SSH 服务器（首次自动 clone）→ 写 `.env` → `pull + up -d`。
 
 ## 三、验证
 
