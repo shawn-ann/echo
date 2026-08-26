@@ -93,6 +93,12 @@ base64 < ~/.ssh/echo_deploy | pbcopy   # macOS 进剪贴板；Linux 用 base64 ~
 | `LLM_BASE_URL` | 百炼 compatible-mode 地址 |
 | `LLM_API_KEY` | 百炼 API Key |
 | `LLM_MODEL` | 如 `glm-5.2` |
+| `GHCR_USER` | GitHub 用户名（推送/拉取 GHCR 用） |
+| `GHCR_PAT` | GitHub PAT，需 `read:packages` 权限（服务器拉取私有镜像） |
+
+`GHCR_PAT` 创建：GitHub → `Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token`，选仓库 `shawn-ann/echo`，权限勾选 `Packages → Read packages` 和 `Metadata → Read`，生成后复制为 secret。
+
+> 说明：secrets 配在 `prod` **环境**中（workflow 已 `environment: prod`）。`appleboy/ssh-action` 的 `envs` 需要配合步骤级 `env:` 映射才能把变量转发到服务器，已在 deploy.yml 中配置。
 
 ## 二、首次部署
 

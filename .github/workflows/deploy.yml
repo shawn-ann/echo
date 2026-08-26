@@ -60,8 +60,10 @@ jobs:
           echo "  LLM_BASE_URL=${{ secrets.LLM_BASE_URL != '' }}"
           echo "  LLM_API_KEY=${{ secrets.LLM_API_KEY != '' }}"
           echo "  LLM_MODEL=${{ secrets.LLM_MODEL != '' }}"
+          echo "  GHCR_USER=${{ secrets.GHCR_USER != '' }}"
+          echo "  GHCR_PAT=${{ secrets.GHCR_PAT != '' }}"
           missing=""
-          for name in SSH_HOST SSH_USER SSH_KEY REPO_DEPLOY_KEY DB_PASSWORD LLM_BASE_URL LLM_API_KEY LLM_MODEL; do
+          for name in SSH_HOST SSH_USER SSH_KEY REPO_DEPLOY_KEY DB_PASSWORD LLM_BASE_URL LLM_API_KEY LLM_MODEL GHCR_USER GHCR_PAT; do
             case "$name" in
               SSH_HOST)          v="${{ secrets.SSH_HOST }}" ;;
               SSH_USER)          v="${{ secrets.SSH_USER }}" ;;
@@ -71,6 +73,8 @@ jobs:
               LLM_BASE_URL)      v="${{ secrets.LLM_BASE_URL }}" ;;
               LLM_API_KEY)       v="${{ secrets.LLM_API_KEY }}" ;;
               LLM_MODEL)         v="${{ secrets.LLM_MODEL }}" ;;
+              GHCR_USER)         v="${{ secrets.GHCR_USER }}" ;;
+              GHCR_PAT)          v="${{ secrets.GHCR_PAT }}" ;;
             esac
             if [ -z "$v" ]; then missing="$missing $name"; fi
           done
@@ -87,7 +91,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          envs: REPO_DEPLOY_KEY,DB_PASSWORD,LLM_BASE_URL,LLM_API_KEY,LLM_MODEL
+          envs: REPO_DEPLOY_KEY,DB_PASSWORD,LLM_BASE_URL,LLM_API_KEY,LLM_MODEL,GHCR_USER,GHCR_PAT
           script: |
             set -e
 
@@ -147,8 +151,25 @@ jobs:
             umask 077
             printf 'DB_PASSWORD=%s\nLLM_BASE_URL=%s\nLLM_API_KEY=%s\nLLM_MODEL=%s\n' \
               "$DB_PASSWORD" "$LLM_BASE_URL" "$LLM_API_KEY" "$LLM_MODEL" > .env
+            echo "==> .env 已写入"
 
-            echo "==> [5/6] 拉镜像并部署"
-            docker compose -f "$DIR/deploy/docker-compose.prod.yml" pull
-            docker compose -f "$DIR/deploy/docker-compose.prod.yml" up -d
-            docker compose -f "$DIR/deploy/docker-compose.prod.yml" ps
+            echo "==> [5/6] 登录 GHCR 并拉镜像部署"
+            if ! echo "$GHCR_PAT" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null 2>&1; then
+              echo "::error::GHCR 登录失败：检查 GHCR_USER/GHCR_PAT（PAT 需 read:packages 权限）"
+              exit 1
+            fi
+            echo "==> GHCR 登录成功"
+            compose_up() {
+              docker compose --env-file "$DIR/.env" -f "$DIR/deploy/docker-compose.prod.yml" "$@"
+            }
+            compose_up pull
+            compose_up up -d
+            compose_up ps
+        env:
+          REPO_DEPLOY_KEY: ${{ secrets.REPO_DEPLOY_KEY }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          GHCR_USER: ${{ secrets.GHCR_USER }}
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
