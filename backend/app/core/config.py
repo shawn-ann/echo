@@ -20,8 +20,8 @@ class Settings(BaseSettings):
     CORRECTION_STYLE: str = "casual"  # 纠错场景：casual（日常/职场口语，默认）/ formal（正式书面）
 
     # MVP 固定种子账号
-    SEED_USERNAME: str = "demo"
-    SEED_PASSWORD: str = "anshuai1234567"
+    SEED_USERNAME: str = "shawn"
+    SEED_PASSWORD: str = "shawn!QAZ1qaz"
 
     @property
     def cors_origins(self) -> list[str]:

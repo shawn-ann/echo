@@ -123,11 +123,11 @@ User        Frontend          Backend              DB
 
 请求：
 ```json
-{ "username": "demo", "password": "anshuai1234567" }
+{ "username": "shawn", "password": "shawn!QAZ1qaz" }
 ```
 响应 200：
 ```json
-{ "token": "<opaque-token>", "expires_at": "2026-09-07T12:00:00Z", "user": { "id": "...", "username": "demo" } }
+{ "token": "<opaque-token>", "expires_at": "2026-09-07T12:00:00Z", "user": { "id": "...", "username": "shawn" } }
 ```
 错误：`400`（参数缺失，`code: VALIDATION_ERROR`）、`401`（`code: AUTH_INVALID_CREDENTIALS`，「用户名或密码错误」；**deleted 账号同样返回此错误**，不泄露账号状态）、`403`（`code: AUTH_ACCOUNT_DISABLED`，「账号不可用」，disabled 账号）
 
@@ -140,7 +140,7 @@ User        Frontend          Backend              DB
 ### 4.3 GET /api/v1/auth/me（需鉴权）
 
 - 请求：`Authorization: Bearer <token>`
-- 响应 200：`{ "id": "...", "username": "demo" }`
+- 响应 200：`{ "id": "...", "username": "shawn" }`
 - 令牌有效校验 + 滑动续期；失败返回 401（`code: AUTH_TOKEN_EXPIRED` / `AUTH_UNAUTHORIZED`）
 
 ## 五、三态与错误处理
