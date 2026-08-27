@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type KeyboardEvent } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { useConversation } from '@/store/conversation-context'
@@ -38,6 +38,16 @@ export default function Composer() {
     }
   }
 
+  function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key !== 'Enter') return
+    // Shift+Enter：默认换行，不拦截
+    if (e.shiftKey) return
+    // IME 合成期（中文输入法选词）回车仅确认候选词，不触发发送
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return
+    e.preventDefault()
+    if (!disabled) handleSend()
+  }
+
   return (
     <div className="shrink-0 border-t border-[#dee2e6] bg-white px-4 py-3 md:px-8">
       <div className="mx-auto w-full">
@@ -50,6 +60,7 @@ export default function Composer() {
               setText(e.target.value)
               autoResize()
             }}
+            onKeyDown={handleKeyDown}
             placeholder="输入英文，AI 将为你纠错"
             rows={1}
             className="min-w-0 flex-1 resize-none rounded-lg border border-[#ced4da] bg-[#f8f9fa] px-3.5 py-2.5 text-base focus-visible:border-[#0ca678] focus-visible:ring-[#0ca678]/50"

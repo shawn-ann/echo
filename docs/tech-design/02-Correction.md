@@ -272,7 +272,7 @@ CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 │   │   ├── RewriteSection  （minimal 绿 ✏️ / natural 紫 ✨ 两虚线框 + CopyButton）
 │   │   └── LearningsSection（学到的规则：灰底分区，规则 rule + example wrong→correct 对照）
 │   └── LoadingBubble       （「AI 正在分析，请稍候…」）
-└── Composer                （多行自动延伸输入框 + n/2000 字数 + 发送按钮三态）
+└── Composer                （多行自动延伸输入框 + n/2000 字数 + 发送按钮三态；Enter 发送 / Shift+Enter 换行）
 ```
 
 ### 6.2 前端行为要点
@@ -283,6 +283,7 @@ CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 | 错误态 | `503/502/504/网络异常` → 「请求失败，请重试」；用户消息保留可重发 |
 | 空态 | 无消息时引导文案「输入英文，AI 将为你纠错」 |
 | 字数校验 | 超 2000 字符：字数标红 + 发送禁用，不截断输入（PRD §4.3） |
+| 键盘发送 | Enter 发送、Shift+Enter 换行；IME 合成期（`isComposing`/keyCode 229）回车仅确认候选词不触发；空/超限/加载态按 Enter 静默不发送（PRD §4.3 AC-C-17） |
 | 复制 | `navigator.clipboard.writeText` 复制改写整段；按钮变绿 ✓ 1-2s 消失；触控热区 ≥48px |
 | 状态管理 | 新增 conversation 状态（消息列表 + 加载/错误），沿用 auth-context 模式 |
 | 会话过期 | 401 → 沿用 01-Login §3.2 拦截：保留页面 + 提示重新登录，输入不丢失 |
@@ -297,8 +298,8 @@ CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 
 | 场景 | 反馈 | 保留内容 |
 |------|------|----------|
-| 输入为空 | 发送按钮禁用（防御文案「请输入内容」） | — |
-| 超 2000 字符 | 字数标红 + 发送禁用 | 输入全部保留 |
+| 输入为空 | 发送按钮禁用（防御文案「请输入内容」）；Enter 静默不发送 | — |
+| 超 2000 字符 | 字数标红 + 发送禁用；Enter 静默不发送 | 输入全部保留 |
 | 请求失败 | 「请求失败，请重试」 | 用户消息保留 |
 | LLM 超时 120s | 「AI 响应超时，请重试」 | 用户消息保留 |
 | 会话过期 | 「会话已过期，请重新登录」+ 重新登录入口 | 页面与输入保留 |
@@ -315,6 +316,9 @@ CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 | 历史加载 | 已登录 | 进入页面/刷新 | 全量正序，刷新后仍在 | AC-C-11/12 |
 | 超字数提交 | 已登录 | 输入 >2000 字符 | 字数标红 + 发送禁用，不截断 | AC-C-06 |
 | 多行输入 | 已登录 | 输入换行文本 | 输入框自动延伸增高 | AC-C-14 |
+| 键盘发送 | 已登录 | 按 Enter | 发送当前文本 | AC-C-17 |
+| 换行输入 | 已登录 | 按 Shift+Enter | 输入框内换行不发送 | AC-C-17 |
+| IME 合成期回车 | 已登录 | 中文输入法候选词期按 Enter | 仅确认候选词，不触发发送 | AC-C-17 |
 | 复制改写 | 已登录 | 点击复制按钮 | 一键复制整段 + 「已复制」反馈 | AC-C-15 |
 | 请求失败 | 已登录 | 服务异常/LLM 异常 | 「请求失败，请重试」，消息保留 | AC-C-08 |
 | 会话过期提交 | 已过期 | 提交纠错 | 401 保留页面，提示重新登录，输入不丢失 | AC-L-08 / AC-C-08 |
@@ -354,6 +358,8 @@ CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 | U-C-08 | 点击改写复制按钮 | 复制整段 + 「已复制」反馈 | AC-C-15 |
 | U-C-09 | 刷新页面 | 历史全量加载，滚动到底部 | AC-C-11 |
 | U-C-10 | 手机宽度 | 布局正常 | 响应式规范 |
+| U-C-11 | 输入英文按 Enter | 发送，进入加载态 | AC-C-17 |
+| U-C-12 | 输入英文按 Shift+Enter | 输入框换行，不发送 | AC-C-17 |
 
 ### 9.3 验证顺序
 
@@ -364,6 +370,8 @@ CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 ---
 
 **变更记录**
+
+- V0.5 · 2026-08 · 恢复回车发送：§6.1 组件树 Composer 注释补充 Enter 发送/Shift+Enter 换行；§6.2 前端行为表新增「键盘发送」行；§七 三态表「输入为空/超限」补充 Enter 静默不发送；§八 场景矩阵新增键盘发送/换行/IME 合成期三条；§9.2 UI 验证新增 U-C-11/12（同步 Correction V2.8 / Overview V2.11）
 
 - V0.4 · 2026-08 · 单轮纠错改造：移除 intent/reply/追问；新输出契约（errors 去 category 加 error_type、rewrite 用 note、learnings {rule, example}、无错误 rewrite=null）；LLM 调用参数 temperature=0 + response_format + enable_thinking=false、模型 glm-5.2；messages.type 枚举移除 follow_up/reply（同步 Correction V2.7 / Overview V2.10）
 - V0.3 · 2026-08 · §1.2/§2.4 契约与数据示例新增 learnings（学到的规则）结构；§6.1 组件树补 LearningsSection（同步 Correction V2.6 / Overview V2.9）
