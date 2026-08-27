@@ -8,7 +8,7 @@
 |----|------|
 | 前端 | React 19 + Vite + TypeScript + TailwindCSS + shadcn/ui |
 | 后端 | Python FastAPI + SQLAlchemy(async) + Pydantic |
-| 数据库 | PostgreSQL 16 |
+| 数据库 | PostgreSQL 15 |
 | LLM | OpenAI 兼容 API（可配置，登录阶段未使用） |
 | 部署 | Docker Compose（db / api / web） |
 

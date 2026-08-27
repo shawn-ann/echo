@@ -227,7 +227,7 @@ correction_reports（纠错报告表，DB 持久化）
 
 | 服务 | 镜像 | 端口 | 依赖 |
 |------|------|------|------|
-| `db` | postgres:16 | 5432（内部） | — |
+| `db` | postgres:15-alpine | 5432（内部） | — |
 | `api` | backend Dockerfile | 8000（内部） | db |
 | `web` | nginx（托管 SPA + 反代） | 80 | api |
 
@@ -244,17 +244,28 @@ correction_reports（纠错报告表，DB 持久化）
 
 ### 7.2 环境变量清单
 
-| 变量 | 用途 |
-|------|------|
-| `DATABASE_URL` | PostgreSQL 连接串 |
-| `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | LLM 配置 |
-| `SESSION_TTL_DAYS` | 会话有效期（默认 30） |
-| `CONTEXT_LIMIT` | LLM 上下文最近 N 条（默认 **40**） |
+> 完整定义见 `backend/app/core/config.py`；生产注入由 `deploy/docker-compose.prod.yml` + 服务器 `.env` 完成。
+
+| 变量 | 用途 | 默认值 |
+|------|------|--------|
+| `DATABASE_URL` | PostgreSQL 连接串 | `postgresql+asyncpg://echo:echo@localhost:5432/echo` |
+| `CORS_ORIGINS` | 允许的前端源（逗号分隔，本地开发用） | `http://localhost:5173` |
+| `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | LLM 服务地址、密钥、模型名 | 空（真实调用需配置） |
+| `LLM_MODE` | `""`=真实调用；`mock`=确定性 Mock（测试/演示） | `""` |
+| `LLM_TEMPERATURE` | 采样温度 | `0` |
+| `LLM_ENABLE_THINKING` | 是否开启模型思考模式 | `false` |
+| `CONTEXT_LIMIT` | LLM 上下文最近 N 条 | **40** |
+| `SESSION_TTL_DAYS` | 会话有效期（天） | 30 |
+| `CORRECTION_STYLE` | 纠错场景（casual/formal，当前固定 casual） | `casual` |
+| `SEED_USERNAME` / `SEED_PASSWORD` | MVP 内置种子账号（幂等创建） | `shawn` / `shawn!QAZ1qaz` |
 
 ### 7.3 日志与成本控制
 
-- 结构化日志（请求 ID、耗时、token 用量）
-- 成本控制：上下文触顶截断、错误分类契约化减少重复生成、预留限流（429）
+> 当前 MVP 实现状态：
+
+- **日志**：目前仅 FastAPI 默认访问日志 + uvicorn 日志，**尚未实现**结构化日志（请求 ID、耗时、token 用量）；属后期增强项
+- **成本控制（已实现）**：上下文触顶截断（`CONTEXT_LIMIT` 取最近 N 条）、错误分类契约化（`{code,message,details}`）减少重复生成
+- **限流（429）**：**未实现**，预留项
 
 ## 八、跨模块 Scenario 总览
 
@@ -270,11 +281,11 @@ correction_reports（纠错报告表，DB 持久化）
 
 ## 九、系统级验证（冒烟）
 
-> 功能级验证（API 契约 + UI 走查）见各功能文档「验证方式」章节。此处为**系统级冒烟**，验证三服务编排与全链路连通。
+> 功能级验证（API 契约 + UI 走查）见各功能文档「验证方式」章节。此处为**本地开发的系统级冒烟**，验证三服务编排与全链路连通。生产环境验证（4 容器含 proxy + HTTPS）见 [`deploy/README.md`](../../deploy/README.md) §三。
 
 | # | 检查项 | 操作 | 预期 |
 |---|--------|------|------|
-| S-01 | 服务编排 | `docker compose up -d` | db/api/web 三容器健康启动，web 映射 80 |
+| S-01 | 服务编排 | `docker compose up -d`（本地开发 compose） | db/api/web 三容器健康启动，web 映射 80 |
 | S-02 | 数据库初始化 | 检查容器日志 | alembic 迁移成功，种子账号已创建 |
 | S-03 | 健康检查 | `GET /api/v1/health` | 200，返回 db 连接状态 |
 | S-04 | 静态资源 | 浏览器访问 `/` | 加载 SPA 登录页 |
@@ -285,6 +296,8 @@ correction_reports（纠错报告表，DB 持久化）
 ---
 
 **变更记录**
+
+- V1.0 · 2026-08 · §7.1 `db` 镜像 postgres:16 → postgres:15-alpine（与开发/生产 compose 一致）；§7.2 环境变量清单补全（LLM_MODE/TEMPERATURE/ENABLE_THINKING、CORS_ORIGINS、CORRECTION_STYLE、SEED_USERNAME/PASSWORD）；§7.3 标注结构化日志与限流为未实现规划项；§九 明确为本地开发冒烟视角，生产验证指向 deploy/README
 
 - V0.9 · 2026-08 · §4.2.1 correction_reports.structure 示例补充「学到的规则」字段（learnings，同步 Correction V2.6 / 技术设计 02-Correction V0.3）
 
