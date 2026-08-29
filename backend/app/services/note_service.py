@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
+from app.models.message import Message
 from app.models.note import Note, NoteCase
 from app.prompts.note_prompt import build_note_system_prompt, build_note_user_content
 from app.schemas.note import (
@@ -56,6 +57,10 @@ async def save_notes(
 ) -> list[SavedNoteItem]:
     existing_rules = await _get_existing_rule_titles(session)
     parsed = await _call_llm_and_parse(llm_client, existing_rules, source_text, errors)
+
+    # source_message_id 仅作溯源链接（spec: UUID|None, SET NULL）；若消息不存在则置空，避免外键违约
+    if source_message_id is not None and (await session.get(Message, source_message_id)) is None:
+        source_message_id = None
 
     saved: list[SavedNoteItem] = []
     for result in parsed.results:

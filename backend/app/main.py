@@ -9,7 +9,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.db import async_session_factory
-from app.routers import auth, health, messages
+from app.routers import auth, health, messages, notes
 
 
 def _error_response(status_code: int, code: str, message: str, details: dict | None = None):
@@ -43,6 +43,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(messages.router)
+    app.include_router(notes.router)
 
     @app.exception_handler(AppError)
     async def app_error_handler(_: Request, exc: AppError):
