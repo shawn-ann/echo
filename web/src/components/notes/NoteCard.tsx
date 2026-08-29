@@ -15,6 +15,7 @@ export default function NoteCard({ note, onNoteDeleted }: Props) {
   const [detail, setDetail] = useState<NoteDetailResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [caseCount, setCaseCount] = useState(note.case_count)
 
   async function toggleExpand() {
     if (!expanded && !detail) {
@@ -31,7 +32,7 @@ export default function NoteCard({ note, onNoteDeleted }: Props) {
     setExpanded(!expanded)
   }
 
-  async function handleCaseDeleted(caseId: string) {
+  async function handleCaseDeleted(caseId: string): Promise<boolean> {
     try {
       await deleteNoteCase(note.id, caseId)
       if (detail) {
@@ -40,10 +41,12 @@ export default function NoteCard({ note, onNoteDeleted }: Props) {
           onNoteDeleted(note.id)
         } else {
           setDetail({ ...detail, cases: newCases })
+          setCaseCount((prev) => prev - 1)
         }
       }
+      return true
     } catch {
-      // 静默
+      return false
     }
   }
 
@@ -63,7 +66,7 @@ export default function NoteCard({ note, onNoteDeleted }: Props) {
           <p className="text-sm font-semibold text-[#343a40]">{note.rule_title}</p>
           <p className="mt-0.5 line-clamp-1 text-xs text-[#868e96]">{note.description}</p>
           <p className="mt-1 text-xs text-[#adb5bd]">
-            {note.case_count} 个案例 · 最近更新 {new Date(note.updated_at).toLocaleDateString()}
+            {caseCount} 个案例 · 最近更新 {new Date(note.updated_at).toLocaleDateString()}
           </p>
         </button>
         <span className="text-[#adb5bd]">{expanded ? '▲' : '▼'}</span>

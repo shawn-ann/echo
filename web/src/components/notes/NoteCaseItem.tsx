@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 interface Props {
   caseItem: NoteCaseItem
   noteId: string
-  onDeleted: (caseId: string) => void
+  onDeleted: (caseId: string) => Promise<boolean>
 }
 
 export default function NoteCaseItem({ caseItem, onDeleted }: Props) {
@@ -16,7 +16,11 @@ export default function NoteCaseItem({ caseItem, onDeleted }: Props) {
 
   async function handleDelete() {
     setDeleting(true)
-    onDeleted(caseItem.id)
+    const ok = await onDeleted(caseItem.id)
+    if (!ok) {
+      setDeleting(false)
+      setConfirming(false)
+    }
   }
 
   return (
