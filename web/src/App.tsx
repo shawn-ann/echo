@@ -1,8 +1,10 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { AuthGuard, GuestGuard } from '@/components/AuthGuard'
+import AppLayout from '@/components/AppLayout'
 import CorrectionPage from '@/pages/CorrectionPage'
 import Login from '@/pages/Login'
+import NotesPage from '@/pages/NotesPage'
 import { useAuth } from '@/store/auth-context'
 import { AuthProvider } from '@/store/auth'
 import { ConversationProvider } from '@/store/conversation'
@@ -23,14 +25,17 @@ export default function App() {
             <Route path="/login" element={<Login />} />
           </Route>
           <Route element={<AuthGuard />}>
-            <Route
-              path="/correction"
-              element={
-                <ConversationProvider>
-                  <CorrectionPage />
-                </ConversationProvider>
-              }
-            />
+            <Route element={<AppLayout />}>
+              <Route
+                path="/correction"
+                element={
+                  <ConversationProvider>
+                    <CorrectionPage />
+                  </ConversationProvider>
+                }
+              />
+              <Route path="/notes" element={<NotesPage />} />
+            </Route>
           </Route>
           <Route path="*" element={<RootRedirect />} />
         </Routes>
