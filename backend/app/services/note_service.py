@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 
 from pydantic import ValidationError
 from sqlalchemy import func, select
@@ -77,6 +78,7 @@ async def save_notes(
             )
             session.add(case)
             await session.flush()
+            note.updated_at = datetime.now(timezone.utc)
             saved.append(SavedNoteItem(note_id=note.id, rule_title=note.rule_title, is_new=False, case_id=case.id))
         else:
             note = Note(rule_title=result.rule_title, description=result.description)
