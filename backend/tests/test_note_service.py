@@ -242,3 +242,58 @@ async def test_delete_case_removes_single_case():
     async with async_session_factory() as s:
         notes = await list_notes(s, uid)
         assert notes[0].case_count == 1
+
+
+async def test_delete_note_keeps_other_user_cases():
+    from app.core.security import hash_password
+    from app.models.user import UserStatus
+
+    async with async_session_factory() as s:
+        s.add(User(username="carol2", password_hash=hash_password("c1234"), status=UserStatus.active))
+        await s.commit()
+        carol = (await s.execute(select(User).where(User.username == "carol2"))).scalar_one()
+    uid = await _demo_user_id()
+    # demo creates a note
+    async with async_session_factory() as s:
+        mock = MockLLMClient(responder=_mock_responder_new_rule)
+        await save_notes(s, uid, None, "src", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
+        notes = await list_notes(s, uid)
+        note_id = notes[0].id
+    # carol adds a case to the same note (by reusing the same rule_title)
+    async with async_session_factory() as s:
+        from app.models.note import NoteCase as NC
+        s.add(NC(note_id=note_id, user_id=carol.id, example="carol example", source_text="carol src"))
+        await s.commit()
+    # demo deletes their note
+    async with async_session_factory() as s:
+        await delete_note(s, uid, note_id)
+    # carol's case survives
+    async with async_session_factory() as s:
+        carol_detail = await get_note_detail(s, carol.id, note_id)
+        assert carol_detail is not None
+        assert len(carol_detail.cases) == 1
+
+
+async def test_delete_case_other_user_is_noop():
+    from app.core.security import hash_password
+    from app.models.user import UserStatus
+
+    async with async_session_factory() as s:
+        s.add(User(username="dave2", password_hash=hash_password("d1234"), status=UserStatus.active))
+        await s.commit()
+        dave = (await s.execute(select(User).where(User.username == "dave2"))).scalar_one()
+    uid = await _demo_user_id()
+    async with async_session_factory() as s:
+        mock = MockLLMClient(responder=_mock_responder_new_rule)
+        await save_notes(s, uid, None, "src", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
+        notes = await list_notes(s, uid)
+        detail = await get_note_detail(s, uid, notes[0].id)
+        case_id = detail.cases[0].id
+    # dave tries to delete demo's case — should be a no-op
+    async with async_session_factory() as s:
+        await delete_case(s, dave.id, case_id)
+    # demo's case still exists
+    async with async_session_factory() as s:
+        detail = await get_note_detail(s, uid, notes[0].id)
+        assert detail is not None
+        assert len(detail.cases) == 1

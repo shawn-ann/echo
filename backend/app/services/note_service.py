@@ -101,11 +101,12 @@ async def list_notes(session: AsyncSession, user_id: uuid.UUID) -> list[NoteList
                 Note.description,
                 func.count(NoteCase.id).label("case_count"),
                 Note.updated_at,
+                func.max(NoteCase.created_at).label("last_case_at"),
             )
             .join(NoteCase, NoteCase.note_id == Note.id)
             .where(NoteCase.user_id == user_id)
             .group_by(Note.id)
-            .order_by(Note.updated_at.desc())
+            .order_by(func.max(NoteCase.created_at).desc())
         )
     ).all()
     return [
