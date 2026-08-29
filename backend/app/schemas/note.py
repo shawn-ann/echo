@@ -3,18 +3,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-
-class ErrorBlockInput(BaseModel):
-    error_type: str
-    fragment: str
-    explanation: str
-    correction: str
+from app.schemas.correction import ErrorBlock
 
 
 class SaveNoteRequest(BaseModel):
     message_id: uuid.UUID
     source_text: str = Field(min_length=1, max_length=2000)
-    errors: list[ErrorBlockInput] = Field(min_length=1)
+    errors: list[ErrorBlock] = Field(min_length=1)
 
 
 class NoteRuleResult(BaseModel):
