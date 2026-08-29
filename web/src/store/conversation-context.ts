@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 
-import type { Message } from '@/api/messages'
+import type { ErrorBlock, Message } from '@/api/messages'
 
 export interface ConversationState {
   messages: Message[]
@@ -11,6 +11,11 @@ export interface ConversationState {
   send: (content: string) => Promise<boolean>
   retry: (tempId: string, content: string) => Promise<boolean>
   relogin: () => void
+  saveNote: (
+    messageId: string,
+    sourceText: string,
+    errors: ErrorBlock[],
+  ) => Promise<{ success: boolean; ruleTitles?: string[]; error?: string }>
 }
 
 export const ConversationContext = createContext<ConversationState | null>(null)

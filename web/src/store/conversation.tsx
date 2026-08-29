@@ -9,6 +9,8 @@ import {
 import { useNavigate } from 'react-router-dom'
 
 import * as messagesApi from '@/api/messages'
+import type { ErrorBlock } from '@/api/messages'
+import * as notesApi from '@/api/notes'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/store/auth-context'
 import { ConversationContext } from '@/store/conversation-context'
@@ -105,9 +107,31 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     navigate('/login', { replace: true })
   }, [logout, navigate])
 
+  const saveNote = useCallback(
+    async (
+      messageId: string,
+      sourceText: string,
+      errors: ErrorBlock[],
+    ): Promise<{ success: boolean; ruleTitles?: string[]; error?: string }> => {
+      try {
+        const result = await notesApi.saveNote(messageId, sourceText, errors)
+        return {
+          success: true,
+          ruleTitles: result.saved_notes.map((n) => n.rule_title),
+        }
+      } catch (err) {
+        return {
+          success: false,
+          error: err instanceof ApiError ? err.message : '保存失败，请重试',
+        }
+      }
+    },
+    [],
+  )
+
   const value = useMemo(
-    () => ({ messages, pending, error, sessionExpired, load, send, retry, relogin }),
-    [messages, pending, error, sessionExpired, load, send, retry, relogin],
+    () => ({ messages, pending, error, sessionExpired, load, send, retry, relogin, saveNote }),
+    [messages, pending, error, sessionExpired, load, send, retry, relogin, saveNote],
   )
   return <ConversationContext.Provider value={value}>{children}</ConversationContext.Provider>
 }
