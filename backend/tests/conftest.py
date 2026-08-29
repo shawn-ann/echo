@@ -15,6 +15,8 @@ from app.models.user import User, UserStatus
 async def drop_all_tables():
     async with engine.begin() as conn:
         for name in (
+            "note_cases",
+            "notes",
             "messages",
             "correction_reports",
             "session_conversations",
@@ -60,7 +62,7 @@ async def setup_db():
 @pytest_asyncio.fixture(autouse=True)
 async def clean_sessions():
     async with async_session_factory() as session:
-        await session.execute(text("TRUNCATE sessions, messages, correction_reports, session_conversations"))
+        await session.execute(text("TRUNCATE note_cases, notes, sessions, messages, correction_reports, session_conversations"))
         await session.commit()
     yield
 
