@@ -1,13 +1,19 @@
 import uuid
 
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
 from app.models.note import Note, NoteCase
 from app.prompts.note_prompt import build_note_system_prompt, build_note_user_content
-from app.schemas.note import NoteLLMResponse, SavedNoteItem
+from app.schemas.note import (
+    NoteCaseItem,
+    NoteDetailResponse,
+    NoteListItem,
+    NoteLLMResponse,
+    SavedNoteItem,
+)
 from app.services.llm_client import LLMClient, LLMTimeoutError, LLMUnavailableError
 
 
@@ -84,3 +90,73 @@ async def save_notes(
 
     await session.commit()
     return saved
+
+
+async def list_notes(session: AsyncSession, user_id: uuid.UUID) -> list[NoteListItem]:
+    rows = (
+        await session.execute(
+            select(
+                Note.id,
+                Note.rule_title,
+                Note.description,
+                func.count(NoteCase.id).label("case_count"),
+                Note.updated_at,
+            )
+            .join(NoteCase, NoteCase.note_id == Note.id)
+            .where(NoteCase.user_id == user_id)
+            .group_by(Note.id)
+            .order_by(Note.updated_at.desc())
+        )
+    ).all()
+    return [
+        NoteListItem(
+            id=r.id, rule_title=r.rule_title, description=r.description,
+            case_count=r.case_count, updated_at=r.updated_at,
+        )
+        for r in rows
+    ]
+
+
+async def get_note_detail(
+    session: AsyncSession, user_id: uuid.UUID, note_id: uuid.UUID
+) -> NoteDetailResponse | None:
+    note = await session.get(Note, note_id)
+    if note is None:
+        return None
+    cases = (
+        await session.execute(
+            select(NoteCase)
+            .where(NoteCase.note_id == note_id, NoteCase.user_id == user_id)
+            .order_by(NoteCase.created_at)
+        )
+    ).scalars().all()
+    if not cases:
+        return None
+    return NoteDetailResponse(
+        id=note.id,
+        rule_title=note.rule_title,
+        description=note.description,
+        cases=[
+            NoteCaseItem(id=c.id, example=c.example, source_text=c.source_text, created_at=c.created_at)
+            for c in cases
+        ],
+    )
+
+
+async def delete_note(session: AsyncSession, user_id: uuid.UUID, note_id: uuid.UUID) -> None:
+    cases = (
+        await session.execute(
+            select(NoteCase).where(NoteCase.note_id == note_id, NoteCase.user_id == user_id)
+        )
+    ).scalars().all()
+    for c in cases:
+        await session.delete(c)
+    await session.commit()
+
+
+async def delete_case(session: AsyncSession, user_id: uuid.UUID, case_id: uuid.UUID) -> None:
+    case = await session.get(NoteCase, case_id)
+    if case is None or case.user_id != user_id:
+        return
+    await session.delete(case)
+    await session.commit()

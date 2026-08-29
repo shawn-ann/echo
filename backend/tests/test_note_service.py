@@ -143,3 +143,102 @@ async def test_save_invalid_llm_response_raises_502():
         with pytest.raises(AppError) as exc_info:
             await save_notes(s, uid, None, "x", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
         assert exc_info.value.status_code == 502
+
+
+from app.services.note_service import list_notes, get_note_detail, delete_note, delete_case
+
+
+async def test_list_notes_returns_user_notes_with_count():
+    uid = await _demo_user_id()
+    async with async_session_factory() as s:
+        mock = MockLLMClient(responder=_mock_responder_two_rules)
+        await save_notes(s, uid, None, "src", [
+            {"error_type": "t", "fragment": "f1", "explanation": "e", "correction": "c"},
+            {"error_type": "t", "fragment": "f2", "explanation": "e", "correction": "c"},
+        ], mock)
+    async with async_session_factory() as s:
+        notes = await list_notes(s, uid)
+        assert len(notes) == 2
+        assert all(n.case_count == 1 for n in notes)
+
+
+async def test_list_notes_isolates_by_user():
+    from app.core.security import hash_password
+    from app.models.user import UserStatus
+
+    async with async_session_factory() as s:
+        s.add(User(username="alice2", password_hash=hash_password("a1234"), status=UserStatus.active))
+        await s.commit()
+        alice = (await s.execute(select(User).where(User.username == "alice2"))).scalar_one()
+    uid = await _demo_user_id()
+    async with async_session_factory() as s:
+        mock = MockLLMClient(responder=_mock_responder_new_rule)
+        await save_notes(s, uid, None, "src", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
+    async with async_session_factory() as s:
+        alice_notes = await list_notes(s, alice.id)
+        assert alice_notes == []
+
+
+async def test_get_note_detail_includes_cases():
+    uid = await _demo_user_id()
+    async with async_session_factory() as s:
+        mock = MockLLMClient(responder=_mock_responder_new_rule)
+        await save_notes(s, uid, None, "I interested in read", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
+    async with async_session_factory() as s:
+        notes = await list_notes(s, uid)
+        detail = await get_note_detail(s, uid, notes[0].id)
+        assert detail.rule_title == "介词后加 -ing 形式"
+        assert len(detail.cases) == 1
+        assert detail.cases[0].source_text == "I interested in read"
+
+
+async def test_get_note_detail_other_user_returns_none():
+    from app.core.security import hash_password
+    from app.models.user import UserStatus
+
+    async with async_session_factory() as s:
+        s.add(User(username="bob2", password_hash=hash_password("b1234"), status=UserStatus.active))
+        await s.commit()
+        bob = (await s.execute(select(User).where(User.username == "bob2"))).scalar_one()
+    uid = await _demo_user_id()
+    async with async_session_factory() as s:
+        mock = MockLLMClient(responder=_mock_responder_new_rule)
+        await save_notes(s, uid, None, "src", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
+        notes = await list_notes(s, uid)
+        note_id = notes[0].id
+    async with async_session_factory() as s:
+        detail = await get_note_detail(s, bob.id, note_id)
+        assert detail is None
+
+
+async def test_delete_note_removes_user_cases_keeps_global():
+    uid = await _demo_user_id()
+    async with async_session_factory() as s:
+        mock = MockLLMClient(responder=_mock_responder_new_rule)
+        await save_notes(s, uid, None, "src", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
+        notes = await list_notes(s, uid)
+        note_id = notes[0].id
+    async with async_session_factory() as s:
+        await delete_note(s, uid, note_id)
+    async with async_session_factory() as s:
+        assert await s.get(Note, note_id) is not None  # 全局规则保留
+        cases = (await s.execute(select(NoteCase).where(NoteCase.note_id == note_id))).scalars().all()
+        assert all(c.user_id != uid for c in cases)
+
+
+async def test_delete_case_removes_single_case():
+    uid = await _demo_user_id()
+    async with async_session_factory() as s:
+        mock = MockLLMClient(responder=_mock_responder_new_rule)
+        await save_notes(s, uid, None, "first", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
+    async with async_session_factory() as s:
+        mock2 = MockLLMClient(responder=_mock_responder_existing_rule)
+        await save_notes(s, uid, None, "second", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock2)
+    async with async_session_factory() as s:
+        notes = await list_notes(s, uid)
+        detail = await get_note_detail(s, uid, notes[0].id)
+        case_id = detail.cases[0].id
+        await delete_case(s, uid, case_id)
+    async with async_session_factory() as s:
+        notes = await list_notes(s, uid)
+        assert notes[0].case_count == 1
