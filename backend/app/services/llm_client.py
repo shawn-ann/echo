@@ -65,9 +65,26 @@ class RealLLMClient(LLMClient):
 
 
 def _default_responder(messages: list[dict[str, Any]]) -> str:
-    """Mock 默认响应：含 no-error 标记→无错误报告（rewrite=null）；其余→纠错报告。"""
+    """Mock 默认响应：区分纠错请求与笔记保存请求。"""
     user_contents = [m["content"] for m in messages if m.get("role") == "user"]
     last = user_contents[-1] if user_contents else ""
+
+    # 笔记保存请求（note_prompt 的 user content 含「## 原文」标记）
+    if "## 原文" in last and "## 错误列表" in last:
+        return json.dumps(
+            {
+                "results": [
+                    {
+                        "rule_title": "介词后加 -ing 形式",
+                        "description": "英语中介词后接动词时需用动名词形式(-ing)而非不定式。",
+                        "example": "interested in read → interested in reading",
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        )
+
+    # 纠错请求
     if "没有错误" in last or "no-error" in last:
         return json.dumps(
             {

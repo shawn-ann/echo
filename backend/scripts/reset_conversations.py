@@ -14,7 +14,9 @@ from app.db import async_session_factory
 
 async def main() -> None:
     async with async_session_factory() as s:
-        await s.execute(text("TRUNCATE messages, correction_reports, session_conversations"))
+        await s.execute(
+            text("TRUNCATE messages, correction_reports, session_conversations, notes, note_cases")
+        )
         await s.commit()
 
 
