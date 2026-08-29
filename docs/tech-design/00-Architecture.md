@@ -1,7 +1,7 @@
 # 整体架构设计文档（00-Architecture）
 
 **产品**：地道英语纠错 · 智能笔记本
-**版本**：V0.9 | **状态**：草稿 | **日期**：2026年8月
+**版本**：V1.1 | **状态**：草稿 | **日期**：2026年8月
 **对应 PRD**：`PRD/Overview.md`（总纲）、`PRD/pages/01-Login.md`、`PRD/pages/02-Correction.md`
 
 > 本文档为技术设计总纲，回答「系统如何搭建」，定义**顶层契约**（技术选型、项目结构、数据契约、接口约定、AI 接入契约、部署）。功能级详细设计（页面组件、业务流程、场景矩阵）见各功能设计文档：
@@ -56,10 +56,10 @@
 
 | 模块 | 位置 | 职责 |
 |------|------|------|
-| `web` 前端 | `backend/` 之外独立工程 | 登录页、纠错主页；状态管理、组件、API 客户端 |
-| `api` 后端 | `backend/` | 认证、会话/消息 CRUD、AI 编排（意图判定/纠错报告/追问）、错误处理 |
-| `db` 数据库 | PostgreSQL | users/sessions/messages/reports 持久化 |
-| `llm` 外部服务 | OpenAI 兼容 | 文本纠错与问答生成 |
+| `web` 前端 | `backend/` 之外独立工程 | 登录页、纠错主页、笔记列表页（`AppLayout` 左侧 sidebar 导航 + 退出）；状态管理、组件、API 客户端 |
+| `api` 后端 | `backend/` | 认证、会话/消息 CRUD、笔记（保存去重/列表/详情/删除）、AI 编排（意图判定/纠错报告/追问/笔记规则归纳）、错误处理 |
+| `db` 数据库 | PostgreSQL | users/sessions/messages/reports/notes/note_cases 持久化 |
+| `llm` 外部服务 | OpenAI 兼容 | 文本纠错、问答生成、笔记规则归纳与去重匹配 |
 
 ### 2.3 请求链路
 
@@ -115,6 +115,8 @@ echo/
 | `session_conversations` | 对话（会话流，DB 持久化） | `02-Correction.md` 细化 |
 | `messages` | 消息（含消息 ID，DB 持久化） | `02-Correction.md` 细化 |
 | `correction_reports` | 纠错报告（独立对象，自带 ID，DB 持久化） | `02-Correction.md` 细化 |
+| `notes` | 全局规则库（跨用户共享，按 `rule_title` 语义唯一，含标题/说明） | 本文件 §4.4 细化 |
+| `note_cases` | 个人案例（引用全局笔记，含例句/来源文本，按账号隔离） | 本文件 §4.4 细化 |
 
 ### 4.2 会话与消息（顶层约定）
 
@@ -162,6 +164,19 @@ correction_reports（纠错报告表，DB 持久化）
 - **数据库始终存全量历史**
 - LLM 上下文：取当前会话**最近 N 条消息**（N 具体值由 `02-Correction.md` 或实现配置定义），防止上下文窗口溢出
 - 不牺牲历史完整性：展示仍加载全量，仅送入 LLM 的上下文做截断
+
+### 4.4 笔记数据模型（记笔记 F-02）
+
+> 记笔记：从纠错结果一键保存「学到的规则」为笔记，供后续复习（F-03）使用。规则与案例分离：`notes` 为**全局规则库**（跨用户共享），`note_cases` 为**个人案例**（按账号隔离）。
+
+| 表 | 字段 | 说明 |
+|----|------|------|
+| `notes` | `id`(UUID) / `rule_title` / `description` / `created_at` / `updated_at` | 全局规则库，无 `user_id`；保存时按 `rule_title` 去重（命中则复用，不新建） |
+| `note_cases` | `id`(UUID) / `note_id`(FK→`notes.id`, **CASCADE**) / `user_id`(FK→`users.id`, **CASCADE**) / `example` / `source_text` / `source_message_id`(FK→`messages.id`, **SET NULL**) / `created_at` | 个人案例，一条案例对应一位用户的一条错题记录；删消息不删案例 |
+
+- **保存链路**：`POST /api/v1/notes/save` 携带 `message_id`/`source_text`/`errors` → 单次 LLM 调用归纳规则 + 去重匹配（复用 `LLMClient`，错误处理与纠错一致：504 超时 / 503 不可用 / 502 响应无效）→ 命中已有规则仅追加 `note_cases`，未命中先建 `notes` 再追加案例
+- **读取/删除**：`GET /api/v1/notes`（列表：按最近案例时间倒序，含 `case_count`）、`GET /api/v1/notes/{note_id}`（详情，仅返回当前用户的案例）、`DELETE /api/v1/notes/{note_id}`（删除当前用户全部案例，**保留全局规则**）、`DELETE /api/v1/notes/{note_id}/cases/{case_id}`（删除单个案例）
+- 列表/详情/删除均按当前登录用户过滤 `note_cases`，全局 `notes` 跨用户共享
 
 ## 五、顶层接口约定
 
@@ -296,6 +311,8 @@ correction_reports（纠错报告表，DB 持久化）
 ---
 
 **变更记录**
+
+- V1.1 · 2026-08 · **记笔记（F-02）契约补充**：§2.2 模块职责更新（web 新增笔记列表页/AppLayout sidebar、api 新增笔记路由、db 新增 notes/note_cases、llm 新增规则归纳）；§4.1 实体总览新增 `notes`/`note_cases`；新增 §4.4 笔记数据模型与 `/api/v1/notes` 路由契约（save 保存去重、list/detail/delete、全局规则跨用户共享 + 个人案例隔离）
 
 - V1.0 · 2026-08 · §7.1 `db` 镜像 postgres:16 → postgres:15-alpine（与开发/生产 compose 一致）；§7.2 环境变量清单补全（LLM_MODE/TEMPERATURE/ENABLE_THINKING、CORS_ORIGINS、CORRECTION_STYLE、SEED_USERNAME/PASSWORD）；§7.3 标注结构化日志与限流为未实现规划项；§九 明确为本地开发冒烟视角，生产验证指向 deploy/README
 
