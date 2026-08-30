@@ -79,6 +79,29 @@ export default function NoteCard({ note, onNoteDeleted }: Props) {
           ) : detail ? (
             <>
               <p className="text-sm text-[#495057]">{detail.description}</p>
+
+              {/* AI 通用示例 */}
+              {detail.examples.length > 0 && (
+                <div className="rounded-lg border border-[#dee2e6] bg-white p-3">
+                  <p className="mb-2 text-sm font-semibold text-[#343a40]">✨ 示例</p>
+                  <div className="space-y-1.5">
+                    {detail.examples.map((ex, i) => (
+                      <div key={i} className="flex items-start gap-2 text-sm">
+                        <span className="text-[#0ca678]">•</span>
+                        <div>
+                          <span className="text-[#212529]">{ex.text}</span>
+                          <span className="ml-2 text-xs text-[#868e96]">{ex.note}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 用户错误案例 */}
+              {detail.cases.length > 0 && (
+                <p className="pt-1 text-sm font-semibold text-[#343a40]">📝 我的错误</p>
+              )}
               {detail.cases.map((c) => (
                 <NoteCaseItem
                   key={c.id}

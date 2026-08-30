@@ -12,7 +12,6 @@ interface Props {
 export default function NoteCaseItem({ caseItem, onDeleted }: Props) {
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [wrong, right] = caseItem.example.split('→').map((s) => s.trim())
 
   async function handleDelete() {
     setDeleting(true)
@@ -27,11 +26,11 @@ export default function NoteCaseItem({ caseItem, onDeleted }: Props) {
     <div className="rounded-lg border border-[#dee2e6] bg-white p-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded bg-[#fff5f5] px-2 py-0.5 text-xs text-[#c92a2a]">
-          {wrong ?? caseItem.example} ❌
+          {caseItem.fragment} ❌
         </span>
         <span className="text-[#adb5bd]">→</span>
         <span className="rounded bg-[#e6fcf5] px-2 py-0.5 text-xs text-[#2b8a3e]">
-          {right ?? ''} ✅
+          {caseItem.correction} ✅
         </span>
       </div>
       <p className="mt-1.5 text-xs text-[#868e96]">原文：{caseItem.source_text}</p>

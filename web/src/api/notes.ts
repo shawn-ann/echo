@@ -24,9 +24,15 @@ export interface NoteListResponse {
   notes: NoteListItem[]
 }
 
+export interface NoteExample {
+  text: string
+  note: string
+}
+
 export interface NoteCaseItem {
   id: string
-  example: string
+  fragment: string
+  correction: string
   source_text: string
   created_at: string
 }
@@ -35,6 +41,7 @@ export interface NoteDetailResponse {
   id: string
   rule_title: string
   description: string
+  examples: NoteExample[]
   cases: NoteCaseItem[]
 }
 
