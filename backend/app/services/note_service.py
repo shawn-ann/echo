@@ -86,6 +86,7 @@ async def save_notes(
             await session.flush()
             is_new = True
 
+        inserted_any = False  # 新增：跟踪是否插入案例
         for fragment in result.references:
             correction = errors_by_fragment.get(fragment)
             if not correction:
@@ -116,7 +117,12 @@ async def save_notes(
             session.add(case)
             await session.flush()
             note.updated_at = datetime.now(timezone.utc)
+            inserted_any = True  # 新增
             saved.append(SavedNoteItem(note_id=note.id, rule_title=note.rule_title, is_new=is_new, case_id=case.id))
+
+        # 新增：新建规则但无案例入账 → 删除孤立 Note
+        if is_new and not inserted_any:
+            await session.delete(note)
 
     await session.commit()
     return saved

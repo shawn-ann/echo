@@ -29,9 +29,12 @@ export default function CorrectionReportCard({ report, message, sourceText }: Pr
   async function handleSaveOne(index: number, error: ErrorBlock) {
     setErrorStates((prev) => ({ ...prev, [index]: 'loading' }))
     const result = await saveNote(message.id, sourceText, [error])
-    if (result.success && result.ruleTitles) {
+    if (result.success && result.ruleTitles && result.ruleTitles.length > 0) {
       setErrorStates((prev) => ({ ...prev, [index]: 'done' }))
       showToast(`已记入「${result.ruleTitles[0]}」`)
+    } else if (result.success) {
+      setErrorStates((prev) => ({ ...prev, [index]: 'done' }))
+      showToast('已记录该错误')
     } else {
       setErrorStates((prev) => ({ ...prev, [index]: 'idle' }))
       showToast(result.error ?? '保存失败，请重试')
