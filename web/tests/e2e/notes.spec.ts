@@ -32,36 +32,39 @@ async function loginAndSubmit(page: Page) {
   await expect(page.getByText('错误分析').first()).toBeVisible({ timeout: 15000 })
 }
 
+async function waitUntilNotePersisted(page: Page) {
+  await page.getByRole('link', { name: /我的笔记/ }).click()
+  await expect(page).toHaveURL(/\/notes$/)
+  await expect(page.getByRole('button', { name: /介词后加 -ing 形式/ })).toBeVisible({ timeout: 20000 })
+}
+
 test('N-01 单个错误记笔记', async ({ page }) => {
   await loginAndSubmit(page)
   // 点击第一个 ErrorCard 的「记笔记」按钮
   await page.getByRole('button', { name: '📝 记笔记' }).first().click()
-  await expect(page.getByText(/已记入/)).toBeVisible({ timeout: 15000 })
+  await expect(page.getByText(/已提交，笔记正在后台保存/)).toBeVisible({ timeout: 15000 })
 })
 
 test('N-02 全部记笔记', async ({ page }) => {
   await loginAndSubmit(page)
   await page.getByRole('button', { name: '📝 全部记笔记' }).first().click()
-  await expect(page.getByText(/已记入 \d+ 条规则笔记/)).toBeVisible({ timeout: 15000 })
+  await expect(page.getByText(/已提交，正在后台保存全部笔记/)).toBeVisible({ timeout: 15000 })
 })
 
 test('N-03 笔记列表页显示笔记', async ({ page }) => {
   await loginAndSubmit(page)
   await page.getByRole('button', { name: '📝 全部记笔记' }).first().click()
-  await expect(page.getByText(/已记入/)).toBeVisible({ timeout: 15000 })
-  // 导航到笔记页
-  await page.getByRole('link', { name: /我的笔记/ }).click()
-  await expect(page).toHaveURL(/\/notes$/)
-  // NoteCard 展开按钮内包含 rule_title
-  await expect(page.getByRole('button', { name: /介词后加 -ing 形式/ })).toBeVisible()
+  await expect(page.getByText(/已提交，正在后台保存全部笔记/)).toBeVisible({ timeout: 15000 })
+  // 等待笔记后台入库后断言 NoteCard 展开按钮内包含 rule_title
+  await waitUntilNotePersisted(page)
 })
 
 test('N-04 笔记展开显示示例和案例', async ({ page }) => {
   await loginAndSubmit(page)
   await page.getByRole('button', { name: '📝 全部记笔记' }).first().click()
-  await expect(page.getByText(/已记入/)).toBeVisible({ timeout: 15000 })
-  await page.getByRole('link', { name: /我的笔记/ }).click()
-  await expect(page).toHaveURL(/\/notes$/)
+  await expect(page.getByText(/已提交，正在后台保存全部笔记/)).toBeVisible({ timeout: 15000 })
+  // 等待笔记后台入库并导航到笔记页，断言 rule_title 存在
+  await waitUntilNotePersisted(page)
   await page.getByRole('button', { name: /介词后加 -ing 形式/ }).click()
   await expect(page.getByText('✨ 示例')).toBeVisible()
   await expect(page.getByText('She is interested in reading.')).toBeVisible()
