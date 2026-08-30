@@ -17,16 +17,10 @@ export interface RewriteSection {
   natural: RewriteOption
 }
 
-export interface Learning {
-  rule: string
-  example: string
-}
-
 export interface CorrectionReport {
   has_errors: boolean
   errors: ErrorBlock[]
   rewrite: RewriteSection | null
-  learnings: Learning[]
 }
 
 export interface Message {

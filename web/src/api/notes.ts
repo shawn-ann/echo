@@ -1,15 +1,8 @@
 import { http } from './client'
 import type { ErrorBlock } from './messages'
 
-export interface SavedNoteItem {
-  note_id: string
-  rule_title: string
-  is_new: boolean
-  case_id: string
-}
-
-export interface SaveNoteResponse {
-  saved_notes: SavedNoteItem[]
+export interface NoteSaveAccepted {
+  accepted: boolean
 }
 
 export interface NoteListItem {
@@ -49,8 +42,8 @@ export async function saveNote(
   messageId: string,
   sourceText: string,
   errors: ErrorBlock[],
-): Promise<SaveNoteResponse> {
-  return http.post<SaveNoteResponse>('/notes/save', {
+): Promise<NoteSaveAccepted> {
+  return http.post<NoteSaveAccepted>('/notes/save', {
     message_id: messageId,
     source_text: sourceText,
     errors,

@@ -15,7 +15,7 @@ export interface ConversationState {
     messageId: string,
     sourceText: string,
     errors: ErrorBlock[],
-  ) => Promise<{ success: boolean; ruleTitles?: string[]; error?: string }>
+  ) => Promise<{ success: boolean; error?: string }>
 }
 
 export const ConversationContext = createContext<ConversationState | null>(null)

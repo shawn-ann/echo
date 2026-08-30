@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { useConversation } from '@/store/conversation-context'
 import type { CorrectionReport, ErrorBlock, Message } from '@/api/messages'
 import ErrorCard from '@/components/correction/ErrorCard'
-import LearningsSection from '@/components/correction/LearningsSection'
 import RewriteSection from '@/components/correction/RewriteSection'
 import { Button } from '@/components/ui/button'
 
@@ -29,12 +28,9 @@ export default function CorrectionReportCard({ report, message, sourceText }: Pr
   async function handleSaveOne(index: number, error: ErrorBlock) {
     setErrorStates((prev) => ({ ...prev, [index]: 'loading' }))
     const result = await saveNote(message.id, sourceText, [error])
-    if (result.success && result.ruleTitles && result.ruleTitles.length > 0) {
+    if (result.success) {
       setErrorStates((prev) => ({ ...prev, [index]: 'done' }))
-      showToast(`已记入「${result.ruleTitles[0]}」`)
-    } else if (result.success) {
-      setErrorStates((prev) => ({ ...prev, [index]: 'done' }))
-      showToast('已记录该错误')
+      showToast('已提交，笔记正在后台保存')
     } else {
       setErrorStates((prev) => ({ ...prev, [index]: 'idle' }))
       showToast(result.error ?? '保存失败，请重试')
@@ -47,7 +43,7 @@ export default function CorrectionReportCard({ report, message, sourceText }: Pr
     const result = await saveNote(message.id, sourceText, report.errors)
     if (result.success) {
       setBatchState('done')
-      showToast(`已记入 ${result.ruleTitles?.length ?? 0} 条规则笔记`)
+      showToast('已提交，正在后台保存全部笔记')
     } else {
       setBatchState('idle')
       showToast(result.error ?? '保存失败，请重试')
@@ -86,9 +82,6 @@ export default function CorrectionReportCard({ report, message, sourceText }: Pr
             <RewriteSection rewrite={report.rewrite} />
           </div>
         )}
-        <div className="mt-2">
-          <LearningsSection learnings={report.learnings ?? []} />
-        </div>
         <div className="mt-2 flex justify-end">
           <Button
             variant="outline"

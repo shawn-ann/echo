@@ -112,13 +112,10 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
       messageId: string,
       sourceText: string,
       errors: ErrorBlock[],
-    ): Promise<{ success: boolean; ruleTitles?: string[]; error?: string }> => {
+    ): Promise<{ success: boolean; error?: string }> => {
       try {
-        const result = await notesApi.saveNote(messageId, sourceText, errors)
-        return {
-          success: true,
-          ruleTitles: result.saved_notes.map((n) => n.rule_title),
-        }
+        await notesApi.saveNote(messageId, sourceText, errors)
+        return { success: true }
       } catch (err) {
         return {
           success: false,
