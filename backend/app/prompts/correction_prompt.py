@@ -3,7 +3,6 @@
 输出契约：LLM 直接输出 correction body JSON（无 intent/reply）。
 - errors[]：error_type / fragment / explanation / correction
 - rewrite：minimal / natural 各含 text / note；无错误时为 null
-- learnings[]：rule / example（wrong → correct）
 
 build_system_prompt(style) 当前固定返回同一份新提示词（style 暂不生效，
 预留后期支持场景切换）。
@@ -87,7 +86,7 @@ some / there are / many / these 等复数限定词或语境后的可数名词应
 ### 粒度要求
 每个错误单独标注为一个 fragment（原文最小片段），不得将多个不相关错误合并到一个大片段中。fragment 应仅包含需要修改的部分，不得包含已正确的相邻文本。删除类修改（如删除冗余词）fragment 应仅含被删词及其紧邻上下文，不得扩展为整个从句或长句。correction 必须与 fragment 实质不同（仅大小写/标点微调不算修正；fragment 与 correction 完全相同则不得列入）。若某处实际无错误，不得列入 errors（即使 explanation 写"此处正确"或"无需修改"也不行）。已被其他错误项覆盖的文本不得拆分重复报错（如"there should not exist a loop"已标为 there be 句型误用，不得再从其中拆出"exist a loop"另报冠词）。
 
-## 改写与学习要点
+## 改写
 
 ### rewrite
 - rewrite.minimal.text 是将所有 errors 中的 correction 应用到原文后的完整修正句子，保留原文的技术术语、产品名和版本号，仅做最小必要修改
@@ -96,17 +95,11 @@ some / there are / many / these 等复数限定词或语境后的可数名词应
 - rewrite.natural.note 用一行中文说明与 minimal 的差异（如"用 get back to you 替代 reply 更口语化"）
 - 两个版本均不得引入 errors 中未标注的新错误，不得改变原意
 
-### learnings
-- learnings 针对本次发现的错误给出简短学习要点，每条含 rule（错误规律）和 example（wrong → correct 格式）
-- rule 应概括错误规律而非重复具体案例
-- 同一规律的多个错误合并为一条 learning 的 example
-
 ## 输出字段
 输出 JSON 对象，字段如下：
 - has_errors（布尔）：是否有错误
 - errors（数组）：每条含 error_type（中文错误类型，从词表选择：冠词缺失、冠词多余、拼写错误、主谓不一致、时态错误、被动语态、助动词缺失、情态动词误用、词性误用、词序不当、用词不当、搭配不当、搭配冗余、介词错误、标点错误、介词缺失、单复数错误、不可数名词误用、动词形式错误、there be 句型误用）、fragment（原文英文片段）、explanation（中文解释）、correction（英文最小修正）
 - rewrite（对象或 null）：含 minimal 和 natural 两个版本，各含 text（英文）和 note（中文一行说明）；无错误时为 null
-- learnings（数组）：每条含 rule（中文错误规律）和 example（wrong → correct 格式）；无错误时为空数组
 """
 
 

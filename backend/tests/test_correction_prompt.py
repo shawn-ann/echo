@@ -10,7 +10,7 @@ def test_system_prompt_contains_contract_fields():
     assert "explanation" in SYSTEM_PROMPT
     assert "correction" in SYSTEM_PROMPT
     assert "rewrite" in SYSTEM_PROMPT
-    assert "learnings" in SYSTEM_PROMPT
+    assert "learnings" not in SYSTEM_PROMPT
     assert "minimal" in SYSTEM_PROMPT
     assert "natural" in SYSTEM_PROMPT
     assert "note" in SYSTEM_PROMPT
@@ -22,11 +22,6 @@ def test_system_prompt_removed_contract_fields():
     # 输出字段列表不包含顶层 reply（示例中的 reply 一词不在此列）
     assert "- reply（" not in SYSTEM_PROMPT
     assert "## 意图判定" not in SYSTEM_PROMPT
-
-
-def test_system_prompt_contains_rule_and_example():
-    assert "rule" in SYSTEM_PROMPT
-    assert "example" in SYSTEM_PROMPT
 
 
 def test_system_prompt_has_check_rules():
