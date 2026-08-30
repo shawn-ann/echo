@@ -11,17 +11,15 @@ def test_correction_body_valid():
         "has_errors": True,
         "errors": [{"error_type": "时态错误", "fragment": "I go to", "explanation": "x", "correction": "I went to"}],
         "rewrite": {"minimal": {"text": "a", "note": "n1"}, "natural": {"text": "b", "note": "n2"}},
-        "learnings": [{"rule": "r", "example": "wrong → correct"}],
     }
     parsed = CorrectionBody.model_validate(payload)
     assert parsed.has_errors is True
     assert parsed.errors[0].error_type == "时态错误"
     assert parsed.rewrite.minimal.note == "n1"
-    assert parsed.learnings[0].example == "wrong → correct"
 
 
 def test_correction_body_no_error_rewrite_null():
-    parsed = CorrectionBody.model_validate({"has_errors": False, "errors": [], "rewrite": None, "learnings": []})
+    parsed = CorrectionBody.model_validate({"has_errors": False, "errors": [], "rewrite": None})
     assert parsed.has_errors is False
     assert parsed.rewrite is None
 
@@ -46,7 +44,6 @@ def test_correction_body_model_dump_matches_contract():
         has_errors=True,
         errors=[{"error_type": "冠词缺失", "fragment": "job", "explanation": "x", "correction": "a job"}],
         rewrite=None,
-        learnings=[],
     )
     dumped = body.model_dump()
     assert "error_type" in dumped["errors"][0]

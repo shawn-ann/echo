@@ -21,18 +21,12 @@ class RewriteSection(BaseModel):
     natural: RewriteOption
 
 
-class Learning(BaseModel):
-    rule: str
-    example: str
-
-
 class CorrectionBody(BaseModel):
     """LLM 单轮纠错输出（无 intent/reply）。"""
 
     has_errors: bool
     errors: list[ErrorBlock] = Field(default_factory=list)
     rewrite: RewriteSection | None = None
-    learnings: list[Learning] = Field(default_factory=list)
 
 
 class SubmitRequest(BaseModel):
