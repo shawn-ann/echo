@@ -1,7 +1,7 @@
 # 纠错功能详细设计文档（02-Correction）
 
-**所属**：地道英语纠错 · 智能笔记本 | **版本**：V0.4 | **状态**：草稿 | **日期**：2026年8月
-**对应 PRD**：`PRD/pages/02-Correction.md`（V2.7，含 PRD 同步更新）、`PRD/Overview.md` §1.1
+**所属**：地道英语纠错 · 智能笔记本 | **版本**：V0.6 | **状态**：草稿 | **日期**：2026年8月
+**对应 PRD**：`PRD/pages/02-Correction.md`（V2.9，含 PRD 同步更新）、`PRD/Overview.md` §1.1
 **依赖**：`00-Architecture.md`（顶层契约：接口风格、错误格式、鉴权、数据契约、LLM 接入契约）
 
 > 本文档为纠错功能的**详细技术设计**（LLM 层、数据模型、API 契约、前端组件、上下文策略、验证方式）。顶层约定不重复定义，统一引用 `00-Architecture.md`。
@@ -50,17 +50,14 @@
   "rewrite": {
     "minimal":  { "text": "Yesterday I went to the park.", "note": "补时态，保留原句结构" },
     "natural":  { "text": "Yesterday I enjoyed the park.", "note": "用 enjoyed 更自然" }
-  },
-  "learnings": [
-    { "rule": "yesterday 表示过去时间，主句动词应用过去式（go→went）", "example": "I go to → I went to" }
-  ]
+  }
 }
 ```
 
-- `has_errors=false` 时：`errors` 为空、`rewrite` 为 `null`、`learnings` 为空数组，前端展示鼓励文案（PRD §7.2）
+- `has_errors=false` 时：`errors` 为空、`rewrite` 为 `null`，前端展示鼓励文案（PRD §7.2）
 - **errors[]**：`error_type`（中文错误类型，取自提示词词表：冠词缺失/拼写错误/主谓不一致/词性误用/词序不当/用词不当/搭配不当/搭配冗余/介词错误/介词缺失/单复数错误/不可数名词误用/动词形式错误/there be 句型误用 等）、`fragment`（最小原文片段）、`explanation`（中文）、`correction`（英文最小修正）
 - **rewrite**：`minimal`/`natural` 各含 `text`（英文）与 `note`（中文一行说明）；无错误时为 `null`
-- **learnings**：每条含 `rule`（中文错误规律）与 `example`（`wrong → correct` 格式）；无错误时为空数组
+- **无 learnings**：纠错链路不再产出「学到的规则」段（learnings 已移除），规则由保存笔记时后台异步生成（见 `notes-async-save` 设计）
 - **无 intent/reply**：交互固定为单轮纠错，LLM 不再返回意图标记或纯文本追问回复
 - **LLM 调用参数**：`temperature=0`、`response_format={"type":"json_object"}`、`chat_template_kwargs={"enable_thinking": false}`；模型使用 `glm-5.2`
 - **真实提示词**：详见 `backend/app/prompts/correction_prompt.py`（检查规则驱动，含编程标识符保留、冠词名词链判断、单复数、词序、介词搭配、搭配不当/冗余、口语正常表达、粒度要求等）
@@ -155,17 +152,7 @@
       "text": "Yesterday I went to the park and enjoyed some delicious food.",
       "note": "用 enjoyed + some delicious food 更自然"
     }
-  },
-  "learnings": [
-    {
-      "rule": "yesterday 表示过去时间，主句动词应用过去式（go→went）",
-      "example": "I go to → I went to"
-    },
-    {
-      "rule": "delicious 是极限形容词，本身已含程度，通常不加 very 修饰",
-      "example": "very delicious → really delicious"
-    }
-  ]
+  }
 }
 ```
 
@@ -220,7 +207,7 @@ User        Frontend          Backend              DB        LLM
   "assistant_message": {
     "id": "msg_2", "role": "assistant", "type": "report",
     "content": null, "created_at": "2026-08-08 10:00:05",
-    "report": { "has_errors": true, "errors": [...], "rewrite": {...}, "learnings": [...] }
+    "report": { "has_errors": true, "errors": [...], "rewrite": {...} }
   }
 }
 ```
@@ -267,10 +254,9 @@ User        Frontend          Backend              DB        LLM
 CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 ├── MessageList
 │   ├── UserBubble          （correction：靠右，品牌色高亮）
-│   ├── CorrectionReportCard（type=report：整体大框，错误分析+改写+学到的规则 三分区）
+│   ├── CorrectionReportCard（type=report：整体大框，错误分析+改写 两分区）
 │   │   ├── ErrorCard       （error_type + fragment + explanation + correction；红色语块）
-│   │   ├── RewriteSection  （minimal 绿 ✏️ / natural 紫 ✨ 两虚线框 + CopyButton）
-│   │   └── LearningsSection（学到的规则：灰底分区，规则 rule + example wrong→correct 对照）
+│   │   └── RewriteSection  （minimal 绿 ✏️ / natural 紫 ✨ 两虚线框 + CopyButton）
 │   └── LoadingBubble       （「AI 正在分析，请稍候…」）
 └── Composer                （多行自动延伸输入框 + n/2000 字数 + 发送按钮三态；Enter 发送 / Shift+Enter 换行）
 ```
@@ -370,6 +356,8 @@ CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 ---
 
 **变更记录**
+
+- V0.6 · 2026-08 · **移除 learnings（异步化同步）**：§1.2 单次调用契约移除 learnings 字段与示例、补「无 learnings」说明；§2.4 数据示例同步移除 learnings；§6.1 组件树移除 LearningsSection、CorrectionReportCard 改两分区；§4.1 响应示例移除 learnings（同步 Correction V2.9 / Overview V2.13 / 架构 00-Architecture V1.2）
 
 - V0.5 · 2026-08 · 恢复回车发送：§6.1 组件树 Composer 注释补充 Enter 发送/Shift+Enter 换行；§6.2 前端行为表新增「键盘发送」行；§七 三态表「输入为空/超限」补充 Enter 静默不发送；§八 场景矩阵新增键盘发送/换行/IME 合成期三条；§9.2 UI 验证新增 U-C-11/12（同步 Correction V2.8 / Overview V2.11）
 

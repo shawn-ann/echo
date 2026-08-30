@@ -1,7 +1,7 @@
 # 整体架构设计文档（00-Architecture）
 
 **产品**：地道英语纠错 · 智能笔记本
-**版本**：V1.1 | **状态**：草稿 | **日期**：2026年8月
+**版本**：V1.2 | **状态**：草稿 | **日期**：2026年8月
 **对应 PRD**：`PRD/Overview.md`（总纲）、`PRD/pages/01-Login.md`、`PRD/pages/02-Correction.md`
 
 > 本文档为技术设计总纲，回答「系统如何搭建」，定义**顶层契约**（技术选型、项目结构、数据契约、接口约定、AI 接入契约、部署）。功能级详细设计（页面组件、业务流程、场景矩阵）见各功能设计文档：
@@ -153,7 +153,7 @@ correction_reports（纠错报告表，DB 持久化）
 ┌──────────────────────────────────────────────────────┐
 │ report_id: "rep_001"                                  │
 │ message_id: "msg_2"                                   │
-│ structure: {错误分析: [...], 改写: {...}, 学到的规则: [...]}（JSONB）      │
+│ structure: {错误分析: [...], 改写: {...}}（JSONB）      │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -167,14 +167,15 @@ correction_reports（纠错报告表，DB 持久化）
 
 ### 4.4 笔记数据模型（记笔记 F-02）
 
-> 记笔记：从纠错结果一键保存「学到的规则」为笔记，供后续复习（F-03）使用。规则与案例分离：`notes` 为**全局规则库**（跨用户共享），`note_cases` 为**个人案例**（按账号隔离）。
+> 记笔记：从纠错结果一键保存错误为笔记，供后续复习（F-03）使用。规则与案例分离：`notes` 为**全局规则库**（跨用户共享），`note_cases` 为**个人案例**（按账号隔离）。
 
 | 表 | 字段 | 说明 |
 |----|------|------|
 | `notes` | `id`(UUID) / `rule_title` / `description` / `created_at` / `updated_at` | 全局规则库，无 `user_id`；保存时按 `rule_title` 去重（命中则复用，不新建） |
 | `note_cases` | `id`(UUID) / `note_id`(FK→`notes.id`, **CASCADE**) / `user_id`(FK→`users.id`, **CASCADE**) / `example` / `source_text` / `source_message_id`(FK→`messages.id`, **SET NULL**) / `created_at` | 个人案例，一条案例对应一位用户的一条错题记录；删消息不删案例 |
 
-- **保存链路**：`POST /api/v1/notes/save` 携带 `message_id`/`source_text`/`errors` → 单次 LLM 调用归纳规则 + 去重匹配（复用 `LLMClient`，错误处理与纠错一致：504 超时 / 503 不可用 / 502 响应无效）→ 命中已有规则仅追加 `note_cases`，未命中先建 `notes` 再追加案例
+- **保存链路（异步化）**：`POST /api/v1/notes/save` 携带 `message_id`/`source_text`/`errors` → **同步返回 `202 {accepted:true}`**（毫秒级，不等 LLM）；实际生成通过 `FastAPI.BackgroundTasks` **后台异步执行**（独立 session，`async_session_factory` 自建，请求内 `Depends(get_db)` session 生命周期随请求结束即关闭）→ 单次 LLM 调用归纳规则 + 去重匹配（复用 `LLMClient`；后台任务内 LLM 失败记日志、静默丢弃，不向上抛）→ 命中已有规则仅追加 `note_cases`，未命中先建 `notes` 再追加案例
+- LLM 错误处理详表与实现细节见 `notes-async-save` 设计 spec；后台入账完成后，刷新笔记列表页（`GET /notes`）才可见最终结果
 - **读取/删除**：`GET /api/v1/notes`（列表：按最近案例时间倒序，含 `case_count`）、`GET /api/v1/notes/{note_id}`（详情，仅返回当前用户的案例）、`DELETE /api/v1/notes/{note_id}`（删除当前用户全部案例，**保留全局规则**）、`DELETE /api/v1/notes/{note_id}/cases/{case_id}`（删除单个案例）
 - 列表/详情/删除均按当前登录用户过滤 `note_cases`，全局 `notes` 跨用户共享
 
@@ -311,6 +312,8 @@ correction_reports（纠错报告表，DB 持久化）
 ---
 
 **变更记录**
+
+- V1.2 · 2026-08 · **记笔记保存异步化**：§4.4 记笔记路由契约把 `POST /notes/save` 改为同步返回 `202 {accepted:true}` + 后台异步执行（BackgroundTasks + 独立 session，LLM 失败记日志静默丢弃；同步 02-Correction V0.6 / Correction PRD V2.9 / Overview V2.13）
 
 - V1.1 · 2026-08 · **记笔记（F-02）契约补充**：§2.2 模块职责更新（web 新增笔记列表页/AppLayout sidebar、api 新增笔记路由、db 新增 notes/note_cases、llm 新增规则归纳）；§4.1 实体总览新增 `notes`/`note_cases`；新增 §4.4 笔记数据模型与 `/api/v1/notes` 路由契约（save 保存去重、list/detail/delete、全局规则跨用户共享 + 个人案例隔离）
 
