@@ -45,6 +45,14 @@ def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+async def _first_note_id(client, token) -> str:
+    r = await client.get(LIST_URL, headers=_auth(token))
+    assert r.status_code == 200
+    notes = r.json()["notes"]
+    assert len(notes) == 1
+    return notes[0]["id"]
+
+
 async def test_save_note_returns_accepted(api):
     client = api
     token = await _token(client)
@@ -70,11 +78,8 @@ async def test_save_note_creates_note(api):
         "source_text": "She have many book",
         "errors": [_ERROR],
     }, headers=_auth(token))
-    assert r.status_code == 200
-    data = r.json()
-    assert len(data["saved_notes"]) == 1
-    assert data["saved_notes"][0]["is_new"] is True
-    assert data["saved_notes"][0]["rule_title"] == "第三人称单数主谓一致"
+    assert r.status_code == 202
+    assert r.json() == {"accepted": True}
 
 
 async def test_list_notes_empty(api):
@@ -99,8 +104,8 @@ async def test_list_notes_after_save(api):
 async def test_get_note_detail_with_examples_and_cases(api):
     client = api
     token = await _token(client)
-    save_r = await client.post(POST_URL, json={"message_id": "00000000-0000-0000-0000-000000000000", "source_text": "src", "errors": [_ERROR]}, headers=_auth(token))
-    note_id = save_r.json()["saved_notes"][0]["note_id"]
+    await client.post(POST_URL, json={"message_id": "00000000-0000-0000-0000-000000000000", "source_text": "src", "errors": [_ERROR]}, headers=_auth(token))
+    note_id = await _first_note_id(client, token)
     r = await client.get(f"{LIST_URL}/{note_id}", headers=_auth(token))
     assert r.status_code == 200
     detail = r.json()
@@ -121,8 +126,8 @@ async def test_get_note_detail_not_found(api):
 async def test_delete_note(api):
     client = api
     token = await _token(client)
-    save_r = await client.post(POST_URL, json={"message_id": "00000000-0000-0000-0000-000000000000", "source_text": "src", "errors": [_ERROR]}, headers=_auth(token))
-    note_id = save_r.json()["saved_notes"][0]["note_id"]
+    await client.post(POST_URL, json={"message_id": "00000000-0000-0000-0000-000000000000", "source_text": "src", "errors": [_ERROR]}, headers=_auth(token))
+    note_id = await _first_note_id(client, token)
     r = await client.delete(f"{LIST_URL}/{note_id}", headers=_auth(token))
     assert r.status_code == 204
     r2 = await client.get(f"{LIST_URL}/{note_id}", headers=_auth(token))
@@ -132,8 +137,8 @@ async def test_delete_note(api):
 async def test_delete_case(api):
     client = api
     token = await _token(client)
-    save_r = await client.post(POST_URL, json={"message_id": "00000000-0000-0000-0000-000000000000", "source_text": "src", "errors": [_ERROR]}, headers=_auth(token))
-    note_id = save_r.json()["saved_notes"][0]["note_id"]
+    await client.post(POST_URL, json={"message_id": "00000000-0000-0000-0000-000000000000", "source_text": "src", "errors": [_ERROR]}, headers=_auth(token))
+    note_id = await _first_note_id(client, token)
     detail_r = await client.get(f"{LIST_URL}/{note_id}", headers=_auth(token))
     case_id = detail_r.json()["cases"][0]["id"]
     r = await client.delete(f"{LIST_URL}/{note_id}/cases/{case_id}", headers=_auth(token))
@@ -153,12 +158,12 @@ async def test_get_note_detail_other_user_not_found(api):
         await s.commit()
 
     token_a = await _token(client)
-    save_r = await client.post(POST_URL, json={
+    await client.post(POST_URL, json={
         "message_id": "00000000-0000-0000-0000-000000000000",
         "source_text": "She have many book",
         "errors": [_ERROR],
     }, headers=_auth(token_a))
-    note_id = save_r.json()["saved_notes"][0]["note_id"]
+    note_id = await _first_note_id(client, token_a)
 
     r_b = await client.post(LOGIN_URL, json={"username": "isol_user", "password": "iso1234"})
     assert r_b.status_code == 200
