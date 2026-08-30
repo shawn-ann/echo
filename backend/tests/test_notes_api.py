@@ -10,7 +10,7 @@ POST_URL = "/api/v1/notes/save"
 LIST_URL = "/api/v1/notes"
 LOGIN_URL = "/api/v1/auth/login"
 
-_ERROR = {"error_type": "动词形式", "fragment": "interested in read", "explanation": "介词后加 ing", "correction": "interested in reading"}
+_ERROR = {"error_type": "主谓不一致", "fragment": "She have", "explanation": "主语 she 第三人称单数", "correction": "She has"}
 
 
 @pytest_asyncio.fixture
@@ -18,9 +18,14 @@ async def api():
     app = create_app()
     mock = MockLLMClient(responder=lambda msgs: json.dumps({
         "results": [{
-            "rule_title": "介词后加 -ing 形式",
-            "description": "介词后接动词用动名词形式",
-            "example": "interested in read → interested in reading",
+            "rule_title": "第三人称单数主谓一致",
+            "description": "一般现在时中，第三人称单数主语动词加 -s/-es",
+            "examples": [
+                {"text": "She plays tennis.", "note": "play → plays"},
+                {"text": "He goes to work.", "note": "go → goes"},
+                {"text": "It rains a lot.", "note": "rain → rains"},
+            ],
+            "references": ["She have"],
         }]
     }, ensure_ascii=False))
     app.dependency_overrides[get_llm_client] = lambda: mock
@@ -49,14 +54,14 @@ async def test_save_note_creates_note(api):
     token = await _token(client)
     r = await client.post(POST_URL, json={
         "message_id": "00000000-0000-0000-0000-000000000000",
-        "source_text": "I interested in read",
+        "source_text": "She have many book",
         "errors": [_ERROR],
     }, headers=_auth(token))
     assert r.status_code == 200
     data = r.json()
     assert len(data["saved_notes"]) == 1
     assert data["saved_notes"][0]["is_new"] is True
-    assert data["saved_notes"][0]["rule_title"] == "介词后加 -ing 形式"
+    assert data["saved_notes"][0]["rule_title"] == "第三人称单数主谓一致"
 
 
 async def test_list_notes_empty(api):
@@ -78,14 +83,19 @@ async def test_list_notes_after_save(api):
     assert notes[0]["case_count"] == 1
 
 
-async def test_get_note_detail(api):
+async def test_get_note_detail_with_examples_and_cases(api):
     client = api
     token = await _token(client)
     save_r = await client.post(POST_URL, json={"message_id": "00000000-0000-0000-0000-000000000000", "source_text": "src", "errors": [_ERROR]}, headers=_auth(token))
     note_id = save_r.json()["saved_notes"][0]["note_id"]
     r = await client.get(f"{LIST_URL}/{note_id}", headers=_auth(token))
     assert r.status_code == 200
-    assert len(r.json()["cases"]) == 1
+    detail = r.json()
+    assert len(detail["examples"]) == 3
+    assert detail["examples"][0]["text"] == "She plays tennis."
+    assert len(detail["cases"]) == 1
+    assert detail["cases"][0]["fragment"] == "She have"
+    assert detail["cases"][0]["correction"] == "She has"
 
 
 async def test_get_note_detail_not_found(api):

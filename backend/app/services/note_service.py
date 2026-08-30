@@ -12,6 +12,7 @@ from app.prompts.note_prompt import build_note_system_prompt, build_note_user_co
 from app.schemas.note import (
     NoteCaseItem,
     NoteDetailResponse,
+    NoteExample,
     NoteListItem,
     NoteLLMResponse,
     SavedNoteItem,
@@ -166,8 +167,12 @@ async def get_note_detail(
         id=note.id,
         rule_title=note.rule_title,
         description=note.description,
+        examples=[NoteExample.model_validate(ex) for ex in note.examples],
         cases=[
-            NoteCaseItem(id=c.id, example=c.example, source_text=c.source_text, created_at=c.created_at)
+            NoteCaseItem(
+                id=c.id, fragment=c.fragment, correction=c.correction,
+                source_text=c.source_text, created_at=c.created_at,
+            )
             for c in cases
         ],
     )
