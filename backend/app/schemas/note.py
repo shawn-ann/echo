@@ -35,10 +35,6 @@ class SavedNoteItem(BaseModel):
     case_id: uuid.UUID
 
 
-class SaveNoteResponse(BaseModel):
-    saved_notes: list[SavedNoteItem]
-
-
 class NoteListItem(BaseModel):
     id: uuid.UUID
     rule_title: str
