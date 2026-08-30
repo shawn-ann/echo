@@ -3,6 +3,7 @@ import json
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+from app.db import async_session_factory
 from app.main import create_app
 from app.services.llm_client import MockLLMClient, get_llm_client
 
@@ -127,3 +128,28 @@ async def test_delete_case(api):
     assert r.status_code == 204
     r2 = await client.get(LIST_URL, headers=_auth(token))
     assert r2.json()["notes"] == []
+
+
+async def test_get_note_detail_other_user_not_found(api):
+    """跨用户隔离：用户 B 请求用户 A 的笔记 → 404"""
+    from app.core.security import hash_password
+    from app.models.user import User, UserStatus
+
+    client = api
+    async with async_session_factory() as s:
+        s.add(User(username="isol_user", password_hash=hash_password("iso1234"), status=UserStatus.active))
+        await s.commit()
+
+    token_a = await _token(client)
+    save_r = await client.post(POST_URL, json={
+        "message_id": "00000000-0000-0000-0000-000000000000",
+        "source_text": "She have many book",
+        "errors": [_ERROR],
+    }, headers=_auth(token_a))
+    note_id = save_r.json()["saved_notes"][0]["note_id"]
+
+    r_b = await client.post(LOGIN_URL, json={"username": "isol_user", "password": "iso1234"})
+    assert r_b.status_code == 200
+    token_b = r_b.json()["token"]
+    r2 = await client.get(f"{LIST_URL}/{note_id}", headers=_auth(token_b))
+    assert r2.status_code == 404
