@@ -2,7 +2,7 @@ name: deploy
 
 on:
   push:
-    branches: [v0.1]
+    branches: [v0.2]
 
 env:
   REGISTRY: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com
@@ -99,7 +99,7 @@ jobs:
             set -e
 
             DIR="$HOME/echo"
-            BRANCH=v0.1
+            BRANCH=v0.2
             REPO_URL=git@github.com:shawn-ann/echo.git
             KEY_FILE="$HOME/.ssh/echo_deploy_key"
             REGISTRY="crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com"

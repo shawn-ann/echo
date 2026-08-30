@@ -2,12 +2,12 @@
 
 **线上地址**：`https://echo.hootooa.com`
 
-**目标**：`git push origin v0.1` → GitHub Actions 自动构建镜像、推送到阿里云 ACR、SSH 到服务器完成部署。
+**目标**：`git push origin v0.2` → GitHub Actions 自动构建镜像、推送到阿里云 ACR、SSH 到服务器完成部署。
 
 ## 架构
 
 ```
-开发者 ── git push v0.1 ─▶ GitHub Actions
+开发者 ── git push v0.2 ─▶ GitHub Actions
                              │ ① build api/web 镜像 → push 阿里云 ACR
                              │ ② SSH 服务器: 自动装工具 → clone/pull → 写 .env → pull 镜像 → up -d
 ECS 2C2G: 80/443 ─▶ caddy(自动 HTTPS) ─▶ web:80(nginx) ─▶ api:8000 ─▶ db:5432
@@ -113,7 +113,7 @@ base64 < ~/.ssh/echo_deploy | pbcopy   # macOS 进剪贴板；Linux 用 base64 ~
 ## 二、首次部署
 
 ```bash
-git push origin v0.1
+git push origin v0.2
 ```
 
 Actions（`deploy.yml`）自动执行：
@@ -131,7 +131,7 @@ curl https://echo.hootooa.com/api/v1/health
 ## 四、日常更新
 
 ```bash
-git add . && git commit -m "..." && git push origin v0.1   # 全自动部署
+git add . && git commit -m "..." && git push origin v0.2   # 全自动部署
 ```
 
 ## 五、数据库备份

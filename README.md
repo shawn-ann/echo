@@ -81,4 +81,4 @@ npm run test:e2e                  # 自动起后端+前端并运行 tests/e2e/lo
 docker compose up -d --build   # db + api + web 三服务编排，web 映射 80
 ```
 
-**生产环境（阿里云 ECS）**：`git push origin v0.1` 即自动构建镜像到阿里云 ACR 并部署到服务器，线上 `https://echo.hootooa.com`。详见 [`deploy/README.md`](deploy/README.md)。
+**生产环境（阿里云 ECS）**：`git push origin v0.2` 即自动构建镜像到阿里云 ACR 并部署到服务器，线上 `https://echo.hootooa.com`。详见 [`deploy/README.md`](deploy/README.md)。
