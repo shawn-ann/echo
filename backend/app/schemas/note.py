@@ -47,6 +47,10 @@ class NoteListItem(BaseModel):
     updated_at: datetime
 
 
+class NoteSaveAccepted(BaseModel):
+    accepted: bool
+
+
 class NoteListResponse(BaseModel):
     notes: list[NoteListItem]
 

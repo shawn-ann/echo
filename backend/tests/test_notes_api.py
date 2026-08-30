@@ -45,6 +45,18 @@ def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+async def test_save_note_returns_accepted(api):
+    client = api
+    token = await _token(client)
+    r = await client.post(POST_URL, json={
+        "message_id": "00000000-0000-0000-0000-000000000000",
+        "source_text": "She have many book",
+        "errors": [_ERROR],
+    }, headers=_auth(token))
+    assert r.status_code == 202
+    assert r.json() == {"accepted": True}
+
+
 async def test_save_note_unauthorized(api):
     r = await api.post(POST_URL, json={"message_id": "00000000-0000-0000-0000-000000000000", "source_text": "x", "errors": [_ERROR]})
     assert r.status_code == 401
