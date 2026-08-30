@@ -59,9 +59,12 @@ async def save_notes(
     existing_rules = await _get_existing_rule_titles(session)
     parsed = await _call_llm_and_parse(llm_client, existing_rules, source_text, errors)
 
-    # source_message_id 仅作溯源链接（spec: UUID|None, SET NULL）；若消息不存在则置空，避免外键违约
+    # source_message_id 仅作溯源链接；若消息不存在则置空，避免外键违约
     if source_message_id is not None and (await session.get(Message, source_message_id)) is None:
         source_message_id = None
+
+    # correction 由后端从 errors 匹配（取第一个匹配）
+    errors_by_fragment = {e["fragment"]: e["correction"] for e in errors}
 
     saved: list[SavedNoteItem] = []
     for result in parsed.results:
@@ -69,31 +72,48 @@ async def save_notes(
             await session.execute(select(Note).where(Note.rule_title == result.rule_title))
         ).scalars().first()
         if note is not None:
+            is_new = False  # 已有规则：忽略 examples
+        else:
+            note = Note(
+                rule_title=result.rule_title,
+                description=result.description,
+                examples=[ex.model_dump() for ex in result.examples],
+            )
+            session.add(note)
+            await session.flush()
+            is_new = True
+
+        for fragment in result.references:
+            correction = errors_by_fragment.get(fragment)
+            if not correction:
+                continue  # 防御：LLM 归组了不在 errors 中的文本
+
+            # 先查重：同 (note, user, source_text, fragment) 已存在则跳过
+            existing_case = (
+                await session.execute(
+                    select(NoteCase.id).where(
+                        NoteCase.note_id == note.id,
+                        NoteCase.user_id == user_id,
+                        NoteCase.source_text == source_text,
+                        NoteCase.fragment == fragment,
+                    )
+                )
+            ).scalars().first()
+            if existing_case is not None:
+                continue  # 重复案例，静默跳过
+
             case = NoteCase(
                 note_id=note.id,
                 user_id=user_id,
-                example=result.example,
+                fragment=fragment,
+                correction=correction,
                 source_text=source_text,
                 source_message_id=source_message_id,
             )
             session.add(case)
             await session.flush()
             note.updated_at = datetime.now(timezone.utc)
-            saved.append(SavedNoteItem(note_id=note.id, rule_title=note.rule_title, is_new=False, case_id=case.id))
-        else:
-            note = Note(rule_title=result.rule_title, description=result.description)
-            session.add(note)
-            await session.flush()
-            case = NoteCase(
-                note_id=note.id,
-                user_id=user_id,
-                example=result.example,
-                source_text=source_text,
-                source_message_id=source_message_id,
-            )
-            session.add(case)
-            await session.flush()
-            saved.append(SavedNoteItem(note_id=note.id, rule_title=note.rule_title, is_new=True, case_id=case.id))
+            saved.append(SavedNoteItem(note_id=note.id, rule_title=note.rule_title, is_new=is_new, case_id=case.id))
 
     await session.commit()
     return saved
