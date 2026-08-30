@@ -27,7 +27,7 @@ test('U-C-02 提交含错英文呈现纠错报告', async ({ page }) => {
   await login(page)
   await send(page, 'Yesterday I go to the park')
   await expect(page.getByText('错误分析').first()).toBeVisible()
-  await expect(page.getByText('I went to').first()).toBeVisible()
+  await expect(page.getByText('interested in reading').first()).toBeVisible()
   await expect(page.getByText('改写').first()).toBeVisible()
   await expect(page.getByText('最小修正').first()).toBeVisible()
   await expect(page.getByText('地道表达').first()).toBeVisible()

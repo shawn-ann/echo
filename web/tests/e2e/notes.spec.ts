@@ -56,14 +56,15 @@ test('N-03 笔记列表页显示笔记', async ({ page }) => {
   await expect(page.getByRole('button', { name: /介词后加 -ing 形式/ })).toBeVisible()
 })
 
-test('N-04 笔记展开显示案例', async ({ page }) => {
+test('N-04 笔记展开显示示例和案例', async ({ page }) => {
   await loginAndSubmit(page)
   await page.getByRole('button', { name: '📝 全部记笔记' }).first().click()
   await expect(page.getByText(/已记入/)).toBeVisible({ timeout: 15000 })
   await page.getByRole('link', { name: /我的笔记/ }).click()
   await expect(page).toHaveURL(/\/notes$/)
-  // 点击 NoteCard 展开
   await page.getByRole('button', { name: /介词后加 -ing 形式/ }).click()
+  await expect(page.getByText('✨ 示例')).toBeVisible()
+  await expect(page.getByText('She is interested in reading.')).toBeVisible()
   await expect(page.getByText(/原文/).first()).toBeVisible()
 })
 

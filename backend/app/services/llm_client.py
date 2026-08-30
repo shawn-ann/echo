@@ -77,7 +77,12 @@ def _default_responder(messages: list[dict[str, Any]]) -> str:
                     {
                         "rule_title": "介词后加 -ing 形式",
                         "description": "英语中介词后接动词时需用动名词形式(-ing)而非不定式。",
-                        "example": "interested in read → interested in reading",
+                        "examples": [
+                            {"text": "She is interested in reading.", "note": "介词后接动名词"},
+                            {"text": "He is good at swimming.", "note": "at 后接动名词"},
+                            {"text": "I am tired of waiting.", "note": "of 后接动名词"},
+                        ],
+                        "references": ["interested in read"],
                     }
                 ]
             },
@@ -100,20 +105,20 @@ def _default_responder(messages: list[dict[str, Any]]) -> str:
             "has_errors": True,
             "errors": [
                 {
-                    "error_type": "时态错误",
-                    "fragment": "I go to",
-                    "explanation": "yesterday 表示过去，故用过去式 went",
-                    "correction": "I went to",
+                    "error_type": "动词形式",
+                    "fragment": "interested in read",
+                    "explanation": "介词后应接动名词形式",
+                    "correction": "interested in reading",
                 }
             ],
             "rewrite": {
-                "minimal": {"text": "Yesterday I went to the park.", "note": "修正时态，保留原句结构"},
-                "natural": {"text": "Yesterday I enjoyed the park.", "note": "用 enjoyed 更自然"},
+                "minimal": {"text": "I am interested in reading English books.", "note": "介词后接动名词"},
+                "natural": {"text": "I love reading English books.", "note": "更自然的表达"},
             },
             "learnings": [
                 {
-                    "rule": "yesterday 表示过去时间，主句动词应用过去式（go→went）。",
-                    "example": "I go to → I went to",
+                    "rule": "介词后接动词时用动名词形式（-ing）。",
+                    "example": "interested in read → interested in reading",
                 }
             ],
         },
