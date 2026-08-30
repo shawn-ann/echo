@@ -96,7 +96,6 @@ def _default_responder(messages: list[dict[str, Any]]) -> str:
                 "has_errors": False,
                 "errors": [],
                 "rewrite": None,
-                "learnings": [],
             },
             ensure_ascii=False,
         )
@@ -115,12 +114,6 @@ def _default_responder(messages: list[dict[str, Any]]) -> str:
                 "minimal": {"text": "I am interested in reading English books.", "note": "介词后接动名词"},
                 "natural": {"text": "I love reading English books.", "note": "更自然的表达"},
             },
-            "learnings": [
-                {
-                    "rule": "介词后接动词时用动名词形式（-ing）。",
-                    "example": "interested in read → interested in reading",
-                }
-            ],
         },
         ensure_ascii=False,
     )
