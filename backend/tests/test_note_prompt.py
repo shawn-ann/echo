@@ -15,6 +15,12 @@ def test_system_prompt_includes_existing_rules():
     assert "to 不定式接原形" in prompt
 
 
+def test_system_prompt_mentions_references_passthrough():
+    prompt = build_note_system_prompt(existing_rules=[])
+    assert "references" in prompt
+    assert "原样选取" in prompt  # 透传指令
+
+
 def test_user_content_contains_source_and_errors():
     content = build_note_user_content(
         source_text="I interested in read",

@@ -12,10 +12,16 @@ class SaveNoteRequest(BaseModel):
     errors: list[ErrorBlock] = Field(min_length=1)
 
 
+class NoteExample(BaseModel):
+    text: str
+    note: str
+
+
 class NoteRuleResult(BaseModel):
     rule_title: str
     description: str
-    example: str
+    examples: list[NoteExample] = Field(default_factory=list)
+    references: list[str] = Field(default_factory=list)
 
 
 class NoteLLMResponse(BaseModel):
@@ -47,7 +53,8 @@ class NoteListResponse(BaseModel):
 
 class NoteCaseItem(BaseModel):
     id: uuid.UUID
-    example: str
+    fragment: str
+    correction: str
     source_text: str
     created_at: datetime
 
@@ -56,4 +63,5 @@ class NoteDetailResponse(BaseModel):
     id: uuid.UUID
     rule_title: str
     description: str
+    examples: list[NoteExample]
     cases: list[NoteCaseItem]

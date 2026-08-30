@@ -15,9 +15,13 @@ def build_note_system_prompt(existing_rules: list[str]) -> str:
 {{
   "results": [
     {{
-      "rule_title": "介词后加 -ing 形式",
-      "description": "英语中介词后接动词时需用动名词形式(-ing)而非不定式...",
-      "example": "interested in read → interested in reading"
+      "rule_title": "第三人称单数主谓一致",
+      "description": "一般现在时中，主语为第三人称单数时，实义动词加 -s/-es，助动词用 has...",
+      "examples": [
+        {{"text": "She plays tennis every day.", "note": "play → plays"}},
+        {{"text": "He goes to work by bus.", "note": "go → goes"}}
+      ],
+      "references": ["She have", "she go"]
     }}
   ]
 }}
@@ -33,10 +37,17 @@ def build_note_system_prompt(existing_rules: list[str]) -> str:
 同类错误合并为一条 result（如 2 个时态错误 → 1 条规则）
 
 ## 去重指令
-若新错误的规则与已有规则库中某条语义相同，必须原样返回那条的 rule_title（不得修改、不得编造）。description 字段始终生成（匹配已有规则时后端会忽略，仅用于新建规则）。
+若新错误的规则与已有规则库中某条语义相同，必须原样返回那条的 rule_title（不得修改、不得编造）。
 
-## example 格式
-「错误写法 → 正确写法」，从本次 errors 中提炼
+## references 生成
+- references 是字符串数组，每个元素是**原样选取自输入「错误列表」中 fragment 字段**的文本
+- 一条规则可对应多个 references（如 She have / she go 同属主谓一致）
+- **不得改写** fragment 文本，**不得补充**不在错误列表中的文本
+
+## examples 要求
+- 给出 3 个**正确用法**的完整英文句子，不参考用户错误
+- 每条含 text（英文句子）和 note（简短中文说明，如 play → plays）
+- 覆盖该规则的典型场景
 
 ## description 要求
 包含规则说明、构成方式、常见情况、边界/例外情况，一段完整讲解
