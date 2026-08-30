@@ -64,7 +64,9 @@ async def save_notes(
         source_message_id = None
 
     # correction 由后端从 errors 匹配（取第一个匹配）
-    errors_by_fragment = {e["fragment"]: e["correction"] for e in errors}
+    errors_by_fragment: dict[str, str] = {}
+    for e in errors:
+        errors_by_fragment.setdefault(e["fragment"], e["correction"])
 
     saved: list[SavedNoteItem] = []
     for result in parsed.results:

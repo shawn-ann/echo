@@ -180,6 +180,33 @@ async def test_save_llm_unavailable_raises_503():
         assert exc_info.value.status_code == 503
 
 
+def _mock_responder_dup_fragment(msgs):
+    return json.dumps({
+        "results": [{
+            "rule_title": "重复片段规则",
+            "description": "d",
+            "examples": [],
+            "references": ["the same"],
+        }]
+    }, ensure_ascii=False)
+
+
+async def test_save_takes_first_correction_for_duplicate_fragment():
+    """同一 fragment 出现多次：取第一个 correction"""
+    uid = await _demo_user_id()
+    errors = [
+        {"error_type": "t", "fragment": "the same", "explanation": "x", "correction": "first correction"},
+        {"error_type": "t", "fragment": "the same", "explanation": "x", "correction": "second correction"},
+    ]
+    async with async_session_factory() as s:
+        mock = MockLLMClient(responder=_mock_responder_dup_fragment)
+        result = await save_notes(s, uid, None, "the same text", errors, mock)
+        assert len(result) == 1
+    async with async_session_factory() as s:
+        case = (await s.execute(select(NoteCase))).scalars().first()
+        assert case.correction == "first correction"
+
+
 def _mock_responder_invalid(msgs):
     return "not-json"
 
