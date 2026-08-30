@@ -1,6 +1,6 @@
 # 记笔记功能设计文档（notes-feature）
 
-**所属**：地道英语纠错 · 智能笔记本 | **版本**：V0.1 | **状态**：草稿 | **日期**：2026-08-29
+**所属**：地道英语纠错 · 智能笔记本 | **版本**：V0.2 | **状态**：草稿 | **日期**：2026-08-29
 **对应功能**：F-02 记笔记（PRD `Overview.md` §1.2 后期版本功能）
 **依赖**：`backend/app/models/`、`backend/app/services/correction_service.py`、`backend/app/services/llm_client.py`、`backend/app/routers/messages.py`、`web/src/pages/CorrectionPage.tsx`、`web/src/components/correction/`
 
@@ -183,18 +183,14 @@ for result in llm_results:
   ]
 }
 
-// 响应
+// 响应（异步化后改为）
+HTTP 202
 {
-  "saved_notes": [
-    {
-      "note_id": "uuid",
-      "rule_title": "介词后加 -ing 形式",
-      "is_new": false,
-      "case_id": "uuid"
-    }
-  ]
+  "accepted": true
 }
 ```
+
+> **执行方式变更**：保存请求**同步返回成功码 `202`**（毫秒级，不等 LLM 生成），规则生成与入库由后端**后台异步执行**（`FastAPI.BackgroundTasks` + 独立 session）。前端点击后立即乐观反馈，刷新笔记列表页（`GET /notes`）后才见最终结果。原「返回精简结构（note_id + case_id + is_new）」随异步化不再需要——最终数据靠列表页拉取。详见 `notes-async-save-design.md`（08-30）。
 
 **GET /notes**
 
@@ -238,7 +234,7 @@ for result in llm_results:
 
 ### 4.4 关键设计点
 
-1. **保存接口返回精简结构**（note_id + case_id + is_new），不返回完整规则——前端已有规则缓存时可更新，无缓存时从列表/详情拉取
+1. **保存接口返回精简结构**（~已随异步化调整：`POST /notes/save` 改为返回 `202 {accepted:true}` 成功码，不再返回规则/案例明细；最终数据靠笔记列表页 `GET /notes` 拉取，见 §4.2 注）
 2. **DELETE /notes/{id}** 删的是「当前用户在该规则下的所有案例」，全局 `notes` 行保留（其他用户可能引用）
 3. **新增 router** `backend/app/routers/notes.py`，注册到 `app.main`
 
@@ -299,13 +295,15 @@ for result in llm_results:
 
 - 位置：`ErrorCard` 底部，`修正后` 行右侧
 - 文案：「记笔记」+ 笔记图标
-- 点击后：按钮 loading → 调 `POST /notes/save`（errors 传 1 个）→ 成功 toast `已记入「{rule_title}」`，按钮变「已记录」禁用态；失败 toast `保存失败，请重试`
+- 点击后：按钮变「已记录」禁用态 + **乐观反馈**（立即，不等 LLM）→ 调 `POST /notes/save`（errors 传 1 个）→ 请求返回 `202`；规则后台入账，**刷新笔记列表页后可见最终结果**
 
 **② 纠错报告底部的「全部记笔记」按钮**
 
-- 位置：`CorrectionReportCard` 底部（`LearningsSection` 下方）
+- 位置：`CorrectionReportCard` 底部（改写下文，原文保留在用户消息中）
 - 文案：「全部记笔记」+ 图标
-- 点击后：按钮 loading → 调 `POST /notes/save`（errors 传全部）→ 成功 toast `已记入 N 条规则笔记`，按钮变「已记录」禁用态；失败 toast `保存失败，请重试`
+- 点击后：按钮变「已记录」禁用态 + **乐观反馈** → 调 `POST /notes/save`（errors 传全部）→ 返回 `202`；规则后台入账，刷新列表页后可见
+
+> **执行方式变更**：计数器不再用「按钮 loading → 等同步返回 → toast 结果」的同步链路；改为「点击即乐观反馈（按钮已记录）→ 后台入账 → 刷新列表页可见」，详见 `notes-async-save-design.md`。
 
 ### 5.5 「已记录」状态判定
 
@@ -334,16 +332,21 @@ for result in llm_results:
 
 ## 六、错误处理
 
-| 场景 | 处理 |
-|------|------|
-| 保存时 LLM 超时 | 504 `LLM_TIMEOUT`，前端 toast「AI 响应超时，请重试」 |
-| 保存时 LLM 不可用 | 503 `LLM_SERVICE_UNAVAILABLE`，toast「AI 服务不可用，请稍后重试」 |
-| LLM 返回格式无效 | 502 `LLM_RESPONSE_INVALID`，toast「AI 返回内容无效，请重试」 |
+> **执行方式变更**：保存请求已异步化（返回 `202` 即成功）。LLM 生成与入库在**后台任务**中执行，其失败**不再能被前端 toast 捕获**，改为**后台记日志、本次保存静默丢弃**，不向上抛出导致任务崩溃。前端不感知失败（乐观反馈已给）；用户可通过刷新列表页发现「没记上」，再次点击重存即可。
+
+| 场景 | 后台处理 |
+|------|---------|
+| 保存时 LLM 超时（504） | 记录日志，静默丢弃本次保存 |
+| 保存时 LLM 不可用（503） | 记录日志，静默丢弃 |
+| LLM 返回格式无效（502，重试 1 次仍失败） | 记录日志，静默丢弃 |
+
+| 场景 | 同步处理（无可异步化部分） |
+|------|---------|
 | 删除不存在的笔记/案例 | 404 |
 | 删除他人案例 | 404（按 user_id 过滤，对用户而言「不存在」） |
 | 笔记列表为空 | 200 + `notes: []`，前端显示空态 |
 
-LLM 错误处理复用现有 `LLMTimeoutError` / `LLMUnavailableError` + `AppError` 模式（见 `correction_service.py:91-105`）。
+后台任务内复用 `save_notes` 已有的 `AppError` 抛错逻辑，在任务外层 `try/except AppError` 捕获并记日志（见 `notes-async-save-design.md` §3.4）。
 
 ## 七、测试策略
 
@@ -420,5 +423,7 @@ E2E 自动起后端 `LLM_MODE=mock`（见 `playwright.config.ts`），需扩展 
 ---
 
 **变更记录**
+
+- V0.2 · 2026-08-30 · **同步异步化设计**：§4.2 `POST /notes/save` 返回结构改为 `202 {accepted:true}`（后台入账）；§5.4 前端触发改为乐观反馈 + 后台入账 + 刷新可见（去同步 toasting）；§六 错误处理改为后台记日志、不 toast；§4.4 设计点同步（详见 `notes-async-save-design.md`）
 
 - V0.1 · 2026-08-29 · 初稿：记笔记功能设计（规则中心 + 全局共享 + 保存时 LLM 生成 + 左侧 sidebar 布局）

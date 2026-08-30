@@ -1,9 +1,11 @@
 # 笔记示例与错误案例去重设计文档（notes-examples-dedup）
 
-**所属**：地道英语纠错 · 智能笔记本 | **版本**：V0.1 | **状态**：草稿 | **日期**：2026-08-30
+**所属**：地道英语纠错 · 智能笔记本 | **版本**：V0.2 | **状态**：草稿 | **日期**：2026-08-30
 **依赖**：`backend/app/models/note.py`、`backend/app/prompts/note_prompt.py`、`backend/app/services/note_service.py`、`backend/app/schemas/note.py`、`web/src/components/notes/NoteCard.tsx`、`web/src/components/notes/NoteCaseItem.tsx`
 
 > 本文档定义记笔记功能的增强设计：新增 AI 生成的通用示例（examples），并将错误案例数据源从 LLM 自由生成的 example 字符串改为结构化错误引用（fragment + correction），从根上解决案例重复引用问题。
+
+> **执行方式变更**：本文档的**生成契约（examples/references/去重/数据模型）全部保留不变**，仅将保存执行从「同步同步调用」改为「后台异步执行」（`POST /notes/save` 返回 `202`，规则后台生成后刷新列表页可见）。详见 `notes-async-save-design.md`（08-30）。
 
 ## 〇、背景与目标
 
@@ -289,5 +291,7 @@ async def save_notes(session, user_id, source_message_id, source_text, errors, l
 ---
 
 **变更记录**
+
+- V0.2 · 2026-08-30 · 顶部注明执行方式改为异步（`POST /notes/save` 返回 202，后台入账，生成契约 examples/references/去重不变），详见 `notes-async-save-design.md`
 
 - V0.1 · 2026-08-30 · 初稿：新增 AI 通用示例 + 错误案例结构化重构（fragment/correction 替代 example）+ 唯一约束去重
