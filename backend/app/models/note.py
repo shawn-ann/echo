@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -13,6 +14,7 @@ class Note(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     rule_title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    examples: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -23,6 +25,12 @@ class Note(Base):
 
 class NoteCase(Base):
     __tablename__ = "note_cases"
+    __table_args__ = (
+        UniqueConstraint(
+            "note_id", "user_id", "source_text", "fragment",
+            name="uq_note_cases_dedup",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     note_id: Mapped[uuid.UUID] = mapped_column(
@@ -31,7 +39,8 @@ class NoteCase(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", name="fk_note_cases_user_id", ondelete="CASCADE"), nullable=False
     )
-    example: Mapped[str] = mapped_column(Text, nullable=False)
+    fragment: Mapped[str] = mapped_column(Text, nullable=False)
+    correction: Mapped[str] = mapped_column(Text, nullable=False)
     source_text: Mapped[str] = mapped_column(Text, nullable=False)
     source_message_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("messages.id", name="fk_note_cases_message_id", ondelete="SET NULL"), nullable=True
