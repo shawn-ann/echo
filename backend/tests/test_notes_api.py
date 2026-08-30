@@ -1,10 +1,13 @@
 import json
+import uuid
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 
 from app.db import async_session_factory
 from app.main import create_app
+from app.models.user import User
 from app.services.llm_client import MockLLMClient, get_llm_client
 
 POST_URL = "/api/v1/notes/save"
@@ -170,3 +173,23 @@ async def test_get_note_detail_other_user_not_found(api):
     token_b = r_b.json()["token"]
     r2 = await client.get(f"{LIST_URL}/{note_id}", headers=_auth(token_b))
     assert r2.status_code == 404
+
+
+class _RaisingLLMClient:
+    async def complete(self, messages):
+        raise RuntimeError("llm down")
+
+
+async def _demo_user_id() -> uuid.UUID:
+    async with async_session_factory() as s:
+        user = (await s.execute(select(User).where(User.username == "demo"))).scalar_one()
+        return user.id
+
+
+async def test_run_save_notes_async_swallows_llm_failure():
+    """后台 LLM 失败被 _run_save_notes_async 吞掉，不向上抛"""
+    from app.routers.notes import _run_save_notes_async
+
+    uid = await _demo_user_id()
+    errors = [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}]
+    await _run_save_notes_async(uid, None, "She have many book", errors, _RaisingLLMClient())
