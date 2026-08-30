@@ -16,12 +16,11 @@ def _sample_summary(thinking, elapsed, outputs):
     }
 
 
-def test_summarize_result_extracts_errors_and_learnings():
-    raw = '{"intent":"correction","correction":{"has_errors":true,"errors":[{"category":"grammar","error_type":"时态错误","correction":"went"}],"learnings":[{"title":"t"}]}}'
+def test_summarize_result_extracts_errors():
+    raw = '{"intent":"correction","correction":{"has_errors":true,"errors":[{"category":"grammar","error_type":"时态错误","correction":"went"}]}}'
     s = _summarize_result(raw)
     assert len(s["errors"]) == 1
     assert s["errors"][0]["error_type"] == "时态错误"
-    assert s["learnings"] == 1
 
 
 def test_summarize_result_bad_json():
@@ -30,8 +29,8 @@ def test_summarize_result_bad_json():
 
 
 def test_write_compare_generates_report(tmp_path):
-    on_out = '{"intent":"correction","correction":{"has_errors":true,"errors":[{"category":"grammar","error_type":"时态错误","correction":"went"}],"learnings":[{"title":"t"}]}}'
-    off_out = '{"intent":"correction","correction":{"has_errors":true,"errors":[{"category":"grammar","error_type":"时态错误","correction":"went"}],"learnings":[{"title":"t"}]}}'
+    on_out = '{"intent":"correction","correction":{"has_errors":true,"errors":[{"category":"grammar","error_type":"时态错误","correction":"went"}]}}'
+    off_out = '{"intent":"correction","correction":{"has_errors":true,"errors":[{"category":"grammar","error_type":"时态错误","correction":"went"}]}}'
     on = _sample_summary("enabled", 100.0, [on_out])
     off = _sample_summary("disabled", 60.0, [off_out])
     out_path = tmp_path / "compare.md"

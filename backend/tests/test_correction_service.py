@@ -86,7 +86,7 @@ async def test_submit_llm_wrapped_report_unwraps():
         mock = MockLLMClient(
             responder=lambda msgs: (
                 '{"report": {"has_errors": true, "errors": [{"error_type": "时态错误", "fragment": "go", '
-                '"explanation": "x", "correction": "went"}], "rewrite": null, "learnings": []}}'
+                '"explanation": "x", "correction": "went"}], "rewrite": null}}'
             )
         )
         user_out, ai_out = await submit_message(s, uid, "She go to school", mock)

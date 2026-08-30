@@ -46,7 +46,7 @@ async def test_post_messages_no_error(api):
     client, mock = api
     token = await _token(client)
     mock.responder = lambda msgs: (
-        '{"has_errors":false,"errors":[],"rewrite":null,"learnings":[]}'
+        '{"has_errors":false,"errors":[],"rewrite":null}'
     )
     r = await client.post(POST_URL, json={"content": "perfect english"}, headers=_auth(token))
     assert r.status_code == 200

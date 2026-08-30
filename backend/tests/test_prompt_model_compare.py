@@ -1,8 +1,8 @@
 from app.scripts.prompt_model_compare import _case_hit_rate, _summarize_output
 
 
-def _mk_raw(errors, learnings_n=0):
-    return json_dumps({"intent": "correction", "correction": {"has_errors": True, "errors": errors, "learnings": [{}] * learnings_n}})
+def _mk_raw(errors):
+    return json_dumps({"intent": "correction", "correction": {"has_errors": True, "errors": errors}})
 
 
 def json_dumps(obj):
@@ -11,11 +11,10 @@ def json_dumps(obj):
 
 
 def test_summarize_output_extracts():
-    raw = json_dumps({"intent": "correction", "correction": {"has_errors": True, "errors": [{"category": "grammar", "error_type": "冠词缺失", "correction": "a job"}], "learnings": [{"t": 1}]}})
+    raw = json_dumps({"intent": "correction", "correction": {"has_errors": True, "errors": [{"category": "grammar", "error_type": "冠词缺失", "correction": "a job"}]}})
     s = _summarize_output(raw)
     assert len(s["errors"]) == 1
     assert s["errors"][0]["error_type"] == "冠词缺失"
-    assert s["learnings"] == 1
     assert s["ok"] is True
 
 
