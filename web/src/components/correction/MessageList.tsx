@@ -28,16 +28,11 @@ export default function MessageList() {
   return (
     <div className="flex-1 overflow-y-auto bg-[#f8f9fa]">
       <div className="mx-auto w-full min-w-0 space-y-4 p-4 md:p-6">
-        {messages.map((m, i) =>
+        {messages.map((m) =>
           m.role === 'user' ? (
             <UserBubble key={m.id} content={m.content ?? ''} />
           ) : m.report ? (
-            <CorrectionReportCard
-              key={m.id}
-              report={m.report}
-              message={m}
-              sourceText={messages[i - 1]?.content ?? ''}
-            />
+            <CorrectionReportCard key={m.id} report={m.report} />
           ) : null,
         )}
         {pending && <LoadingBubble />}

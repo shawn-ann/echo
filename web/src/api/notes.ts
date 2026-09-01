@@ -1,14 +1,9 @@
 import { http } from './client'
-import type { ErrorBlock } from './messages'
-
-export interface NoteSaveAccepted {
-  accepted: boolean
-}
 
 export interface NoteListItem {
   id: string
   rule_title: string
-  description: string
+  knowledge_point: string
   case_count: number
   updated_at: string
 }
@@ -17,37 +12,23 @@ export interface NoteListResponse {
   notes: NoteListItem[]
 }
 
-export interface NoteExample {
-  text: string
-  note: string
-}
-
 export interface NoteCaseItem {
   id: string
-  fragment: string
-  correction: string
-  source_text: string
+  original_sentence: string
+  polished_sentence: string
+  change_details: string
+  error_root: string
   created_at: string
 }
 
 export interface NoteDetailResponse {
   id: string
   rule_title: string
-  description: string
-  examples: NoteExample[]
+  knowledge_point: string
+  warning: string
+  alternatives: string[]
+  feynman_question: string
   cases: NoteCaseItem[]
-}
-
-export async function saveNote(
-  messageId: string,
-  sourceText: string,
-  errors: ErrorBlock[],
-): Promise<NoteSaveAccepted> {
-  return http.post<NoteSaveAccepted>('/notes/save', {
-    message_id: messageId,
-    source_text: sourceText,
-    errors,
-  })
 }
 
 export async function fetchNotes(): Promise<NoteListItem[]> {
