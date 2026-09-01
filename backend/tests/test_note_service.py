@@ -18,140 +18,113 @@ async def _demo_user_id() -> uuid.UUID:
         return user.id
 
 
-def _mock_responder_new_rule(msgs):
+def _mock_responder(msgs):
     return json.dumps({
         "results": [{
             "rule_title": "第三人称单数主谓一致",
-            "description": "一般现在时中，第三人称单数主语动词加 -s/-es",
-            "examples": [
-                {"text": "She plays tennis.", "note": "play → plays"},
-                {"text": "He goes to work.", "note": "go → goes"},
-                {"text": "It rains a lot.", "note": "rain → rains"},
-            ],
-            "references": ["She have", "she go"],
+            "knowledge_point": "一般现在时中，第三人称单数主语动词加 -s/-es",
+            "warning": "你常忘给 she/he/it 加 -s",
+            "alternatives": ["She runs.", "He goes."],
+            "feynman_question": "主语是 she/he/it 时动词怎么变？",
+            "error_root": "主谓不一致",
+            "cases": [{"change_details": "She go → She goes; He go → He goes"}],
         }]
     }, ensure_ascii=False)
 
 
-async def test_save_new_rule_creates_note_with_examples_and_cases():
+async def test_save_creates_note_with_8field_and_case():
     uid = await _demo_user_id()
     errors = [
-        {"error_type": "主谓不一致", "fragment": "She have", "explanation": "x", "correction": "She has"},
-        {"error_type": "主谓不一致", "fragment": "she go", "explanation": "x", "correction": "she goes"},
+        {"error_type": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"},
+        {"error_type": "主谓不一致", "fragment": "He go", "explanation": "x", "correction": "He goes"},
     ]
     async with async_session_factory() as s:
-        mock = MockLLMClient(responder=_mock_responder_new_rule)
-        result = await save_notes(s, uid, None, "She have many book and she go to school", errors, mock)
-        assert len(result) == 2
-        assert all(r.is_new for r in result)
-        assert all(r.rule_title == "第三人称单数主谓一致" for r in result)
-
-    async with async_session_factory() as s:
-        note = (await s.execute(select(Note).where(Note.rule_title == "第三人称单数主谓一致"))).scalar_one()
-        assert len(note.examples) == 3
-        assert note.examples[0]["text"] == "She plays tennis."
-        cases = (await s.execute(select(NoteCase).where(NoteCase.note_id == note.id))).scalars().all()
-        assert len(cases) == 2
-        by_fragment = {c.fragment: c.correction for c in cases}
-        assert by_fragment["She have"] == "She has"
-        assert by_fragment["she go"] == "she goes"
-
-
-def _mock_responder_existing_rule(msgs):
-    return json.dumps({
-        "results": [{
-            "rule_title": "第三人称单数主谓一致",
-            "description": "（后端忽略，已有规则）",
-            "examples": [{"text": "ignored", "note": "ignored"}],
-            "references": ["He have"],
-        }]
-    }, ensure_ascii=False)
-
-
-async def test_save_existing_rule_ignores_examples_and_appends_case():
-    uid = await _demo_user_id()
-    errors = [
-        {"error_type": "主谓不一致", "fragment": "She have", "explanation": "x", "correction": "She has"},
-        {"error_type": "主谓不一致", "fragment": "she go", "explanation": "x", "correction": "she goes"},
-    ]
-    # 先新建规则
-    async with async_session_factory() as s:
-        mock = MockLLMClient(responder=_mock_responder_new_rule)
-        await save_notes(s, uid, None, "She have many book and she go to school", errors, mock)
-    # 再用已有规则保存（新原文，references 不同）
-    async with async_session_factory() as s:
-        mock2 = MockLLMClient(responder=_mock_responder_existing_rule)
-        result = await save_notes(s, uid, None, "He have a car", [{"error_type": "主谓不一致", "fragment": "He have", "explanation": "x", "correction": "He has"}], mock2)
+        mock = MockLLMClient(responder=_mock_responder)
+        result = await save_notes(s, uid, None, "She go to school. He go home.", "She goes to school. He goes home.", errors, mock)
         assert len(result) == 1
-        assert result[0].is_new is False
+
     async with async_session_factory() as s:
         note = (await s.execute(select(Note).where(Note.rule_title == "第三人称单数主谓一致"))).scalar_one()
-        assert len(note.examples) == 3  # 未被覆盖（忽略 LLM 的 examples）
+        assert note.user_id == uid
+        assert note.knowledge_point == "一般现在时中，第三人称单数主语动词加 -s/-es"
+        assert note.warning == "你常忘给 she/he/it 加 -s"
+        assert note.alternatives == ["She runs.", "He goes."]
+        assert note.feynman_question == "主语是 she/he/it 时动词怎么变？"
         cases = (await s.execute(select(NoteCase).where(NoteCase.note_id == note.id))).scalars().all()
-        assert len(cases) == 3  # 2 (首建) + 1 (追加)
+        assert len(cases) == 1
+        case = cases[0]
+        assert case.original_sentence == "She go to school. He go home."
+        assert case.polished_sentence == "She goes to school. He goes home."
+        assert case.change_details == "She go → She goes; He go → He goes"
+        assert case.error_root == "主谓不一致"
 
 
-async def test_save_dedup_same_source_and_fragment():
-    """同一原文+同一错误段重复保存：只保留一条（先查重 + 唯一约束兜底）"""
+async def test_save_group_by_error_type_creates_multiple_notes():
+    """不同 error_type 生成多条笔记"""
     uid = await _demo_user_id()
     errors = [
-        {"error_type": "主谓不一致", "fragment": "She have", "explanation": "x", "correction": "She has"},
-        {"error_type": "主谓不一致", "fragment": "she go", "explanation": "x", "correction": "she goes"},
+        {"error_type": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"},
+        {"error_type": "冠词缺失", "fragment": "a apple", "explanation": "x", "correction": "an apple"},
     ]
-    async with async_session_factory() as s:
-        mock = MockLLMClient(responder=_mock_responder_new_rule)
-        # 保存两次同一原文同一错误
-        await save_notes(s, uid, None, "She have many book and she go to school", errors, mock)
-        result = await save_notes(s, uid, None, "She have many book and she go to school", errors, mock)
-        assert len(result) == 0  # 全部重复，跳过
-    async with async_session_factory() as s:
-        note = (await s.execute(select(Note).where(Note.rule_title == "第三人称单数主谓一致"))).scalar_one()
-        cases = (await s.execute(select(NoteCase).where(NoteCase.note_id == note.id))).scalars().all()
-        assert len(cases) == 2  # 仍只有 2 条
-
-
-async def test_save_reference_without_matching_error_skipped():
-    """LLM references 含不在 errors 中的 fragment：静默跳过"""
-    uid = await _demo_user_id()
-    errors = [{"error_type": "主谓不一致", "fragment": "She have", "explanation": "x", "correction": "She has"}]
     responder = lambda msgs: json.dumps({
-        "results": [{
-            "rule_title": "测试规则",
-            "description": "d",
-            "examples": [],
-            "references": ["She have", "not in errors"],
-        }]
+        "results": [
+            {
+                "rule_title": "主谓一致规则", "knowledge_point": "kp", "warning": "w",
+                "alternatives": ["A"], "feynman_question": "q", "error_root": "主谓不一致",
+                "cases": [{"change_details": "She go → She goes"}],
+            },
+            {
+                "rule_title": "元音音素前用 an", "knowledge_point": "kp2", "warning": "w2",
+                "alternatives": ["B"], "feynman_question": "q2", "error_root": "冠词缺失",
+                "cases": [{"change_details": "a apple → an apple"}],
+            },
+        ]
     }, ensure_ascii=False)
     async with async_session_factory() as s:
         mock = MockLLMClient(responder=responder)
-        result = await save_notes(s, uid, None, "She have many book", errors, mock)
-        assert len(result) == 1  # 只有 She have 匹配到 correction
-    async with async_session_factory() as s:
-        note = (await s.execute(select(Note).where(Note.rule_title == "测试规则"))).scalar_one()
-        cases = (await s.execute(select(NoteCase).where(NoteCase.note_id == note.id))).scalars().all()
-        assert len(cases) == 1
-
-
-def _mock_responder_two_rules(msgs):
-    return json.dumps({
-        "results": [
-            {"rule_title": "主谓一致规则", "description": "d1", "examples": [], "references": ["She have"]},
-            {"rule_title": "单复数规则", "description": "d2", "examples": [], "references": ["many book"]},
-        ]
-    }, ensure_ascii=False)
-
-
-async def test_save_batch_creates_multiple_rules():
-    uid = await _demo_user_id()
-    errors = [
-        {"error_type": "主谓不一致", "fragment": "She have", "explanation": "x", "correction": "She has"},
-        {"error_type": "单复数错误", "fragment": "many book", "explanation": "x", "correction": "many books"},
-    ]
-    async with async_session_factory() as s:
-        mock = MockLLMClient(responder=_mock_responder_two_rules)
-        result = await save_notes(s, uid, None, "She have many book", errors, mock)
+        result = await save_notes(s, uid, None, "She go to school and eat a apple", "She goes to school and eats an apple", errors, mock)
         assert len(result) == 2
-        assert all(r.is_new for r in result)
+    async with async_session_factory() as s:
+        notes = (await s.execute(select(Note).where(Note.user_id == uid))).scalars().all()
+        assert len(notes) == 2
+        roots = {c.error_root for n in notes for c in (await s.execute(select(NoteCase).where(NoteCase.note_id == n.id))).scalars().all()}
+        assert roots == {"主谓不一致", "冠词缺失"}
+
+
+async def test_save_reuses_note_by_user_rule_title():
+    """同 (user_id, rule_title) 复用笔记，追加案例"""
+    uid = await _demo_user_id()
+    errors1 = [{"error_type": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"}]
+    async with async_session_factory() as s:
+        mock = MockLLMClient(responder=_mock_responder)
+        await save_notes(s, uid, None, "She go to school.", "She goes to school.", errors1, mock)
+    async with async_session_factory() as s:
+        mock2 = MockLLMClient(responder=_mock_responder)
+        result = await save_notes(s, uid, None, "He go home.", "He goes home.", errors1, mock2)
+        assert len(result) == 1
+    async with async_session_factory() as s:
+        note = (await s.execute(select(Note).where(Note.rule_title == "第三人称单数主谓一致"))).scalar_one()
+        cases = (await s.execute(select(NoteCase).where(NoteCase.note_id == note.id))).scalars().all()
+        assert len(cases) == 2
+
+
+async def test_save_different_user_creates_separate_note():
+    """不同用户的同 rule_title 是独立笔记"""
+    uid1 = await _demo_user_id()
+    async with async_session_factory() as s:
+        from app.core.security import hash_password
+        from app.models.user import User, UserStatus
+        s.add(User(username="other_u", password_hash=hash_password("other1234"), status=UserStatus.active))
+        await s.commit()
+        uid2 = (await s.execute(select(User).where(User.username == "other_u"))).scalar_one().id
+    async with async_session_factory() as s:
+        mock = MockLLMClient(responder=_mock_responder)
+        await save_notes(s, uid1, None, "She go to school.", "She goes to school.", [{"error_type": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"}], mock)
+        await save_notes(s, uid2, None, "He go home.", "He goes home.", [{"error_type": "主谓不一致", "fragment": "He go", "explanation": "x", "correction": "He goes"}], mock)
+    async with async_session_factory() as s:
+        notes = (await s.execute(select(Note))).scalars().all()
+        assert len(notes) == 2
+        assert {n.user_id for n in notes} == {uid1, uid2}
 
 
 class _RaisingLLMClient:
@@ -167,7 +140,7 @@ async def test_save_timeout_raises_504():
     async with async_session_factory() as s:
         mock = _RaisingLLMClient(LLMTimeoutError())
         with pytest.raises(AppError) as exc_info:
-            await save_notes(s, uid, None, "x", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
+            await save_notes(s, uid, None, "x", "y", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
         assert exc_info.value.status_code == 504
 
 
@@ -176,45 +149,14 @@ async def test_save_llm_unavailable_raises_503():
     async with async_session_factory() as s:
         mock = _RaisingLLMClient(LLMUnavailableError())
         with pytest.raises(AppError) as exc_info:
-            await save_notes(s, uid, None, "x", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
+            await save_notes(s, uid, None, "x", "y", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
         assert exc_info.value.status_code == 503
-
-
-def _mock_responder_dup_fragment(msgs):
-    return json.dumps({
-        "results": [{
-            "rule_title": "重复片段规则",
-            "description": "d",
-            "examples": [],
-            "references": ["the same"],
-        }]
-    }, ensure_ascii=False)
-
-
-async def test_save_takes_first_correction_for_duplicate_fragment():
-    """同一 fragment 出现多次：取第一个 correction"""
-    uid = await _demo_user_id()
-    errors = [
-        {"error_type": "t", "fragment": "the same", "explanation": "x", "correction": "first correction"},
-        {"error_type": "t", "fragment": "the same", "explanation": "x", "correction": "second correction"},
-    ]
-    async with async_session_factory() as s:
-        mock = MockLLMClient(responder=_mock_responder_dup_fragment)
-        result = await save_notes(s, uid, None, "the same text", errors, mock)
-        assert len(result) == 1
-    async with async_session_factory() as s:
-        case = (await s.execute(select(NoteCase))).scalars().first()
-        assert case.correction == "first correction"
-
-
-def _mock_responder_invalid(msgs):
-    return "not-json"
 
 
 async def test_save_invalid_llm_response_raises_502():
     uid = await _demo_user_id()
     async with async_session_factory() as s:
-        mock = MockLLMClient(responder=_mock_responder_invalid)
+        mock = MockLLMClient(responder=lambda msgs: "not-json")
         with pytest.raises(AppError) as exc_info:
-            await save_notes(s, uid, None, "x", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
+            await save_notes(s, uid, None, "x", "y", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
         assert exc_info.value.status_code == 502
