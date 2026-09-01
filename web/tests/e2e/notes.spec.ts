@@ -33,9 +33,25 @@ async function loginAndSubmit(page: Page) {
 }
 
 async function waitUntilNotePersisted(page: Page) {
-  await page.getByRole('link', { name: /我的笔记/ }).click()
+  // 后台任务异步入库，先轮询 API 等待笔记落库，再导航避免页面首拉竞态
+  const token = await page.evaluate(() => localStorage.getItem('echo_token'))
+  const headers = { Authorization: `Bearer ${token}` }
+  let found = false
+  for (let i = 0; i < 20; i++) {
+    const res = await page.request.get('http://localhost:8000/api/v1/notes', { headers })
+    if (res.status() === 200) {
+      const body = await res.json()
+      if ((body.notes ?? []).some((n: { rule_title: string }) => n.rule_title === '介词后加 -ing 形式')) {
+        found = true
+        break
+      }
+    }
+    await page.waitForTimeout(1000)
+  }
+  expect(found, '笔记应在 20 秒内落库').toBe(true)
+  await page.goto('/notes')
   await expect(page).toHaveURL(/\/notes$/)
-  await expect(page.getByRole('button', { name: /介词后加 -ing 形式/ })).toBeVisible({ timeout: 20000 })
+  await expect(page.getByRole('button', { name: /介词后加 -ing 形式/ })).toBeVisible({ timeout: 5000 })
 }
 
 test('N-01 纠错后自动保存笔记', async ({ page }) => {
@@ -66,6 +82,8 @@ test('N-04 无错误不生成笔记', async ({ page }) => {
   await page.getByPlaceholder('输入英文，AI 将为你纠错').fill('no-error')
   await page.getByRole('button', { name: '发送' }).click()
   await expect(page.getByText(/这段英文写得不错/).first()).toBeVisible()
+  // 等待后台任务（若有）完成，避免极端情况下导航过早
+  await page.waitForTimeout(1500)
   await page.getByRole('link', { name: /我的笔记/ }).click()
   await expect(page).toHaveURL(/\/notes$/)
   await expect(page.getByText('还没有笔记')).toBeVisible({ timeout: 20000 })
