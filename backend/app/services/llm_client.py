@@ -76,13 +76,18 @@ def _default_responder(messages: list[dict[str, Any]]) -> str:
                 "results": [
                     {
                         "rule_title": "介词后加 -ing 形式",
-                        "description": "英语中介词后接动词时需用动名词形式(-ing)而非不定式。",
-                        "examples": [
-                            {"text": "She is interested in reading.", "note": "介词后接动名词"},
-                            {"text": "He is good at swimming.", "note": "at 后接动名词"},
-                            {"text": "I am tired of waiting.", "note": "of 后接动名词"},
+                        "knowledge_point": "介词后接动词时需用动名词形式(-ing)而非不定式。如 be interested in reading、good at swimming。",
+                        "warning": "你常把介词后的动词写成原形，注意介词后一律用 -ing",
+                        "alternatives": [
+                            "She is interested in reading technical docs.",
+                            "He is good at presenting in meetings.",
+                            "The team is responsible for shipping the release.",
                         ],
-                        "references": ["interested in read"],
+                        "feynman_question": "介词后接动词用什么形式？为什么不能用不定式？",
+                        "error_root": "动词形式",
+                        "cases": [
+                            {"change_details": "interested in read → interested in reading"}
+                        ],
                     }
                 ]
             },
