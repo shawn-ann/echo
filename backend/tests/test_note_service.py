@@ -104,8 +104,47 @@ async def test_save_reuses_note_by_user_rule_title():
         assert len(result) == 1
     async with async_session_factory() as s:
         note = (await s.execute(select(Note).where(Note.rule_title == "第三人称单数主谓一致"))).scalar_one()
+        assert note.knowledge_point == "一般现在时中，第三人称单数主语动词加 -s/-es"
+        assert note.warning == "你常忘给 she/he/it 加 -s"
+        assert note.alternatives == ["She runs.", "He goes."]
+        assert note.feynman_question == "主语是 she/he/it 时动词怎么变？"
         cases = (await s.execute(select(NoteCase).where(NoteCase.note_id == note.id))).scalars().all()
         assert len(cases) == 2
+
+
+async def test_save_dedup_same_source_skips_case():
+    """同 (note_id, user_id, original_sentence) 重复保存时跳过，不新增案例"""
+    uid = await _demo_user_id()
+    errors = [{"error_type": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"}]
+    async with async_session_factory() as s:
+        mock = MockLLMClient(responder=_mock_responder)
+        result = await save_notes(s, uid, None, "She go to school.", "She goes to school.", errors, mock)
+        assert len(result) == 1
+        result = await save_notes(s, uid, None, "She go to school.", "She goes to school.", errors, mock)
+        assert len(result) == 1
+    async with async_session_factory() as s:
+        cases = (await s.execute(select(NoteCase))).scalars().all()
+        assert len(cases) == 1
+
+
+async def test_save_empty_cases_deletes_orphan_note():
+    """LLM 返回 cases 为空的 result 时，不留下无案例的孤立 Note"""
+    uid = await _demo_user_id()
+    errors = [{"error_type": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"}]
+    responder = lambda msgs: json.dumps({
+        "results": [{
+            "rule_title": "空案例规则", "knowledge_point": "kp", "warning": "w",
+            "alternatives": ["A"], "feynman_question": "q", "error_root": "主谓不一致",
+            "cases": [],
+        }]
+    }, ensure_ascii=False)
+    async with async_session_factory() as s:
+        mock = MockLLMClient(responder=responder)
+        result = await save_notes(s, uid, None, "She go to school.", "She goes to school.", errors, mock)
+        assert len(result) == 1
+    async with async_session_factory() as s:
+        notes = (await s.execute(select(Note).where(Note.rule_title == "空案例规则"))).scalars().all()
+        assert notes == []
 
 
 async def test_save_different_user_creates_separate_note():

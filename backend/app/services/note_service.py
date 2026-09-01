@@ -66,7 +66,8 @@ async def save_notes(
                 )
             )
         ).scalars().first()
-        if note is None:
+        is_new = note is None
+        if is_new:
             note = Note(
                 user_id=user_id,
                 rule_title=result.rule_title,
@@ -78,6 +79,7 @@ async def save_notes(
             session.add(note)
             await session.flush()
 
+        inserted_any = False
         for case in result.cases:
             existing_case = (
                 await session.execute(
@@ -102,6 +104,10 @@ async def save_notes(
                 )
             )
             note.updated_at = datetime.now(timezone.utc)
+            inserted_any = True
+
+        if is_new and not inserted_any:
+            await session.delete(note)
 
         saved.append(result)
 
