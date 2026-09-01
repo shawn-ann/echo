@@ -26,14 +26,20 @@ export default function NoteCaseItem({ caseItem, onDeleted }: Props) {
     <div className="rounded-lg border border-[#dee2e6] bg-white p-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded bg-[#fff5f5] px-2 py-0.5 text-xs text-[#c92a2a]">
-          {caseItem.fragment} ❌
+          {caseItem.original_sentence} ❌
         </span>
         <span className="text-[#adb5bd]">→</span>
         <span className="rounded bg-[#e6fcf5] px-2 py-0.5 text-xs text-[#2b8a3e]">
-          {caseItem.correction} ✅
+          {caseItem.polished_sentence} ✅
         </span>
       </div>
-      <p className="mt-1.5 text-xs text-[#868e96]">原文：{caseItem.source_text}</p>
+      <p className="mt-1.5 text-xs text-[#495057]">
+        <span className="text-[#868e96]">修改明细：</span>
+        {caseItem.change_details}
+      </p>
+      <p className="mt-0.5 text-xs text-[#868e96]">
+        根源：{caseItem.error_root}
+      </p>
       <div className="mt-2 flex justify-end">
         {confirming ? (
           <div className="flex items-center gap-2">

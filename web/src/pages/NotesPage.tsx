@@ -48,7 +48,7 @@ export default function NotesPage() {
           onClick={() => navigate('/correction')}
           className="border-[#0ca678] text-[#0ca678] hover:bg-[#f0fdfa]"
         >
-          去纠错页记下你的第一条规则
+          去纠错页写一段英文，AI 会自动为你沉淀笔记
         </Button>
       </div>
     )

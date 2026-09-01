@@ -64,7 +64,7 @@ export default function NoteCard({ note, onNoteDeleted }: Props) {
       <div className="flex items-start justify-between gap-2">
         <button type="button" onClick={toggleExpand} className="flex-1 text-left">
           <p className="text-sm font-semibold text-[#343a40]">{note.rule_title}</p>
-          <p className="mt-0.5 line-clamp-1 text-xs text-[#868e96]">{note.description}</p>
+          <p className="mt-0.5 line-clamp-1 text-xs text-[#868e96]">{note.knowledge_point}</p>
           <p className="mt-1 text-xs text-[#adb5bd]">
             {caseCount} 个案例 · 最近更新 {new Date(note.updated_at).toLocaleDateString()}
           </p>
@@ -78,27 +78,35 @@ export default function NoteCard({ note, onNoteDeleted }: Props) {
             <p className="text-sm text-[#868e96]">加载中…</p>
           ) : detail ? (
             <>
-              <p className="text-sm text-[#495057]">{detail.description}</p>
+              <div className="rounded-lg border border-[#dee2e6] bg-white p-3">
+                <p className="mb-1 text-sm font-semibold text-[#343a40]">📌 核心知识点</p>
+                <p className="text-sm text-[#495057]">{detail.knowledge_point}</p>
+              </div>
 
-              {/* AI 通用示例 */}
-              {detail.examples.length > 0 && (
+              <div className="rounded-lg border border-[#dee2e6] bg-white p-3">
+                <p className="mb-1 text-sm font-semibold text-[#343a40]">⚠️ 个人易错警示</p>
+                <p className="text-sm text-[#495057]">{detail.warning}</p>
+              </div>
+
+              {detail.alternatives.length > 0 && (
                 <div className="rounded-lg border border-[#dee2e6] bg-white p-3">
-                  <p className="mb-2 text-sm font-semibold text-[#343a40]">✨ 示例</p>
+                  <p className="mb-2 text-sm font-semibold text-[#343a40]">💼 职场同义备选</p>
                   <div className="space-y-1.5">
-                    {detail.examples.map((ex, i) => (
+                    {detail.alternatives.map((alt, i) => (
                       <div key={i} className="flex items-start gap-2 text-sm">
                         <span className="text-[#0ca678]">•</span>
-                        <div>
-                          <span className="text-[#212529]">{ex.text}</span>
-                          <span className="ml-2 text-xs text-[#868e96]">{ex.note}</span>
-                        </div>
+                        <span className="text-[#212529]">{alt}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* 用户错误案例 */}
+              <div className="rounded-lg border border-[#dee2e6] bg-white p-3">
+                <p className="mb-1 text-sm font-semibold text-[#343a40]">❓ 费曼自测</p>
+                <p className="text-sm text-[#495057]">{detail.feynman_question}</p>
+              </div>
+
               {detail.cases.length > 0 && (
                 <p className="pt-1 text-sm font-semibold text-[#343a40]">📝 我的错误</p>
               )}
