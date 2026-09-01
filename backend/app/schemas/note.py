@@ -3,48 +3,33 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from app.schemas.correction import ErrorBlock
 
-
-class SaveNoteRequest(BaseModel):
-    message_id: uuid.UUID
-    source_text: str = Field(min_length=1, max_length=2000)
-    errors: list[ErrorBlock] = Field(min_length=1)
-
-
-class NoteExample(BaseModel):
-    text: str
-    note: str
+class NoteRuleCase(BaseModel):
+    """LLM 输出的单个规则下的案例（change_details 由 LLM 生成）"""
+    change_details: str
 
 
 class NoteRuleResult(BaseModel):
+    """LLM 输出的单个规则（8 字段中的规则级字段 + 案例）"""
     rule_title: str
-    description: str
-    examples: list[NoteExample] = Field(default_factory=list)
-    references: list[str] = Field(default_factory=list)
+    knowledge_point: str
+    warning: str
+    alternatives: list[str] = Field(default_factory=list)
+    feynman_question: str
+    error_root: str
+    cases: list[NoteRuleCase] = Field(default_factory=list)
 
 
 class NoteLLMResponse(BaseModel):
     results: list[NoteRuleResult]
 
 
-class SavedNoteItem(BaseModel):
-    note_id: uuid.UUID
-    rule_title: str
-    is_new: bool
-    case_id: uuid.UUID
-
-
 class NoteListItem(BaseModel):
     id: uuid.UUID
     rule_title: str
-    description: str
+    knowledge_point: str
     case_count: int
     updated_at: datetime
-
-
-class NoteSaveAccepted(BaseModel):
-    accepted: bool
 
 
 class NoteListResponse(BaseModel):
@@ -53,15 +38,18 @@ class NoteListResponse(BaseModel):
 
 class NoteCaseItem(BaseModel):
     id: uuid.UUID
-    fragment: str
-    correction: str
-    source_text: str
+    original_sentence: str
+    polished_sentence: str
+    change_details: str
+    error_root: str
     created_at: datetime
 
 
 class NoteDetailResponse(BaseModel):
     id: uuid.UUID
     rule_title: str
-    description: str
-    examples: list[NoteExample]
+    knowledge_point: str
+    warning: str
+    alternatives: list[str]
+    feynman_question: str
     cases: list[NoteCaseItem]
