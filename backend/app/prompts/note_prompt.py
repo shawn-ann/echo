@@ -12,6 +12,7 @@ def build_note_system_prompt() -> str:
 - 按 error_type 分组：相同 error_type 的错误归入同一条 result
 - 不同 error_type 的错误生成不同 result
 - 每个 result 的 error_root 必须原样取该组的 error_type 值
+- cases 数组必须只包含 1 个元素：该组内所有错误的 fragment → correction 用分号串联进这唯一的 change_details
 
 ## 输出格式
 输出 JSON 对象，含 results 数组，每个元素对应一个错误类型分组：

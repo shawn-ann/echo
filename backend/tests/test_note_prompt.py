@@ -16,6 +16,7 @@ def test_system_prompt_group_by_error_type():
     prompt = build_note_system_prompt()
     assert "error_type" in prompt
     assert "合并" in prompt
+    assert "1 个元素" in prompt
 
 
 def test_system_prompt_no_dedup():
