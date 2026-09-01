@@ -1,6 +1,8 @@
 import uuid
 
+import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.db import async_session_factory
 from app.models.note import Note, NoteCase
@@ -13,72 +15,73 @@ async def _demo_user_id() -> uuid.UUID:
         return user.id
 
 
-async def test_create_note_with_examples():
+async def test_create_note_with_8field_fields():
     uid = await _demo_user_id()
     async with async_session_factory() as s:
         note = Note(
+            user_id=uid,
             rule_title="第三人称单数主谓一致",
-            description="一般现在时中，第三人称单数主语动词加 -s/-es",
-            examples=[
-                {"text": "She plays tennis.", "note": "play → plays"},
-                {"text": "He goes to work.", "note": "go → goes"},
-            ],
+            knowledge_point="一般现在时中，第三人称单数主语动词加 -s/-es",
+            warning="你常忘给 she/he/it 加 -s",
+            alternatives=["She runs.", "He goes."],
+            feynman_question="主语是 she/he/it 时动词怎么变？",
         )
         s.add(note)
         await s.flush()
         case = NoteCase(
             note_id=note.id,
             user_id=uid,
-            fragment="She have",
-            correction="She has",
-            source_text="She have many book",
+            original_sentence="She go to school.",
+            polished_sentence="She goes to school.",
+            change_details="She go → She goes",
+            error_root="主谓不一致",
         )
         s.add(case)
         await s.commit()
         assert note.id is not None
-        assert note.examples == [
-            {"text": "She plays tennis.", "note": "play → plays"},
-            {"text": "He goes to work.", "note": "go → goes"},
-        ]
-        assert case.fragment == "She have"
-        assert case.correction == "She has"
+        assert note.user_id == uid
+        assert note.alternatives == ["She runs.", "He goes."]
+        assert case.original_sentence == "She go to school."
+        assert case.polished_sentence == "She goes to school."
+        assert case.change_details == "She go → She goes"
+        assert case.error_root == "主谓不一致"
 
 
-async def test_note_examples_default_empty():
-    async with async_session_factory() as s:
-        note = Note(rule_title="测试规则", description="测试")
-        s.add(note)
-        await s.commit()
-        assert note.examples == []
-
-
-async def test_note_case_unique_dedup():
-    """同 (note, user, source_text, fragment) 唯一：重复插入抛 IntegrityError"""
-    from sqlalchemy.exc import IntegrityError
-
-    import pytest
-
+async def test_notes_unique_user_rule_title():
+    """同 (user_id, rule_title) 唯一：重复插入抛 IntegrityError"""
     uid = await _demo_user_id()
     async with async_session_factory() as s:
-        note = Note(rule_title="唯一约束规则", description="测试")
-        s.add(note)
-        await s.flush()
-        s.add(NoteCase(note_id=note.id, user_id=uid, fragment="She have", correction="She has", source_text="src"))
+        s.add(Note(user_id=uid, rule_title="重复规则", knowledge_point="kp", warning="w", feynman_question="q"))
         await s.commit()
     async with async_session_factory() as s:
         with pytest.raises(IntegrityError):
-            s.add(NoteCase(note_id=note.id, user_id=uid, fragment="She have", correction="She has", source_text="src"))
+            s.add(Note(user_id=uid, rule_title="重复规则", knowledge_point="kp", warning="w", feynman_question="q"))
+            await s.commit()
+
+
+async def test_note_cases_unique_note_user_original():
+    """同 (note_id, user_id, original_sentence) 唯一：重复插入抛 IntegrityError"""
+    uid = await _demo_user_id()
+    async with async_session_factory() as s:
+        note = Note(user_id=uid, rule_title="唯一约束规则", knowledge_point="kp", warning="w", feynman_question="q")
+        s.add(note)
+        await s.flush()
+        s.add(NoteCase(note_id=note.id, user_id=uid, original_sentence="src", polished_sentence="fix", change_details="d", error_root="r"))
+        await s.commit()
+    async with async_session_factory() as s:
+        with pytest.raises(IntegrityError):
+            s.add(NoteCase(note_id=note.id, user_id=uid, original_sentence="src", polished_sentence="fix", change_details="d", error_root="r"))
             await s.commit()
 
 
 async def test_note_case_cascade_delete_note():
     uid = await _demo_user_id()
     async with async_session_factory() as s:
-        note = Note(rule_title="级联规则", description="测试")
+        note = Note(user_id=uid, rule_title="级联规则", knowledge_point="kp", warning="w", feynman_question="q")
         s.add(note)
         await s.flush()
         case_id = uuid.uuid4()
-        s.add(NoteCase(id=case_id, note_id=note.id, user_id=uid, fragment="f", correction="c", source_text="src"))
+        s.add(NoteCase(id=case_id, note_id=note.id, user_id=uid, original_sentence="src", polished_sentence="fix", change_details="d", error_root="r"))
         await s.commit()
         await s.delete(note)
         await s.commit()
@@ -98,10 +101,10 @@ async def test_delete_message_keeps_case():
         msg = Message(conversation_id=conv.id, role=MessageRole.user, type=MessageType.correction, content="test")
         s.add(msg)
         await s.flush()
-        note = Note(rule_title="消息规则", description="测试")
+        note = Note(user_id=uid, rule_title="消息规则", knowledge_point="kp", warning="w", feynman_question="q")
         s.add(note)
         await s.flush()
-        case = NoteCase(note_id=note.id, user_id=uid, fragment="f", correction="c", source_text="src", source_message_id=msg.id)
+        case = NoteCase(note_id=note.id, user_id=uid, original_sentence="src", polished_sentence="fix", change_details="d", error_root="r", source_message_id=msg.id)
         s.add(case)
         await s.commit()
         case_id = case.id

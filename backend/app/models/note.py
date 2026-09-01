@@ -10,11 +10,19 @@ from app.db import Base
 
 class Note(Base):
     __tablename__ = "notes"
+    __table_args__ = (
+        UniqueConstraint("user_id", "rule_title", name="uq_notes_user_rule_title"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", name="fk_notes_user_id", ondelete="CASCADE"), nullable=False
+    )
     rule_title: Mapped[str] = mapped_column(String(200), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    examples: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    knowledge_point: Mapped[str] = mapped_column(Text, nullable=False)
+    warning: Mapped[str] = mapped_column(Text, nullable=False)
+    alternatives: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    feynman_question: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -27,7 +35,7 @@ class NoteCase(Base):
     __tablename__ = "note_cases"
     __table_args__ = (
         UniqueConstraint(
-            "note_id", "user_id", "source_text", "fragment",
+            "note_id", "user_id", "original_sentence",
             name="uq_note_cases_dedup",
         ),
     )
@@ -39,9 +47,10 @@ class NoteCase(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", name="fk_note_cases_user_id", ondelete="CASCADE"), nullable=False
     )
-    fragment: Mapped[str] = mapped_column(Text, nullable=False)
-    correction: Mapped[str] = mapped_column(Text, nullable=False)
-    source_text: Mapped[str] = mapped_column(Text, nullable=False)
+    original_sentence: Mapped[str] = mapped_column(Text, nullable=False)
+    polished_sentence: Mapped[str] = mapped_column(Text, nullable=False)
+    change_details: Mapped[str] = mapped_column(Text, nullable=False)
+    error_root: Mapped[str] = mapped_column(Text, nullable=False)
     source_message_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("messages.id", name="fk_note_cases_message_id", ondelete="SET NULL"), nullable=True
     )
