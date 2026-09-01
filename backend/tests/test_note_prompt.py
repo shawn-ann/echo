@@ -1,31 +1,36 @@
 from app.prompts.note_prompt import build_note_system_prompt, build_note_user_content
 
 
-def test_system_prompt_contains_granularity_rules():
-    prompt = build_note_system_prompt(existing_rules=[])
-    assert "可单独测试的规则点" in prompt
-    assert "介词后加 -ing 形式" in prompt
-    assert "过去时" in prompt  # 反例
-    assert "原样返回" in prompt  # 去重指令
+def test_system_prompt_contains_8field_fields():
+    prompt = build_note_system_prompt()
+    assert "rule_title" in prompt
+    assert "knowledge_point" in prompt
+    assert "warning" in prompt
+    assert "alternatives" in prompt
+    assert "feynman_question" in prompt
+    assert "error_root" in prompt
+    assert "change_details" in prompt
 
 
-def test_system_prompt_includes_existing_rules():
-    prompt = build_note_system_prompt(existing_rules=["介词后加 -ing 形式", "to 不定式接原形"])
-    assert "介词后加 -ing 形式" in prompt
-    assert "to 不定式接原形" in prompt
+def test_system_prompt_group_by_error_type():
+    prompt = build_note_system_prompt()
+    assert "error_type" in prompt
+    assert "合并" in prompt
 
 
-def test_system_prompt_mentions_references_passthrough():
-    prompt = build_note_system_prompt(existing_rules=[])
-    assert "references" in prompt
-    assert "原样选取" in prompt  # 透传指令
+def test_system_prompt_no_dedup():
+    prompt = build_note_system_prompt()
+    assert "已有规则" not in prompt
 
 
 def test_user_content_contains_source_and_errors():
     content = build_note_user_content(
-        source_text="I interested in read",
-        errors=[{"error_type": "动词形式", "fragment": "interested in read", "explanation": "介词后加 ing", "correction": "interested in reading"}],
+        source_text="She go to school. He go home.",
+        errors=[
+            {"error_type": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"},
+            {"error_type": "主谓不一致", "fragment": "He go", "explanation": "x", "correction": "He goes"},
+        ],
     )
-    assert "I interested in read" in content
-    assert "interested in read" in content
-    assert "interested in reading" in content
+    assert "She go to school. He go home." in content
+    assert "She go" in content
+    assert "She goes" in content

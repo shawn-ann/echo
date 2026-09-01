@@ -1,56 +1,60 @@
-"""保存笔记时 LLM 提示词：从错误生成/匹配规则笔记。"""
+"""保存笔记时 LLM 提示词：从错误生成 8 字段笔记初稿。"""
 
 
-def build_note_system_prompt(existing_rules: list[str]) -> str:
-    rules_list = "\n".join(f"- {r}" for r in existing_rules) if existing_rules else "（暂无已有规则）"
-    return f"""你是英语语法规则归纳助手。根据用户提交的英文原文和错误列表，归纳出对应的语法规则笔记。
+def build_note_system_prompt() -> str:
+    return r"""你是英语学习笔记生成助手。根据用户提交的英文原文和错误列表，按错误类型生成标准化学习笔记初稿。
 
-## 已有规则库
-以下是系统中已存在的规则，新错误若属于其中某条，必须原样返回那条的 rule_title：
-{rules_list}
+## 输入
+- 原文：用户手写的英文句子
+- 错误列表：每条含 error_type（中文错误类型词表）、fragment（原文错误片段）、explanation、correction（最小修正）
+
+## 分组规则
+- 按 error_type 分组：相同 error_type 的错误归入同一条 result
+- 不同 error_type 的错误生成不同 result
+- 每个 result 的 error_root 必须原样取该组的 error_type 值
 
 ## 输出格式
-输出 JSON 对象，含 results 数组，每个元素对应一条规则（同类错误合并为一条）：
+输出 JSON 对象，含 results 数组，每个元素对应一个错误类型分组：
 ```json
-{{
+{
   "results": [
-    {{
+    {
       "rule_title": "第三人称单数主谓一致",
-      "description": "一般现在时中，主语为第三人称单数时，实义动词加 -s/-es，助动词用 has...",
-      "examples": [
-        {{"text": "She plays tennis every day.", "note": "play → plays"}},
-        {{"text": "He goes to work by bus.", "note": "go → goes"}}
+      "knowledge_point": "一般现在时中，主语为第三人称单数时，实义动词加 -s/-es。如 She goes、He runs。",
+      "warning": "你常忘给 she/he/it 加 -s，写邮件时先检查主语",
+      "alternatives": [
+        "She runs the daily report.",
+        "He handles the tickets."
       ],
-      "references": ["She have", "she go"]
-    }}
+      "feynman_question": "主语是 she/he/it 时，动词该怎么变？为什么？",
+      "error_root": "主谓不一致",
+      "cases": [
+        {
+          "change_details": "She go → She goes; He go → He goes"
+        }
+      ]
+    }
   ]
-}}
+}
 ```
 
-## rule_title 粒度要求
-- 标题描述一个【可单独测试的规则点】，不是语法范畴
-- ✅ 好："介词后加 -ing 形式"、"to 不定式接动词原形"、"可数名词单数需加冠词"
-- ❌ 坏："过去时"、"冠词"、"时态"、"介词"（太宽泛，含多个不相关练习点）
-- ❌ 坏："in 后加 ing"（太碎片，应泛化到所有介词）
+## 字段要求
+- rule_title：描述一个【可单独测试的规则点】，不是语法范畴
+  - ✅ 好："介词后加 -ing 形式"、"to 不定式接动词原形"、"可数名词单数需加冠词"
+  - ❌ 坏："过去时"、"冠词"、"时态"、"介词"（太宽泛）
+- knowledge_point：规则说明、构成方式、常见情况、边界/例外，一段完整讲解
+- warning：针对本次错误的个人易错警示，提醒用户规避
+- alternatives：2-3 条完整英文句子，覆盖不同正式程度的职场替换表达
+- feynman_question：1 个闭卷自测问题，用于复盘巩固
+- error_root：原样取该组的 error_type 值
+- change_details：该组内每个错误的 `fragment → correction`，用分号 `;` 串联
+  - 例如："She go → She goes; He go → He goes"
+  - fragment 必须原样取自错误列表，不得改写
+  - 仅保留本组错误相关的修改，不得混入其他错误类型的修改
 
-## 合并指令
-同类错误合并为一条 result（如 2 个时态错误 → 1 条规则）
-
-## 去重指令
-若新错误的规则与已有规则库中某条语义相同，必须原样返回那条的 rule_title（不得修改、不得编造）。
-
-## references 生成
-- references 是字符串数组，每个元素是**原样选取自输入「错误列表」中 fragment 字段**的文本
-- 一条规则可对应多个 references（如 She have / she go 同属主谓一致）
-- **不得改写** fragment 文本，**不得补充**不在错误列表中的文本
-
-## examples 要求
-- 给出 3 个**正确用法**的完整英文句子，不参考用户错误
-- 每条含 text（英文句子）和 note（简短中文说明，如 play → plays）
-- 覆盖该规则的典型场景
-
-## description 要求
-包含规则说明、构成方式、常见情况、边界/例外情况，一段完整讲解
+## 约束
+- 不得合并不同 error_type 的错误
+- change_details 中每个错误只出现一次
 """
 
 
