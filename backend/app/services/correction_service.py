@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -13,11 +14,14 @@ from app.models.message import Message, MessageRole, MessageType
 from app.models.report import CorrectionReport
 from app.schemas.correction import CorrectionBody, MessageOut
 from app.prompts.correction_prompt import build_system_prompt
+from app.services import note_service
 from app.services.llm_client import (
     LLMClient,
     LLMTimeoutError,
     LLMUnavailableError,
 )
+
+logger = logging.getLogger(__name__)
 
 
 async def get_or_create_conversation(session: AsyncSession, user_id: uuid.UUID) -> SessionConversation:
@@ -176,3 +180,28 @@ async def list_messages(session: AsyncSession, user_id: uuid.UUID) -> list[Messa
     )
     reports = await _fetch_reports(session, [m.report_id for m in rows if m.report_id])
     return [_to_out(m, reports.get(m.report_id)) for m in rows]
+
+
+async def _run_note_save_async(
+    user_id: uuid.UUID,
+    source_message_id: uuid.UUID | None,
+    source_text: str,
+    polished_sentence: str,
+    errors: list[dict],
+    llm_client: LLMClient,
+):
+    from app.db import async_session_factory
+
+    try:
+        async with async_session_factory() as session:
+            await note_service.save_notes(
+                session,
+                user_id,
+                source_message_id,
+                source_text,
+                polished_sentence,
+                errors,
+                llm_client,
+            )
+    except Exception:
+        logger.exception("自动保存笔记失败")

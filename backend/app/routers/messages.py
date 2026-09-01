@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -21,10 +21,25 @@ async def submit_message(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
     llm_client: LLMClient = Depends(get_llm_client),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
     user_out, ai_out = await correction_service.submit_message(
         session, user.id, payload.content, llm_client
     )
+    report = ai_out.report or {}
+    if report.get("has_errors"):
+        rewrite = report.get("rewrite") or {}
+        polished = (rewrite.get("minimal") or {}).get("text") or ""
+        if polished:
+            background_tasks.add_task(
+                correction_service._run_note_save_async,
+                user.id,
+                ai_out.id,
+                payload.content,
+                polished,
+                report.get("errors", []),
+                llm_client,
+            )
     return SubmitResponse(user_message=user_out, assistant_message=ai_out)
 
 

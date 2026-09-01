@@ -167,3 +167,43 @@ async def test_data_isolation(api):
     assert r.status_code == 200
     alice_token = r.json()["token"]
     assert (await client.get(GET_URL, headers=_auth(alice_token))).json()["messages"] == []
+
+
+async def test_post_messages_triggers_auto_note_save(api):
+    """纠错成功且 has_errors=true → 后台自动生成笔记"""
+    client, mock = api
+    token = await _token(client)
+    r = await client.post(POST_URL, json={"content": "Yesterday I go to the park"}, headers=_auth(token))
+    assert r.status_code == 200
+    assert r.json()["assistant_message"]["report"]["has_errors"] is True
+
+    # 后台任务在 ASGI 同步请求内完成（BackgroundTasks 在响应后执行）
+    from sqlalchemy import select
+
+    from app.db import async_session_factory
+    from app.models.note import Note
+
+    async with async_session_factory() as s:
+        notes = (await s.execute(select(Note))).scalars().all()
+        assert len(notes) >= 1
+        note = notes[0]
+        assert note.user_id is not None
+        assert note.knowledge_point != ""
+        assert note.rule_title != ""
+
+
+async def test_post_messages_no_error_no_note(api):
+    """has_errors=false → 不触发笔记保存"""
+    client, mock = api
+    token = await _token(client)
+    mock.responder = lambda msgs: '{"has_errors":false,"errors":[],"rewrite":null}'
+    r = await client.post(POST_URL, json={"content": "perfect english"}, headers=_auth(token))
+    assert r.status_code == 200
+    from sqlalchemy import select
+
+    from app.db import async_session_factory
+    from app.models.note import Note
+
+    async with async_session_factory() as s:
+        notes = (await s.execute(select(Note))).scalars().all()
+        assert len(notes) == 0
