@@ -111,12 +111,7 @@ export default function NoteCard({ note, onNoteDeleted }: Props) {
                 <p className="pt-1 text-sm font-semibold text-[#343a40]">📝 我的错误</p>
               )}
               {detail.cases.map((c) => (
-                <NoteCaseItem
-                  key={c.id}
-                  caseItem={c}
-                  noteId={note.id}
-                  onDeleted={handleCaseDeleted}
-                />
+                <NoteCaseItem key={c.id} caseItem={c} onDeleted={handleCaseDeleted} />
               ))}
               <div className="flex justify-end pt-2">
                 {confirmDelete ? (

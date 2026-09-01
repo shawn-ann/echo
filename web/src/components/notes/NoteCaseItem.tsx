@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 
 interface Props {
   caseItem: NoteCaseItem
-  noteId: string
   onDeleted: (caseId: string) => Promise<boolean>
 }
 
