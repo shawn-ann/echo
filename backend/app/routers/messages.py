@@ -18,10 +18,10 @@ router = APIRouter(prefix="/api/v1", tags=["messages"])
 @router.post("/messages", response_model=SubmitResponse, status_code=200)
 async def submit_message(
     payload: SubmitRequest,
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
     llm_client: LLMClient = Depends(get_llm_client),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
     user_out, ai_out = await correction_service.submit_message(
         session, user.id, payload.content, llm_client
