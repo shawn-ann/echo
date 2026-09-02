@@ -44,7 +44,8 @@
 | `alternatives` | JSONB | ⑦ 职场同义备选（字符串数组，2-3 条） |
 | `feynman_question` | Text | ⑧ 费曼自测问题 |
 | `created_at` / `updated_at` | DateTime | `updated_at` 用于列表排序 |
-| **唯一键** | `(user_id, rule_title)` | 防同次生成重复 |
+
+> **2026-09-01 修订**：移除 `(user_id, rule_title)` 唯一约束。严格「一错一笔记一案例」，每次纠错生成独立笔记，不做跨次复用（语义去重与精确复用均留 TODO）。后续实现跨次去重时再恢复该约束。
 
 移除：`description`、`examples`。
 
@@ -69,7 +70,7 @@
 
 - **同一次纠错内**：按 `error_type` 分组，同 `error_type` 的多个错误 → 1 条笔记 + 1 个案例（`change_details` 分号串联）
 - **不同 `error_type`** → 各自独立笔记
-- **跨次纠错**：不做去重匹配，每次生成新笔记（TODO）
+- **跨次纠错**：严格独立，不做去重匹配，每次生成新笔记（TODO）
 
 ## 四、LLM 笔记生成契约
 
