@@ -23,7 +23,6 @@ def _mock_responder(msgs):
         "results": [{
             "rule_title": "第三人称单数主谓一致",
             "knowledge_point": "一般现在时中，第三人称单数主语动词加 -s/-es",
-            "warning": "你常忘给 she/he/it 加 -s",
             "alternatives": ["She runs.", "He goes."],
             "feynman_question": "主语是 she/he/it 时动词怎么变？",
             "error_root": "主谓不一致",
@@ -47,7 +46,6 @@ async def test_save_creates_note_with_8field_and_case():
         note = (await s.execute(select(Note).where(Note.rule_title == "第三人称单数主谓一致"))).scalar_one()
         assert note.user_id == uid
         assert note.knowledge_point == "一般现在时中，第三人称单数主语动词加 -s/-es"
-        assert note.warning == "你常忘给 she/he/it 加 -s"
         assert note.alternatives == ["She runs.", "He goes."]
         assert note.feynman_question == "主语是 she/he/it 时动词怎么变？"
         cases = (await s.execute(select(NoteCase).where(NoteCase.note_id == note.id))).scalars().all()
@@ -69,12 +67,12 @@ async def test_save_group_by_error_type_creates_multiple_notes():
     responder = lambda msgs: json.dumps({
         "results": [
             {
-                "rule_title": "主谓一致规则", "knowledge_point": "kp", "warning": "w",
+                "rule_title": "主谓一致规则", "knowledge_point": "kp",
                 "alternatives": ["A"], "feynman_question": "q", "error_root": "主谓不一致",
                 "cases": [{"change_details": "She go → She goes"}],
             },
             {
-                "rule_title": "元音音素前用 an", "knowledge_point": "kp2", "warning": "w2",
+                "rule_title": "元音音素前用 an", "knowledge_point": "kp2",
                 "alternatives": ["B"], "feynman_question": "q2", "error_root": "冠词缺失",
                 "cases": [{"change_details": "a apple → an apple"}],
             },
@@ -107,7 +105,6 @@ async def test_save_same_rule_title_creates_separate_notes():
         assert len(notes) == 2
         for note in notes:
             assert note.knowledge_point == "一般现在时中，第三人称单数主语动词加 -s/-es"
-            assert note.warning == "你常忘给 she/he/it 加 -s"
             assert note.alternatives == ["She runs.", "He goes."]
             assert note.feynman_question == "主语是 she/he/it 时动词怎么变？"
             cases = (await s.execute(select(NoteCase).where(NoteCase.note_id == note.id))).scalars().all()
@@ -120,7 +117,7 @@ async def test_save_duplicate_cases_in_one_result_skipped():
     errors = [{"error_type": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"}]
     responder = lambda msgs: json.dumps({
         "results": [{
-            "rule_title": "重复案例规则", "knowledge_point": "kp", "warning": "w",
+            "rule_title": "重复案例规则", "knowledge_point": "kp",
             "alternatives": ["A"], "feynman_question": "q", "error_root": "主谓不一致",
             "cases": [
                 {"change_details": "She go → She goes"},
@@ -145,7 +142,7 @@ async def test_save_empty_cases_deletes_orphan_note():
     errors = [{"error_type": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"}]
     responder = lambda msgs: json.dumps({
         "results": [{
-            "rule_title": "空案例规则", "knowledge_point": "kp", "warning": "w",
+            "rule_title": "空案例规则", "knowledge_point": "kp",
             "alternatives": ["A"], "feynman_question": "q", "error_root": "主谓不一致",
             "cases": [],
         }]
@@ -211,3 +208,70 @@ async def test_save_invalid_llm_response_raises_502():
         with pytest.raises(AppError) as exc_info:
             await save_notes(s, uid, None, "x", "y", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
         assert exc_info.value.status_code == 502
+
+
+async def test_update_note_fields():
+    """update_note 更新规则级字段（含 rule_title），案例不变"""
+    uid = await _demo_user_id()
+    async with async_session_factory() as s:
+        note = Note(
+            user_id=uid,
+            rule_title="原标题",
+            knowledge_point="kp",
+            alternatives=["A"],
+            feynman_question="q",
+        )
+        s.add(note)
+        await s.flush()
+        s.add(NoteCase(note_id=note.id, user_id=uid, original_sentence="src", polished_sentence="fix", change_details="d", error_root="r"))
+        await s.commit()
+        note_id = note.id
+
+    async with async_session_factory() as s:
+        from app.schemas.note import UpdateNoteRequest
+        from app.services.note_service import update_note
+
+        payload = UpdateNoteRequest(
+            rule_title="新标题",
+            knowledge_point="新知识点",
+            alternatives=["X", "Y"],
+            feynman_question="新费曼",
+        )
+        result = await update_note(s, uid, note_id, payload)
+        assert result is not None
+        assert result.rule_title == "新标题"
+        assert result.knowledge_point == "新知识点"
+        assert result.alternatives == ["X", "Y"]
+        assert result.feynman_question == "新费曼"
+
+    async with async_session_factory() as s:
+        note = (await s.get(Note, note_id))
+        assert note.rule_title == "新标题"
+        assert note.knowledge_point == "新知识点"
+        cases = (await s.execute(select(NoteCase).where(NoteCase.note_id == note_id))).scalars().all()
+        assert len(cases) == 1  # 案例不变
+
+
+async def test_update_note_other_user_returns_none():
+    """非本人笔记 → update_note 返回 None（路由转 404）"""
+    uid1 = await _demo_user_id()
+    async with async_session_factory() as s:
+        from app.core.security import hash_password
+        from app.models.user import User, UserStatus
+        s.add(User(username="other_edit", password_hash=hash_password("other1234"), status=UserStatus.active))
+        await s.commit()
+        uid2 = (await s.execute(select(User).where(User.username == "other_edit"))).scalar_one().id
+
+    async with async_session_factory() as s:
+        note = Note(user_id=uid2, rule_title="他人笔记", knowledge_point="kp", alternatives=[], feynman_question="q")
+        s.add(note)
+        await s.commit()
+        note_id = note.id
+
+    async with async_session_factory() as s:
+        from app.schemas.note import UpdateNoteRequest
+        from app.services.note_service import update_note
+
+        payload = UpdateNoteRequest(rule_title="x", knowledge_point="y", alternatives=[], feynman_question="z")
+        result = await update_note(s, uid1, note_id, payload)
+        assert result is None

@@ -15,6 +15,7 @@ from app.schemas.note import (
     NoteListItem,
     NoteLLMResponse,
     NoteRuleResult,
+    UpdateNoteRequest,
 )
 from app.services.llm_client import LLMClient, LLMTimeoutError, LLMUnavailableError
 
@@ -63,7 +64,6 @@ async def save_notes(
             user_id=user_id,
             rule_title=result.rule_title,
             knowledge_point=result.knowledge_point,
-            warning=result.warning,
             alternatives=result.alternatives,
             feynman_question=result.feynman_question,
         )
@@ -150,7 +150,6 @@ async def get_note_detail(
         id=note.id,
         rule_title=note.rule_title,
         knowledge_point=note.knowledge_point,
-        warning=note.warning,
         alternatives=note.alternatives,
         feynman_question=note.feynman_question,
         cases=[
@@ -181,3 +180,47 @@ async def delete_case(session: AsyncSession, user_id: uuid.UUID, case_id: uuid.U
         return
     await session.delete(case)
     await session.commit()
+
+
+async def update_note(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    note_id: uuid.UUID,
+    payload: UpdateNoteRequest,
+) -> NoteDetailResponse | None:
+    note = await session.get(Note, note_id)
+    if note is None or note.user_id != user_id:
+        return None
+    note.rule_title = payload.rule_title
+    note.knowledge_point = payload.knowledge_point
+    note.alternatives = payload.alternatives
+    note.feynman_question = payload.feynman_question
+    note.updated_at = datetime.now(timezone.utc)
+    await session.commit()
+    await session.refresh(note)
+
+    cases = (
+        await session.execute(
+            select(NoteCase)
+            .where(NoteCase.note_id == note_id, NoteCase.user_id == user_id)
+            .order_by(NoteCase.created_at)
+        )
+    ).scalars().all()
+    return NoteDetailResponse(
+        id=note.id,
+        rule_title=note.rule_title,
+        knowledge_point=note.knowledge_point,
+        alternatives=note.alternatives,
+        feynman_question=note.feynman_question,
+        cases=[
+            NoteCaseItem(
+                id=c.id,
+                original_sentence=c.original_sentence,
+                polished_sentence=c.polished_sentence,
+                change_details=c.change_details,
+                error_root=c.error_root,
+                created_at=c.created_at,
+            )
+            for c in cases
+        ],
+    )
