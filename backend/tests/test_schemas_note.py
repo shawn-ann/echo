@@ -36,3 +36,13 @@ def test_update_note_request_text_fields_required(field):
     data[field] = ""
     with pytest.raises(ValidationError):
         UpdateNoteRequest(**data)
+
+
+def test_update_note_request_whitespace_only_rejected():
+    with pytest.raises(ValidationError):
+        UpdateNoteRequest(
+            rule_title="   ",
+            knowledge_point="k",
+            alternatives=[],
+            feynman_question="f",
+        )

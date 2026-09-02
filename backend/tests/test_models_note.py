@@ -15,7 +15,7 @@ async def _demo_user_id() -> uuid.UUID:
         return user.id
 
 
-async def test_create_note_with_8field_fields():
+async def test_create_note_fields():
     uid = await _demo_user_id()
     async with async_session_factory() as s:
         note = Note(

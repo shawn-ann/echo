@@ -31,7 +31,7 @@ def _mock_responder(msgs):
     }, ensure_ascii=False)
 
 
-async def test_save_creates_note_with_8field_and_case():
+async def test_save_creates_note_fields_and_case():
     uid = await _demo_user_id()
     errors = [
         {"error_type": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"},

@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 
 class NoteRuleCase(BaseModel):
@@ -10,7 +11,7 @@ class NoteRuleCase(BaseModel):
 
 
 class NoteRuleResult(BaseModel):
-    """LLM 输出的单个规则（8 字段中的规则级字段 + 案例）"""
+    """LLM 输出的单个规则（规则级字段 + 案例）"""
     rule_title: str
     knowledge_point: str
     alternatives: list[str] = Field(default_factory=list)
@@ -54,7 +55,13 @@ class NoteDetailResponse(BaseModel):
 
 
 class UpdateNoteRequest(BaseModel):
-    rule_title: str = Field(min_length=1, max_length=200)
-    knowledge_point: str = Field(min_length=1)
+    rule_title: Annotated[
+        str, StringConstraints(min_length=1, max_length=200, strip_whitespace=True)
+    ]
+    knowledge_point: Annotated[
+        str, StringConstraints(min_length=1, strip_whitespace=True)
+    ]
     alternatives: list[str] = Field(default_factory=list)
-    feynman_question: str = Field(min_length=1)
+    feynman_question: Annotated[
+        str, StringConstraints(min_length=1, strip_whitespace=True)
+    ]
