@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { fetchNotes } from '@/api/notes'
-import type { NoteListItem } from '@/api/notes'
+import type { NoteListItem, NoteDetailResponse } from '@/api/notes'
 import { Button } from '@/components/ui/button'
 import NoteCard from '@/components/notes/NoteCard'
 
@@ -29,6 +29,16 @@ export default function NotesPage() {
 
   function handleNoteDeleted(noteId: string) {
     setNotes((prev) => prev.filter((n) => n.id !== noteId))
+  }
+
+  function handleNoteUpdated(updated: NoteDetailResponse) {
+    setNotes((prev) =>
+      prev.map((n) =>
+        n.id === updated.id
+          ? { ...n, rule_title: updated.rule_title, knowledge_point: updated.knowledge_point }
+          : n,
+      ),
+    )
   }
 
   if (loading) {
@@ -59,7 +69,7 @@ export default function NotesPage() {
       <div className="mx-auto max-w-2xl space-y-3">
         <h1 className="text-lg font-semibold text-[#343a40]">我的笔记</h1>
         {notes.map((note) => (
-          <NoteCard key={note.id} note={note} onNoteDeleted={handleNoteDeleted} />
+          <NoteCard key={note.id} note={note} onNoteDeleted={handleNoteDeleted} onNoteUpdated={handleNoteUpdated} />
         ))}
       </div>
     </div>

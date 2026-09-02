@@ -25,10 +25,23 @@ export interface NoteDetailResponse {
   id: string
   rule_title: string
   knowledge_point: string
-  warning: string
   alternatives: string[]
   feynman_question: string
   cases: NoteCaseItem[]
+}
+
+export interface UpdateNoteRequest {
+  rule_title: string
+  knowledge_point: string
+  alternatives: string[]
+  feynman_question: string
+}
+
+export async function updateNote(
+  noteId: string,
+  payload: UpdateNoteRequest,
+): Promise<NoteDetailResponse> {
+  return http.put<NoteDetailResponse>(`/notes/${noteId}`, payload)
 }
 
 export async function fetchNotes(): Promise<NoteListItem[]> {
