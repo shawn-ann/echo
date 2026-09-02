@@ -85,6 +85,7 @@ export default function NoteCard({ note, onNoteDeleted, onNoteUpdated }: Props) 
   }
 
   function handleEditCancel() {
+    if (saving) return
     setEditing(false)
     setEditingErrors([])
   }
@@ -138,7 +139,7 @@ export default function NoteCard({ note, onNoteDeleted, onNoteUpdated }: Props) 
   return (
     <div className="rounded-xl border border-[#dee2e6] bg-white p-4">
       <div className="flex items-start justify-between gap-2">
-        <button type="button" onClick={toggleExpand} className="flex-1 text-left">
+        <button type="button" onClick={toggleExpand} disabled={saving} className="flex-1 text-left disabled:opacity-50">
           <p className="text-sm font-semibold text-[#343a40]">{note.rule_title}</p>
           <p className="mt-0.5 line-clamp-1 text-xs text-[#868e96]">{note.knowledge_point}</p>
           <p className="mt-1 text-xs text-[#adb5bd]">
@@ -161,27 +162,27 @@ export default function NoteCard({ note, onNoteDeleted, onNoteUpdated }: Props) 
                 </div>
                 <div>
                   <p className="mb-1 text-sm font-semibold text-[#343a40]">🏷 规则标题</p>
-                  <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full rounded-lg border border-[#ced4da] px-3 py-2 text-sm focus:border-[#0ca678] focus:outline-none" />
+                  <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} disabled={saving} className="w-full rounded-lg border border-[#ced4da] px-3 py-2 text-sm focus:border-[#0ca678] focus:outline-none disabled:opacity-50" />
                 </div>
                 <div>
                   <p className="mb-1 text-sm font-semibold text-[#343a40]">📌 核心知识点</p>
-                  <textarea value={editKnowledgePoint} onChange={(e) => setEditKnowledgePoint(e.target.value)} className="w-full rounded-lg border border-[#ced4da] px-3 py-2 text-sm focus:border-[#0ca678] focus:outline-none" />
+                  <textarea value={editKnowledgePoint} onChange={(e) => setEditKnowledgePoint(e.target.value)} disabled={saving} className="w-full rounded-lg border border-[#ced4da] px-3 py-2 text-sm focus:border-[#0ca678] focus:outline-none disabled:opacity-50" />
                 </div>
                 <div>
                   <p className="mb-1 text-sm font-semibold text-[#343a40]">💼 同义备选</p>
                   <div className="space-y-1.5">
                     {editAlternatives.map((alt, i) => (
                       <div key={i} className="flex items-center gap-2">
-                        <input value={alt} onChange={(e) => handleAltChange(i, e.target.value)} className="flex-1 rounded-lg border border-[#ced4da] px-3 py-1.5 text-sm focus:border-[#0ca678] focus:outline-none" />
-                        <button type="button" onClick={() => handleAltRemove(i)} className="shrink-0 text-[#fa5252]">✕</button>
+                        <input value={alt} onChange={(e) => handleAltChange(i, e.target.value)} disabled={saving} className="flex-1 rounded-lg border border-[#ced4da] px-3 py-1.5 text-sm focus:border-[#0ca678] focus:outline-none disabled:opacity-50" />
+                        <button type="button" onClick={() => handleAltRemove(i)} disabled={saving} className="shrink-0 text-[#fa5252] disabled:opacity-50">✕</button>
                       </div>
                     ))}
                   </div>
-                  <button type="button" onClick={handleAltAdd} className="mt-1 rounded border border-dashed border-[#0ca678] px-2 py-0.5 text-xs text-[#0ca678]">＋ 添加一条</button>
+                  <button type="button" onClick={handleAltAdd} disabled={saving} className="mt-1 rounded border border-dashed border-[#0ca678] px-2 py-0.5 text-xs text-[#0ca678] disabled:opacity-50">＋ 添加一条</button>
                 </div>
                 <div>
                   <p className="mb-1 text-sm font-semibold text-[#343a40]">❓ 费曼自测</p>
-                  <textarea value={editFeynman} onChange={(e) => setEditFeynman(e.target.value)} className="w-full rounded-lg border border-[#ced4da] px-3 py-2 text-sm focus:border-[#0ca678] focus:outline-none" />
+                  <textarea value={editFeynman} onChange={(e) => setEditFeynman(e.target.value)} disabled={saving} className="w-full rounded-lg border border-[#ced4da] px-3 py-2 text-sm focus:border-[#0ca678] focus:outline-none disabled:opacity-50" />
                 </div>
                 {editingErrors.length > 0 && (
                   <div className="rounded-lg border border-[#fa5252] bg-[#fff5f5] px-3 py-2 text-xs text-[#c92a2a]">
@@ -191,7 +192,7 @@ export default function NoteCard({ note, onNoteDeleted, onNoteUpdated }: Props) 
                 <div className="flex items-center justify-between pt-1">
                   <p className="text-xs text-[#868e96]">修改仅作用于这条规则，不会改动纠错记录</p>
                   <div className="flex gap-2">
-                    <button type="button" onClick={handleEditCancel} className="rounded px-3 py-1 text-xs text-[#495057]">取消</button>
+                    <button type="button" onClick={handleEditCancel} disabled={saving} className="rounded px-3 py-1 text-xs text-[#495057] disabled:opacity-50">取消</button>
                     <button type="button" disabled={saving} onClick={handleSave} className="rounded bg-[#0ca678] px-4 py-1 text-xs text-white disabled:opacity-50">
                       {saving ? '保存中…' : '保存'}
                     </button>
