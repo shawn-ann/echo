@@ -22,7 +22,6 @@ def _mock_responder(msgs):
         "results": [{
             "rule_title": "第三人称单数主谓一致",
             "knowledge_point": "一般现在时中，第三人称单数主语动词加 -s/-es",
-            "warning": "你常忘给 she/he/it 加 -s",
             "alternatives": ["She runs.", "He goes."],
             "feynman_question": "主语是 she/he/it 时动词怎么变？",
             "error_root": "主谓不一致",
@@ -59,7 +58,7 @@ async def _seed_note(client, token, source_text="She go to school.", polished="S
             user_id=user.id,
             rule_title="第三人称单数主谓一致",
             knowledge_point="一般现在时中，第三人称单数主语动词加 -s/-es",
-            warning="w", alternatives=["A"], feynman_question="q",
+            alternatives=["A"], feynman_question="q",
         )
         s.add(note)
         await s.flush()
@@ -100,7 +99,7 @@ async def test_list_notes_after_auto_save(api):
     assert notes[0]["knowledge_point"] == "一般现在时中，第三人称单数主语动词加 -s/-es"
 
 
-async def test_get_note_detail_8field(api):
+async def test_get_note_detail_fields(api):
     client = api
     token = await _token(client)
     note_id = await _seed_note(client, token)
@@ -108,7 +107,6 @@ async def test_get_note_detail_8field(api):
     assert r.status_code == 200
     detail = r.json()
     assert detail["knowledge_point"] == "一般现在时中，第三人称单数主语动词加 -s/-es"
-    assert detail["warning"] == "w"
     assert detail["alternatives"] == ["A"]
     assert detail["feynman_question"] == "q"
     assert len(detail["cases"]) == 1
@@ -172,4 +170,59 @@ async def test_delete_case_no_cases_note_gone(api):
     await client.delete(f"{LIST_URL}/{note_id}/cases/{case_id}", headers=_auth(token))
     # 案例删空后 note 仍存在但详情返回 404（现有语义）
     r = await client.get(f"{LIST_URL}/{note_id}", headers=_auth(token))
+    assert r.status_code == 404
+
+
+async def test_update_note_api(api):
+    client = api
+    token = await _token(client)
+    note_id = await _seed_note(client, token)
+    r = await client.put(f"{LIST_URL}/{note_id}", json={
+        "rule_title": "编辑后的标题",
+        "knowledge_point": "编辑后的知识点",
+        "alternatives": ["N1", "N2"],
+        "feynman_question": "编辑后的费曼",
+    }, headers=_auth(token))
+    assert r.status_code == 200
+    detail = r.json()
+    assert detail["rule_title"] == "编辑后的标题"
+    assert detail["knowledge_point"] == "编辑后的知识点"
+    assert detail["alternatives"] == ["N1", "N2"]
+    assert detail["feynman_question"] == "编辑后的费曼"
+    assert "warning" not in detail
+    assert len(detail["cases"]) == 1
+
+
+async def test_update_note_not_found(api):
+    client = api
+    token = await _token(client)
+    r = await client.put(f"{LIST_URL}/00000000-0000-0000-0000-000000000000", json={
+        "rule_title": "t", "knowledge_point": "k", "alternatives": [], "feynman_question": "f",
+    }, headers=_auth(token))
+    assert r.status_code == 404
+
+
+async def test_update_note_empty_text_400(api):
+    client = api
+    token = await _token(client)
+    note_id = await _seed_note(client, token)
+    r = await client.put(f"{LIST_URL}/{note_id}", json={
+        "rule_title": "", "knowledge_point": "k", "alternatives": [], "feynman_question": "f",
+    }, headers=_auth(token))
+    assert r.status_code == 400
+
+
+async def test_update_note_other_user_404(api):
+    client = api
+    async with async_session_factory() as s:
+        s.add(User(username="edit_isol", password_hash=hash_password("iso1234"), status=UserStatus.active))
+        await s.commit()
+    token_a = await _token(client)
+    note_id = await _seed_note(client, token_a)
+    r_b = await client.post(LOGIN_URL, json={"username": "edit_isol", "password": "iso1234"})
+    assert r_b.status_code == 200
+    token_b = r_b.json()["token"]
+    r = await client.put(f"{LIST_URL}/{note_id}", json={
+        "rule_title": "t", "knowledge_point": "k", "alternatives": [], "feynman_question": "f",
+    }, headers=_auth(token_b))
     assert r.status_code == 404
