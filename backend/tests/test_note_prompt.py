@@ -5,7 +5,7 @@ def test_system_prompt_contains_8field_fields():
     prompt = build_note_system_prompt()
     assert "rule_title" in prompt
     assert "knowledge_point" in prompt
-    assert "warning" in prompt
+    assert "warning" not in prompt
     assert "alternatives" in prompt
     assert "feynman_question" in prompt
     assert "error_root" in prompt

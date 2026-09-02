@@ -22,7 +22,6 @@ def build_note_system_prompt() -> str:
     {
       "rule_title": "第三人称单数主谓一致",
       "knowledge_point": "一般现在时中，主语为第三人称单数时，实义动词加 -s/-es。如 She goes、He runs。",
-      "warning": "你常忘给 she/he/it 加 -s，写邮件时先检查主语",
       "alternatives": [
         "She runs the daily report.",
         "He handles the tickets."
@@ -44,7 +43,6 @@ def build_note_system_prompt() -> str:
   - ✅ 好："介词后加 -ing 形式"、"to 不定式接动词原形"、"可数名词单数需加冠词"
   - ❌ 坏："过去时"、"冠词"、"时态"、"介词"（太宽泛）
 - knowledge_point：规则说明、构成方式、常见情况、边界/例外，一段完整讲解
-- warning：针对本次错误的个人易错警示，提醒用户规避
 - alternatives：2-3 条完整英文句子，覆盖不同正式程度的职场替换表达
   - 各条必须明显不同（换句式/换词/换语气），不得只是标点或大小写等微差值的近似重复
   - 若找不到足够不同的替换，允许只输出 1-2 条，绝不硬凑重复

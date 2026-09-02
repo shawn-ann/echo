@@ -17,7 +17,6 @@ class Note(Base):
     )
     rule_title: Mapped[str] = mapped_column(String(200), nullable=False)
     knowledge_point: Mapped[str] = mapped_column(Text, nullable=False)
-    warning: Mapped[str] = mapped_column(Text, nullable=False)
     alternatives: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     feynman_question: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

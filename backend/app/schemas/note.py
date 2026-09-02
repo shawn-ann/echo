@@ -13,7 +13,6 @@ class NoteRuleResult(BaseModel):
     """LLM 输出的单个规则（8 字段中的规则级字段 + 案例）"""
     rule_title: str
     knowledge_point: str
-    warning: str
     alternatives: list[str] = Field(default_factory=list)
     feynman_question: str
     error_root: str
@@ -49,7 +48,6 @@ class NoteDetailResponse(BaseModel):
     id: uuid.UUID
     rule_title: str
     knowledge_point: str
-    warning: str
     alternatives: list[str]
     feynman_question: str
     cases: list[NoteCaseItem]

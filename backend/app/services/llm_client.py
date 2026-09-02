@@ -77,7 +77,6 @@ def _default_responder(messages: list[dict[str, Any]]) -> str:
                     {
                         "rule_title": "介词后加 -ing 形式",
                         "knowledge_point": "介词后接动词时需用动名词形式(-ing)而非不定式。如 be interested in reading、good at swimming。",
-                        "warning": "你常把介词后的动词写成原形，注意介词后一律用 -ing",
                         "alternatives": [
                             "She is interested in reading technical docs.",
                             "He is good at presenting in meetings.",
