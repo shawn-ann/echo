@@ -47,16 +47,18 @@ async def test_create_note_with_8field_fields():
         assert case.error_root == "主谓不一致"
 
 
-async def test_notes_unique_user_rule_title():
-    """同 (user_id, rule_title) 唯一：重复插入抛 IntegrityError"""
-    uid = await _demo_user_id()
+async def test_notes_allow_same_title_different_users():
+    """同 rule_title 不同 user 可共存（无 (user_id, rule_title) 唯一约束）"""
+    uid1 = await _demo_user_id()
     async with async_session_factory() as s:
-        s.add(Note(user_id=uid, rule_title="重复规则", knowledge_point="kp", warning="w", feynman_question="q"))
+        from app.core.security import hash_password
+        from app.models.user import User, UserStatus
+        s.add(User(username="notes_other_u", password_hash=hash_password("other1234"), status=UserStatus.active))
         await s.commit()
-    async with async_session_factory() as s:
-        with pytest.raises(IntegrityError):
-            s.add(Note(user_id=uid, rule_title="重复规则", knowledge_point="kp", warning="w", feynman_question="q"))
-            await s.commit()
+        uid2 = (await s.execute(select(User).where(User.username == "notes_other_u"))).scalar_one().id
+        s.add(Note(user_id=uid1, rule_title="同标题规则", knowledge_point="kp", warning="w", feynman_question="q"))
+        s.add(Note(user_id=uid2, rule_title="同标题规则", knowledge_point="kp", warning="w", feynman_question="q"))
+        await s.commit()
 
 
 async def test_note_cases_unique_note_user_original():

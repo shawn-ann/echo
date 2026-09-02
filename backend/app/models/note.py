@@ -10,9 +10,6 @@ from app.db import Base
 
 class Note(Base):
     __tablename__ = "notes"
-    __table_args__ = (
-        UniqueConstraint("user_id", "rule_title", name="uq_notes_user_rule_title"),
-    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(

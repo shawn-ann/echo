@@ -91,8 +91,8 @@ async def test_save_group_by_error_type_creates_multiple_notes():
         assert roots == {"主谓不一致", "冠词缺失"}
 
 
-async def test_save_reuses_note_by_user_rule_title():
-    """同 (user_id, rule_title) 复用笔记，追加案例"""
+async def test_save_same_rule_title_creates_separate_notes():
+    """同 user、同 rule_title 连续两次 save，每次新建独立 Note，各 1 个 case"""
     uid = await _demo_user_id()
     errors1 = [{"error_type": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"}]
     async with async_session_factory() as s:
@@ -103,27 +103,39 @@ async def test_save_reuses_note_by_user_rule_title():
         result = await save_notes(s, uid, None, "He go home.", "He goes home.", errors1, mock2)
         assert len(result) == 1
     async with async_session_factory() as s:
-        note = (await s.execute(select(Note).where(Note.rule_title == "第三人称单数主谓一致"))).scalar_one()
-        assert note.knowledge_point == "一般现在时中，第三人称单数主语动词加 -s/-es"
-        assert note.warning == "你常忘给 she/he/it 加 -s"
-        assert note.alternatives == ["She runs.", "He goes."]
-        assert note.feynman_question == "主语是 she/he/it 时动词怎么变？"
-        cases = (await s.execute(select(NoteCase).where(NoteCase.note_id == note.id))).scalars().all()
-        assert len(cases) == 2
+        notes = (await s.execute(select(Note).where(Note.user_id == uid, Note.rule_title == "第三人称单数主谓一致"))).scalars().all()
+        assert len(notes) == 2
+        for note in notes:
+            assert note.knowledge_point == "一般现在时中，第三人称单数主语动词加 -s/-es"
+            assert note.warning == "你常忘给 she/he/it 加 -s"
+            assert note.alternatives == ["She runs.", "He goes."]
+            assert note.feynman_question == "主语是 she/he/it 时动词怎么变？"
+            cases = (await s.execute(select(NoteCase).where(NoteCase.note_id == note.id))).scalars().all()
+            assert len(cases) == 1
 
 
-async def test_save_dedup_same_source_skips_case():
-    """同 (note_id, user_id, original_sentence) 重复保存时跳过，不新增案例"""
+async def test_save_duplicate_cases_in_one_result_skipped():
+    """单个 result 内重复 change_details 的 case（同 note_id + 同 original_sentence）被跳过，只插 1 个 case"""
     uid = await _demo_user_id()
     errors = [{"error_type": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"}]
+    responder = lambda msgs: json.dumps({
+        "results": [{
+            "rule_title": "重复案例规则", "knowledge_point": "kp", "warning": "w",
+            "alternatives": ["A"], "feynman_question": "q", "error_root": "主谓不一致",
+            "cases": [
+                {"change_details": "She go → She goes"},
+                {"change_details": "She go → She goes"},
+            ],
+        }]
+    }, ensure_ascii=False)
     async with async_session_factory() as s:
-        mock = MockLLMClient(responder=_mock_responder)
+        mock = MockLLMClient(responder=responder)
         result = await save_notes(s, uid, None, "She go to school.", "She goes to school.", errors, mock)
         assert len(result) == 1
-        result = await save_notes(s, uid, None, "She go to school.", "She goes to school.", errors, mock)
-        assert len(result) == 1
     async with async_session_factory() as s:
-        cases = (await s.execute(select(NoteCase))).scalars().all()
+        notes = (await s.execute(select(Note).where(Note.rule_title == "重复案例规则"))).scalars().all()
+        assert len(notes) == 1
+        cases = (await s.execute(select(NoteCase).where(NoteCase.note_id == notes[0].id))).scalars().all()
         assert len(cases) == 1
 
 

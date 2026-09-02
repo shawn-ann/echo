@@ -59,25 +59,16 @@ async def save_notes(
 
     saved: list[NoteRuleResult] = []
     for result in parsed.results:
-        note = (
-            await session.execute(
-                select(Note).where(
-                    Note.user_id == user_id, Note.rule_title == result.rule_title
-                )
-            )
-        ).scalars().first()
-        is_new = note is None
-        if is_new:
-            note = Note(
-                user_id=user_id,
-                rule_title=result.rule_title,
-                knowledge_point=result.knowledge_point,
-                warning=result.warning,
-                alternatives=result.alternatives,
-                feynman_question=result.feynman_question,
-            )
-            session.add(note)
-            await session.flush()
+        note = Note(
+            user_id=user_id,
+            rule_title=result.rule_title,
+            knowledge_point=result.knowledge_point,
+            warning=result.warning,
+            alternatives=result.alternatives,
+            feynman_question=result.feynman_question,
+        )
+        session.add(note)
+        await session.flush()
 
         inserted_any = False
         for case in result.cases:
@@ -106,7 +97,7 @@ async def save_notes(
             note.updated_at = datetime.now(timezone.utc)
             inserted_any = True
 
-        if is_new and not inserted_any:
+        if not inserted_any:
             await session.delete(note)
 
         saved.append(result)
