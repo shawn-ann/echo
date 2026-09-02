@@ -46,6 +46,8 @@ def build_note_system_prompt() -> str:
 - knowledge_point：规则说明、构成方式、常见情况、边界/例外，一段完整讲解
 - warning：针对本次错误的个人易错警示，提醒用户规避
 - alternatives：2-3 条完整英文句子，覆盖不同正式程度的职场替换表达
+  - 各条必须明显不同（换句式/换词/换语气），不得只是标点或大小写等微差值的近似重复
+  - 若找不到足够不同的替换，允许只输出 1-2 条，绝不硬凑重复
 - feynman_question：1 个闭卷自测问题，用于复盘巩固
 - error_root：原样取该组的 error_type 值
 - change_details：该组内每个错误的 `fragment → correction`，用分号 `;` 串联

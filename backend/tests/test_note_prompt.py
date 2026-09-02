@@ -24,6 +24,14 @@ def test_system_prompt_no_dedup():
     assert "已有规则" not in prompt
 
 
+def test_system_prompt_alternatives_distinct():
+    """alternatives 应要求各条明显不同，禁止仅标点/大小写差异的近重复"""
+    prompt = build_note_system_prompt()
+    assert "明显不同" in prompt
+    assert "标点" in prompt
+    assert "大小写" in prompt
+
+
 def test_user_content_contains_source_and_errors():
     content = build_note_user_content(
         source_text="She go to school. He go home.",
