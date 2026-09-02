@@ -51,3 +51,10 @@ class NoteDetailResponse(BaseModel):
     alternatives: list[str]
     feynman_question: str
     cases: list[NoteCaseItem]
+
+
+class UpdateNoteRequest(BaseModel):
+    rule_title: str = Field(min_length=1, max_length=200)
+    knowledge_point: str = Field(min_length=1)
+    alternatives: list[str] = Field(default_factory=list)
+    feynman_question: str = Field(min_length=1)
