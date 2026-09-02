@@ -65,14 +65,13 @@ test('N-02 笔记列表页显示笔记', async ({ page }) => {
   await waitUntilNotePersisted(page)
 })
 
-test('N-03 笔记展开显示 8 字段', async ({ page }) => {
+test('N-03 笔记展开显示字段', async ({ page }) => {
   await loginAndSubmit(page)
   await waitUntilNotePersisted(page)
   await page.getByRole('button', { name: /介词后加 -ing 形式/ }).click()
   await expect(page.getByText('📌 核心知识点')).toBeVisible()
   await expect(page.getByText(/介词后接动词/).first()).toBeVisible()
-  await expect(page.getByText('⚠️ 个人易错警示')).toBeVisible()
-  await expect(page.getByText('💼 职场同义备选')).toBeVisible()
+  await expect(page.getByText('💼 同义备选')).toBeVisible()
   await expect(page.getByText('❓ 费曼自测')).toBeVisible()
   await expect(page.getByText('📝 我的错误')).toBeVisible()
   await expect(page.getByText(/interested in read → interested in reading/)).toBeVisible()
@@ -102,4 +101,18 @@ test('N-06 导航切换纠错↔笔记', async ({ page }) => {
   await expect(page).toHaveURL(/\/notes$/)
   await page.getByRole('link', { name: /纠错/ }).click()
   await expect(page).toHaveURL(/\/correction$/)
+})
+
+test('N-07 编辑笔记保存后显示新值', async ({ page }) => {
+  await loginAndSubmit(page)
+  await waitUntilNotePersisted(page)
+  await page.getByRole('button', { name: /介词后加 -ing 形式/ }).click()
+  await page.getByRole('button', { name: '✏️ 编辑此笔记' }).click()
+  await expect(page.getByText('✏️ 编辑笔记')).toBeVisible()
+  // 标题 input 是编辑态第一个 input（其后是每行同义备选 input）
+  const titleInput = page.locator('input').first()
+  await titleInput.fill('编辑后的规则标题')
+  await page.getByRole('button', { name: '保存' }).click()
+  await expect(page.getByText('✓ 笔记已保存')).toBeVisible({ timeout: 10000 })
+  await expect(page.getByText('编辑后的规则标题')).toBeVisible()
 })
