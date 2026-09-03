@@ -2,7 +2,7 @@ name: deploy
 
 on:
   push:
-    branches: [v0.3]
+    branches: [v0.4]
 
 env:
   REGISTRY: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com
@@ -99,7 +99,7 @@ jobs:
             set -e
 
             DIR="$HOME/echo"
-            BRANCH=v0.3
+            BRANCH=v0.4
             REPO_URL=git@github.com:shawn-ann/echo.git
             KEY_FILE="$HOME/.ssh/echo_deploy_key"
             REGISTRY="crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com"
@@ -142,12 +142,13 @@ jobs:
             fi
             echo "==> GitHub deploy key 认证成功"
 
-            echo "==> [3/6] clone / pull 仓库"
+            echo "==> [3/6] clone / checkout 仓库"
             if [ ! -d "$DIR/.git" ]; then
               git clone --depth 1 -b "$BRANCH" "$REPO_URL" "$DIR"
             else
               cd "$DIR"
-              git pull --ff-only
+              git fetch origin "$BRANCH" --depth 1
+              git checkout -B "$BRANCH" "origin/$BRANCH"
             fi
 
             echo "==> [4/6] 写入 .env（不进 git）"
