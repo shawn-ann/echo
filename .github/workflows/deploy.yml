@@ -148,7 +148,7 @@ jobs:
             else
               cd "$DIR"
               git fetch origin "$BRANCH" --depth 1
-              git checkout -B "$BRANCH" "origin/$BRANCH"
+              git checkout -B "$BRANCH" FETCH_HEAD
             fi
 
             echo "==> [4/6] 写入 .env（不进 git）"
