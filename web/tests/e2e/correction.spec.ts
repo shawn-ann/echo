@@ -85,6 +85,84 @@ test('U-C-08 点击复制按钮复制改写文本', async ({ page }) => {
   await expect(copyButton.getByText('✓')).toBeVisible()
 })
 
+// U-C-13 历史报告兼容：error_type + 英文 category 枚举 + rewrite=null
+test('U-C-13 历史报告兼容 error_type 与英文 category', async ({ page }) => {
+  await page.route('**/api/v1/messages', async (route) => {
+    if (route.request().method() !== 'GET') return route.continue()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        messages: [
+          {
+            id: '00000000-0000-0000-0000-000000000001',
+            role: 'user',
+            type: 'correction',
+            content: 'I go to school',
+            report: null,
+            created_at: '2026-08-01T00:00:00Z',
+          },
+          {
+            id: '00000000-0000-0000-0000-000000000002',
+            role: 'assistant',
+            type: 'report',
+            content: null,
+            report: {
+              has_errors: true,
+              errors: [
+                {
+                  category: 'grammar',
+                  error_type: '时态错误',
+                  fragment: 'go',
+                  explanation: '过去时间应用过去式',
+                  correction: 'went',
+                },
+              ],
+              rewrite: null,
+            },
+            created_at: '2026-08-01T00:00:01Z',
+          },
+        ],
+      }),
+    })
+  })
+  await login(page)
+  await expect(page.getByText('时态错误').first()).toBeVisible()
+  await expect(page.getByText('grammar')).toHaveCount(0)
+})
+
+// U-C-14 历史报告 rewrite 缺字段时不崩溃
+test('U-C-14 历史报告 rewrite 结构不完整时不崩溃', async ({ page }) => {
+  await page.route('**/api/v1/messages', async (route) => {
+    if (route.request().method() !== 'GET') return route.continue()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        messages: [
+          {
+            id: '00000000-0000-0000-0000-000000000003',
+            role: 'assistant',
+            type: 'report',
+            content: null,
+            report: {
+              has_errors: true,
+              errors: [
+                { category: '时态错误', fragment: 'go', explanation: 'x', correction: 'went' },
+              ],
+              rewrite: { minimal: { text: 'I went to school', note: '' }, natural: {} },
+            },
+            created_at: '2026-08-01T00:00:02Z',
+          },
+        ],
+      }),
+    })
+  })
+  await login(page)
+  await expect(page.getByText('错误分析').first()).toBeVisible()
+  await expect(page.getByText('改写')).toHaveCount(0)
+})
+
 // U-C-09 刷新后历史仍在
 test('U-C-09 刷新页面历史全量加载', async ({ page }) => {
   await login(page)

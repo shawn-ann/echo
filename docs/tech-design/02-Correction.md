@@ -54,7 +54,7 @@
 ```
 
 - **has_errors 不由大模型输出**：服务端按 `len(errors) > 0` 派生，仍写入返回体与 `correction_reports.structure`；`errors` 为空即 `has_errors=false`
-- **errors[]**：`category`（39 个规范名之一，分 6 组：语法 / 词汇与搭配 / 语域 / 母语者不这么说 / 清晰度与逻辑 / 技术术语）、`fragment`（原文精确子串）、`explanation`（中文）、`correction`（英文最小修正；空字符串表示删除该片段）
+- **errors[]**：`category`（38 个规范名之一，分 6 组：语法 / 词汇与搭配 / 语域 / 母语者不这么说 / 清晰度与逻辑 / 技术术语）、`fragment`（原文精确子串）、`explanation`（中文）、`correction`（英文最小修正；空字符串表示删除该片段）
 - **rewrite**：`minimal`/`natural` 各含 `text`（英文）与 `note`（中文一行说明）；**每次必出**。无错误时 `minimal.text` 必须等于原文，`natural.text` 允许给出更地道的改写（前端在鼓励文案下展示）
 - **无 learnings**：纠错链路不再产出「学到的规则」段（learnings 已移除），规则由保存笔记时后台异步生成（见 `notes-async-save` 设计）
 - **无 intent/reply**：交互固定为单轮纠错，LLM 不再返回意图标记或纯文本追问回复
@@ -356,7 +356,7 @@ CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 
 **变更记录**
 
-- V0.7 · 2026-11 · **提示词 V3 与输出契约调整**：提示词改为分类学 + 判定优先级 + OUT OF SCOPE（大小写/标点风格不报）；`error_type` 更名 `category`（39 个规范名，6 组）；`has_errors` 改为服务端由 `errors` 派生，不再由大模型输出；`rewrite` 改为必填，无错误时也返回（`natural` 允许改写）；删除类修正用空 `correction` 表达；删除提示词中的 `{{input}}` 占位符；历史报告由前端读取时归一化（不迁移数据）（同步 Correction V2.10）
+- V0.7 · 2026-11 · **提示词 V3 与输出契约调整**：提示词改为分类学 + 判定优先级 + OUT OF SCOPE（大小写/标点风格不报）；`error_type` 更名 `category`（38 个规范名，6 组）；`has_errors` 改为服务端由 `errors` 派生，不再由大模型输出；`rewrite` 改为必填，无错误时也返回（`natural` 允许改写）；删除类修正用空 `correction` 表达；删除提示词中的 `{{input}}` 占位符；历史报告由前端读取时归一化（不迁移数据）（同步 Correction V2.10）
 
 - V0.6 · 2026-08 · **移除 learnings（异步化同步）**：§1.2 单次调用契约移除 learnings 字段与示例、补「无 learnings」说明；§2.4 数据示例同步移除 learnings；§6.1 组件树移除 LearningsSection、CorrectionReportCard 改两分区；§4.1 响应示例移除 learnings（同步 Correction V2.9 / Overview V2.13 / 架构 00-Architecture V1.2）
 

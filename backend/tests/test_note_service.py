@@ -57,13 +57,14 @@ async def test_save_creates_note_fields_and_case():
         assert case.error_root == "主谓不一致"
 
 
-async def test_save_group_by_error_type_creates_multiple_notes():
-    """不同 error_type 生成多条笔记"""
+async def test_save_group_by_category_creates_multiple_notes():
+    """不同 category 生成多条笔记"""
     uid = await _demo_user_id()
     errors = [
         {"category": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"},
-        {"error_type": "冠词缺失", "fragment": "a apple", "explanation": "x", "correction": "an apple"},
+        {"category": "冠词缺失", "fragment": "a apple", "explanation": "x", "correction": "an apple"},
     ]
+    sent: list[list[dict]] = []
     responder = lambda msgs: json.dumps({
         "results": [
             {
@@ -78,10 +79,18 @@ async def test_save_group_by_error_type_creates_multiple_notes():
             },
         ]
     }, ensure_ascii=False)
+    def capturing_responder(msgs: list[dict]) -> str:
+        sent.append(msgs)
+        return responder(msgs)
+
     async with async_session_factory() as s:
-        mock = MockLLMClient(responder=responder)
+        mock = MockLLMClient(responder=capturing_responder)
         result = await save_notes(s, uid, None, "She go to school and eat a apple", "She goes to school and eats an apple", errors, mock)
         assert len(result) == 2
+    # 发给笔记 LLM 的错误列表必须用 category 字段
+    note_user_content = sent[0][-1]["content"]
+    assert "category" in note_user_content
+    assert "error_type" not in note_user_content
     async with async_session_factory() as s:
         notes = (await s.execute(select(Note).where(Note.user_id == uid))).scalars().all()
         assert len(notes) == 2
@@ -188,7 +197,7 @@ async def test_save_timeout_raises_504():
     async with async_session_factory() as s:
         mock = _RaisingLLMClient(LLMTimeoutError())
         with pytest.raises(AppError) as exc_info:
-            await save_notes(s, uid, None, "x", "y", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
+            await save_notes(s, uid, None, "x", "y", [{"category": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
         assert exc_info.value.status_code == 504
 
 
@@ -197,7 +206,7 @@ async def test_save_llm_unavailable_raises_503():
     async with async_session_factory() as s:
         mock = _RaisingLLMClient(LLMUnavailableError())
         with pytest.raises(AppError) as exc_info:
-            await save_notes(s, uid, None, "x", "y", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
+            await save_notes(s, uid, None, "x", "y", [{"category": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
         assert exc_info.value.status_code == 503
 
 
@@ -206,7 +215,7 @@ async def test_save_invalid_llm_response_raises_502():
     async with async_session_factory() as s:
         mock = MockLLMClient(responder=lambda msgs: "not-json")
         with pytest.raises(AppError) as exc_info:
-            await save_notes(s, uid, None, "x", "y", [{"error_type": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
+            await save_notes(s, uid, None, "x", "y", [{"category": "t", "fragment": "f", "explanation": "e", "correction": "c"}], mock)
         assert exc_info.value.status_code == 502
 
 
