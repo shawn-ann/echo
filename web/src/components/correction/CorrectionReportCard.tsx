@@ -8,10 +8,21 @@ interface Props {
 
 export default function CorrectionReportCard({ report }: Props) {
   if (!report.has_errors) {
+    const rewrite = report.rewrite
+    const showNatural = !!rewrite && rewrite.natural.text.trim() !== ''
+
     return (
       <div className="flex justify-start">
-        <div className="max-w-[85%] rounded-xl bg-[#e6fcf5] px-4 py-2.5 text-[#0a7053] md:max-w-[90%]">
-          🎉 这段英文写得不错，没有发现语法或不地道的表达！
+        <div className="w-full max-w-[90%] rounded-xl border border-[#dee2e6] bg-white p-3">
+          <div className="rounded-xl bg-[#e6fcf5] px-4 py-2.5 text-[#0a7053]">
+            🎉 这段英文写得不错，没有发现语法或不地道的表达！
+          </div>
+          {showNatural && (
+            <div className="mt-2 rounded-lg border border-[#dee2e6] p-3">
+              <p className="mb-2 text-sm font-semibold text-[#343a40]">也可以这样写</p>
+              <RewriteSection rewrite={rewrite!} show="natural-only" />
+            </div>
+          )}
         </div>
       </div>
     )

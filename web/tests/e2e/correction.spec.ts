@@ -38,6 +38,7 @@ test('U-C-03 无错误文本展示鼓励文案', async ({ page }) => {
   await login(page)
   await send(page, 'no-error')
   await expect(page.getByText(/这段英文写得不错/).first()).toBeVisible()
+  await expect(page.getByText('地道表达').first()).toBeVisible()
 })
 
 // U-C-04 纯中文也返回纠错报告（单轮纠错，无追问）

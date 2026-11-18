@@ -55,10 +55,18 @@ function RewriteBox({
   )
 }
 
-export default function RewriteSection({ rewrite }: { rewrite: RewriteSectionType }) {
+export default function RewriteSection({
+  rewrite,
+  show = 'both',
+}: {
+  rewrite: RewriteSectionType
+  show?: 'both' | 'natural-only'
+}) {
   return (
     <div className="space-y-2">
-      <RewriteBox label="最小修正" icon="✏️" option={rewrite.minimal} accent="text-[#2b8a3e]" />
+      {show === 'both' && (
+        <RewriteBox label="最小修正" icon="✏️" option={rewrite.minimal} accent="text-[#2b8a3e]" />
+      )}
       <RewriteBox label="地道表达" icon="✨" option={rewrite.natural} accent="text-[#7048e8]" />
     </div>
   )
