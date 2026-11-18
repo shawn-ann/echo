@@ -38,10 +38,9 @@
 
 ```json
 {
-  "has_errors": true,
   "errors": [
     {
-      "error_type": "时态错误",
+      "category": "时态错误",
       "fragment": "I go to",
       "explanation": "yesterday 表示过去，故用过去式 went",
       "correction": "I went to"
@@ -54,13 +53,13 @@
 }
 ```
 
-- `has_errors=false` 时：`errors` 为空、`rewrite` 为 `null`，前端展示鼓励文案（PRD §7.2）
-- **errors[]**：`error_type`（中文错误类型，取自提示词词表：冠词缺失/拼写错误/主谓不一致/词性误用/词序不当/用词不当/搭配不当/搭配冗余/介词错误/介词缺失/单复数错误/不可数名词误用/动词形式错误/there be 句型误用 等）、`fragment`（最小原文片段）、`explanation`（中文）、`correction`（英文最小修正）
-- **rewrite**：`minimal`/`natural` 各含 `text`（英文）与 `note`（中文一行说明）；无错误时为 `null`
+- **has_errors 不由大模型输出**：服务端按 `len(errors) > 0` 派生，仍写入返回体与 `correction_reports.structure`；`errors` 为空即 `has_errors=false`
+- **errors[]**：`category`（39 个规范名之一，分 6 组：语法 / 词汇与搭配 / 语域 / 母语者不这么说 / 清晰度与逻辑 / 技术术语）、`fragment`（原文精确子串）、`explanation`（中文）、`correction`（英文最小修正；空字符串表示删除该片段）
+- **rewrite**：`minimal`/`natural` 各含 `text`（英文）与 `note`（中文一行说明）；**每次必出**。无错误时 `minimal.text` 必须等于原文，`natural.text` 允许给出更地道的改写（前端在鼓励文案下展示）
 - **无 learnings**：纠错链路不再产出「学到的规则」段（learnings 已移除），规则由保存笔记时后台异步生成（见 `notes-async-save` 设计）
 - **无 intent/reply**：交互固定为单轮纠错，LLM 不再返回意图标记或纯文本追问回复
 - **LLM 调用参数**：`temperature=0`、`response_format={"type":"json_object"}`、`chat_template_kwargs={"enable_thinking": false}`；模型使用 `glm-5.2`
-- **真实提示词**：详见 `backend/app/prompts/correction_prompt.py`（检查规则驱动，含编程标识符保留、冠词名词链判断、单复数、词序、介词搭配、搭配不当/冗余、口语正常表达、粒度要求等）
+- **真实提示词**：详见 `backend/app/prompts/correction_prompt.py`（V3：分类学词表 + `JUDGMENT BOUNDARIES` 判定优先级 + `OUT OF SCOPE`（大小写/标点风格不报）+ 硬规则 + 改写规则）；不含 `has_errors` / `{{input}}` 占位符，原文由 user 消息提供
 
 ### 1.3 解析与容错
 
@@ -131,13 +130,13 @@
   "has_errors": true,
   "errors": [
     {
-      "error_type": "时态错误",
+      "category": "时态错误",
       "fragment": "I go to",
       "explanation": "yesterday 表示过去，故用过去式 went",
       "correction": "I went to"
     },
     {
-      "error_type": "搭配冗余",
+      "category": "搭配冗余",
       "fragment": "eat very delicious food",
       "explanation": "delicious 是极限形容词，通常不加 very；eat 与 food 搭配不地道",
       "correction": "ate really delicious food"
@@ -255,7 +254,7 @@ CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 ├── MessageList
 │   ├── UserBubble          （correction：靠右，品牌色高亮）
 │   ├── CorrectionReportCard（type=report：整体大框，错误分析+改写 两分区）
-│   │   ├── ErrorCard       （error_type + fragment + explanation + correction；红色语块）
+│   │   ├── ErrorCard       （category + fragment + explanation + correction；红色语块）
 │   │   └── RewriteSection  （minimal 绿 ✏️ / natural 紫 ✨ 两虚线框 + CopyButton）
 │   └── LoadingBubble       （「AI 正在分析，请稍候…」）
 └── Composer                （多行自动延伸输入框 + n/2000 字数 + 发送按钮三态；Enter 发送 / Shift+Enter 换行）
@@ -318,7 +317,7 @@ CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 | # | 接口 | 用例 | 预期 | 关联 |
 |---|------|------|------|------|
 | T-C-01 | POST /messages | 提交含错英文（Mock 返回 correction） | 200，返回 user_message + assistant_message(report)；DB 落 messages 2 行 + correction_reports 1 行 | AC-C-01 |
-| T-C-02 | POST /messages | 提交无错英文 | 200，report.has_errors=false、rewrite=null | AC-C-07 |
+| T-C-02 | POST /messages | 提交无错英文 | 200，report.has_errors=false、rewrite.natural 仍返回 | AC-C-07 |
 | T-C-03 | POST /messages | 提交纯中文 | 200，type=correction/report（单轮纠错，无 reply） | AC-C-09 |
 | T-C-04 | POST /messages | 空内容 | 400 `VALIDATION_ERROR` | AC-C-02 输入约束 |
 | T-C-05 | POST /messages | 超 2000 字符 | 400 `VALIDATION_ERROR` | AC-C-06 |
@@ -356,6 +355,8 @@ CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 ---
 
 **变更记录**
+
+- V0.7 · 2026-11 · **提示词 V3 与输出契约调整**：提示词改为分类学 + 判定优先级 + OUT OF SCOPE（大小写/标点风格不报）；`error_type` 更名 `category`（39 个规范名，6 组）；`has_errors` 改为服务端由 `errors` 派生，不再由大模型输出；`rewrite` 改为必填，无错误时也返回（`natural` 允许改写）；删除类修正用空 `correction` 表达；删除提示词中的 `{{input}}` 占位符；历史报告由前端读取时归一化（不迁移数据）（同步 Correction V2.10）
 
 - V0.6 · 2026-08 · **移除 learnings（异步化同步）**：§1.2 单次调用契约移除 learnings 字段与示例、补「无 learnings」说明；§2.4 数据示例同步移除 learnings；§6.1 组件树移除 LearningsSection、CorrectionReportCard 改两分区；§4.1 响应示例移除 learnings（同步 Correction V2.9 / Overview V2.13 / 架构 00-Architecture V1.2）
 
