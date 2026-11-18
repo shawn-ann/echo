@@ -12,9 +12,10 @@ def test_system_prompt_contains_8field_fields():
     assert "change_details" in prompt
 
 
-def test_system_prompt_group_by_error_type():
+def test_system_prompt_group_by_category():
     prompt = build_note_system_prompt()
-    assert "error_type" in prompt
+    assert "category" in prompt
+    assert "error_type" not in prompt
     assert "合并" in prompt
     assert "1 个元素" in prompt
 
@@ -36,10 +37,11 @@ def test_user_content_contains_source_and_errors():
     content = build_note_user_content(
         source_text="She go to school. He go home.",
         errors=[
-            {"error_type": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"},
-            {"error_type": "主谓不一致", "fragment": "He go", "explanation": "x", "correction": "He goes"},
+            {"category": "主谓不一致", "fragment": "She go", "explanation": "x", "correction": "She goes"},
+            {"category": "主谓不一致", "fragment": "He go", "explanation": "x", "correction": "He goes"},
         ],
     )
     assert "She go to school. He go home." in content
     assert "She go" in content
     assert "She goes" in content
+    assert "主谓不一致" in content

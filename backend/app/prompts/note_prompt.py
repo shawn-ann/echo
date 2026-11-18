@@ -6,12 +6,12 @@ def build_note_system_prompt() -> str:
 
 ## 输入
 - 原文：用户手写的英文句子
-- 错误列表：每条含 error_type（中文错误类型词表）、fragment（原文错误片段）、explanation、correction（最小修正）
+- 错误列表：每条含 category（中文错误类型词表）、fragment（原文错误片段）、explanation、correction（最小修正）
 
 ## 分组规则
-- 按 error_type 分组：相同 error_type 的错误归入同一条 result
-- 不同 error_type 的错误生成不同 result
-- 每个 result 的 error_root 必须原样取该组的 error_type 值
+- 按 category 分组：相同 category 的错误归入同一条 result
+- 不同 category 的错误生成不同 result
+- 每个 result 的 error_root 必须原样取该组的 category 值
 - cases 数组必须只包含 1 个元素：该组内所有错误的 fragment → correction 用分号串联进这唯一的 change_details
 
 ## 输出格式
@@ -47,14 +47,14 @@ def build_note_system_prompt() -> str:
   - 各条必须明显不同（换句式/换词/换语气），不得只是标点或大小写等微差值的近似重复
   - 若找不到足够不同的替换，允许只输出 1-2 条，绝不硬凑重复
 - feynman_question：1 个闭卷自测问题，用于复盘巩固
-- error_root：原样取该组的 error_type 值
+- error_root：原样取该组的 category 值
 - change_details：该组内每个错误的 `fragment → correction`，用分号 `;` 串联
   - 例如："She go → She goes; He go → He goes"
   - fragment 必须原样取自错误列表，不得改写
   - 仅保留本组错误相关的修改，不得混入其他错误类型的修改
 
 ## 约束
-- 不得合并不同 error_type 的错误
+- 不得合并不同 category 的错误
 - change_details 中每个错误只出现一次
 """
 

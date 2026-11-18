@@ -83,7 +83,7 @@ def _default_responder(messages: list[dict[str, Any]]) -> str:
                             "The team is responsible for shipping the release.",
                         ],
                         "feynman_question": "介词后接动词用什么形式？为什么不能用不定式？",
-                        "error_root": "动词形式",
+                        "error_root": "动词形式错误",
                         "cases": [
                             {"change_details": "interested in read → interested in reading"}
                         ],
