@@ -62,6 +62,11 @@ def _fragment_match(gt_fragment: str, model_fragment: str) -> bool:
     return False
 
 
+def _model_category(err: dict) -> str:
+    """兼容新旧输出：新产物用 category，旧产物用 error_type。"""
+    return err.get("category") or err.get("error_type") or ""
+
+
 def _error_type_match(gt_type: str, model_type: str) -> bool:
     if gt_type == model_type:
         return True
@@ -131,7 +136,7 @@ def _eval_case(gt: dict, model_errors: list[dict]) -> dict:
             if i in used_model_indices:
                 continue
             if _fragment_match(gt_frag, me.get("fragment", "")):
-                if _error_type_match(gt_err["error_type"], me.get("error_type", "")):
+                if _error_type_match(gt_err["error_type"], _model_category(me)):
                     best_idx = i
                     break
         # Pass 2: fragment match only, prefer shorter fragments (more precise)
@@ -143,7 +148,7 @@ def _eval_case(gt: dict, model_errors: list[dict]) -> dict:
                 mf = me.get("fragment", "")
                 if _fragment_match(gt_frag, mf):
                     # Skip very long fragments with mismatched type (likely different error)
-                    if len(mf) > gt_len * 3 and not _error_type_match(gt_err["error_type"], me.get("error_type", "")):
+                    if len(mf) > gt_len * 3 and not _error_type_match(gt_err["error_type"], _model_category(me)):
                         continue
                     candidates.append((i, len(mf)))
             if candidates:
@@ -153,13 +158,13 @@ def _eval_case(gt: dict, model_errors: list[dict]) -> dict:
         if best_idx is not None:
             used_model_indices.add(best_idx)
             me = model_errors[best_idx]
-            type_ok = _error_type_match(gt_err["error_type"], me.get("error_type", ""))
+            type_ok = _error_type_match(gt_err["error_type"], _model_category(me))
             corr_ok = _correction_direction_match(gt_err["correction"], me.get("correction", ""))
             matched_required.append({
                 "gt_fragment": gt_frag,
                 "gt_type": gt_err["error_type"],
                 "model_fragment": me.get("fragment", ""),
-                "model_type": me.get("error_type", ""),
+                "model_type": _model_category(me),
                 "type_match": type_ok,
                 "corr_match": corr_ok,
             })
@@ -189,7 +194,7 @@ def _eval_case(gt: dict, model_errors: list[dict]) -> dict:
             continue
         fabricated.append({
             "fragment": me.get("fragment", ""),
-            "error_type": me.get("error_type", ""),
+            "category": _model_category(me),
             "correction": me.get("correction", ""),
         })
 
@@ -330,7 +335,7 @@ def main():
             fab_details = ""
             if ce.get("fabricated"):
                 fab_details = "; ".join(
-                    f"`{f['fragment']}`({f['error_type']})" for f in ce["fabricated"]
+                    f"`{f['fragment']}`({f['category']})" for f in ce["fabricated"]
                 )
             hit_req = ce.get("required_matched", 0)
             miss_req = ce.get("required_missed", 0)
