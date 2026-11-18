@@ -46,13 +46,14 @@ async def test_post_messages_no_error(api):
     client, mock = api
     token = await _token(client)
     mock.responder = lambda msgs: (
-        '{"has_errors":false,"errors":[],"rewrite":null}'
+        '{"errors":[],"rewrite":{"minimal":{"text":"perfect english","note":"原文已无问题"},'
+        '"natural":{"text":"That English is perfect.","note":"更地道"}}}'
     )
     r = await client.post(POST_URL, json={"content": "perfect english"}, headers=_auth(token))
     assert r.status_code == 200
     data = r.json()
     assert data["assistant_message"]["report"]["has_errors"] is False
-    assert data["assistant_message"]["report"]["rewrite"] is None
+    assert data["assistant_message"]["report"]["rewrite"]["natural"]["text"] == "That English is perfect."
 
 
 # T-C-03 纯中文也返回纠错报告（单轮纠错，无 follow_up）
@@ -196,7 +197,10 @@ async def test_post_messages_no_error_no_note(api):
     """has_errors=false → 不触发笔记保存"""
     client, mock = api
     token = await _token(client)
-    mock.responder = lambda msgs: '{"has_errors":false,"errors":[],"rewrite":null}'
+    mock.responder = lambda msgs: (
+        '{"errors":[],"rewrite":{"minimal":{"text":"perfect english","note":"原文已无问题"},'
+        '"natural":{"text":"perfect english","note":"无需改写"}}}'
+    )
     r = await client.post(POST_URL, json={"content": "perfect english"}, headers=_auth(token))
     assert r.status_code == 200
     from sqlalchemy import select

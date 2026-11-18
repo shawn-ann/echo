@@ -97,18 +97,19 @@ def _default_responder(messages: list[dict[str, Any]]) -> str:
     if "没有错误" in last or "no-error" in last:
         return json.dumps(
             {
-                "has_errors": False,
                 "errors": [],
-                "rewrite": None,
+                "rewrite": {
+                    "minimal": {"text": last, "note": "原文已无问题"},
+                    "natural": {"text": last, "note": "无需改写"},
+                },
             },
             ensure_ascii=False,
         )
     return json.dumps(
         {
-            "has_errors": True,
             "errors": [
                 {
-                    "error_type": "动词形式",
+                    "category": "动词形式错误",
                     "fragment": "interested in read",
                     "explanation": "介词后应接动名词形式",
                     "correction": "interested in reading",

@@ -75,7 +75,7 @@ async def test_build_context_includes_report_structure():
         ctx = await build_context(s, conv.id, get_settings().CONTEXT_LIMIT)
         assert len(ctx) == 2
         # 历史报告直接以纠错结构体呈现（不包 {"report": ...}）
-        assert "has_errors" in ctx[1]["content"]
+        assert "category" in ctx[1]["content"]
         assert '"report"' not in ctx[1]["content"]
 
 
@@ -85,15 +85,17 @@ async def test_submit_llm_wrapped_report_unwraps():
     async with async_session_factory() as s:
         mock = MockLLMClient(
             responder=lambda msgs: (
-                '{"report": {"has_errors": true, "errors": [{"error_type": "时态错误", "fragment": "go", '
-                '"explanation": "x", "correction": "went"}], "rewrite": null}}'
+                '{"report": {"errors": [{"category": "时态错误", "fragment": "go", '
+                '"explanation": "x", "correction": "went"}], '
+                '"rewrite": {"minimal": {"text": "She goes to school", "note": "改时态"}, '
+                '"natural": {"text": "She goes to school.", "note": "更自然"}}}}'
             )
         )
         user_out, ai_out = await submit_message(s, uid, "She go to school", mock)
         assert user_out.type == "correction"
         assert ai_out.type == "report"
         assert ai_out.report["has_errors"] is True
-        assert ai_out.report["errors"][0]["error_type"] == "时态错误"
+        assert ai_out.report["errors"][0]["category"] == "时态错误"
 
 
 async def test_list_messages_orders_and_embeds_report():
