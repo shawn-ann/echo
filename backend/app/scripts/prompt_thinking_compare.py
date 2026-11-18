@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 from app.core.config import get_settings
+from app.scripts.category_compat import model_category
 
 
 def _load_json(path: str) -> dict:
@@ -38,7 +39,7 @@ def _summarize_result(raw: str) -> dict:
     learnings = correction.get("learnings") or []
     return {
         "errors": [
-            {"category": e.get("category") or e.get("error_type"), "correction": e.get("correction")}
+            {"category": model_category(e), "correction": e.get("correction")}
             for e in errors
         ],
         "learnings": len(learnings),
@@ -90,10 +91,10 @@ def _render_compare(on: dict, off: dict) -> str:
         lines.append("")
         lines.append(f"- **思考开启**：errors {len(on_s['errors'])} 条、learnings {on_s['learnings']} 条")
         for e in on_s["errors"]:
-            lines.append(f"  - {e.get('category') or e.get('error_type')}: → {e.get('correction')}")
+            lines.append(f"  - {model_category(e)}: → {e.get('correction')}")
         lines.append(f"- **思考关闭**：errors {len(off_s['errors'])} 条、learnings {off_s['learnings']} 条")
         for e in off_s["errors"]:
-            lines.append(f"  - {e.get('category') or e.get('error_type')}: → {e.get('correction')}")
+            lines.append(f"  - {model_category(e)}: → {e.get('correction')}")
         lines.append(f"- **差异**：{'错误识别一致 ✅' if same_errors else '错误识别不一致 ⚠️'}")
         lines.append("")
     lines.append("## 三、总结")

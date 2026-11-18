@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 from app.prompts.golden_cases import load_golden_cases
+from app.scripts.category_compat import model_category
 
 
 def _load_json(path: str) -> dict:
@@ -53,7 +54,7 @@ def _summarize_output(raw: str) -> dict:
     learnings = correction.get("learnings") or []
     return {
         "errors": [
-            {"category": e.get("category") or e.get("error_type"), "correction": e.get("correction")}
+            {"category": model_category(e), "correction": e.get("correction")}
             for e in errors
         ],
         "learnings": len(learnings),
@@ -122,7 +123,7 @@ def _render_compare(items: list[dict], cases: list[dict]) -> str:
             if not c:
                 continue
             errs = "；".join(
-                f"{e.get('category') or e.get('error_type')}→{e.get('correction')}"
+                f"{model_category(e)}→{e.get('correction')}"
                 for e in c["errors"]
             ) or "（无）"
             lines.append(

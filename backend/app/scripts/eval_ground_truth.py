@@ -6,6 +6,8 @@ import json
 import re
 from pathlib import Path
 
+from app.scripts.category_compat import model_category
+
 PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "docs" / "prompts"
 GOLDEN_PATH = Path(__file__).resolve().parent.parent / "prompts" / "golden_cases.json"
 REPORT_PATH = PROMPTS_DIR / "ground-truth-eval-report.md"
@@ -64,7 +66,7 @@ def _fragment_match(gt_fragment: str, model_fragment: str) -> bool:
 
 def _model_category(err: dict) -> str:
     """兼容新旧输出：新产物用 category，旧产物用 error_type。"""
-    return err.get("category") or err.get("error_type") or ""
+    return model_category(err)
 
 
 def _error_type_match(gt_type: str, model_type: str) -> bool:

@@ -17,10 +17,16 @@ def _sample_summary(thinking, elapsed, outputs):
 
 
 def test_summarize_result_extracts_errors():
-    raw = '{"intent":"correction","correction":{"has_errors":true,"errors":[{"category":"grammar","error_type":"时态错误","correction":"went"}]}}'
+    raw = '{"intent":"correction","correction":{"errors":[{"category":"时态错误","correction":"went"}]}}'
     s = _summarize_result(raw)
     assert len(s["errors"]) == 1
-    assert s["errors"][0]["error_type"] == "时态错误"
+    assert s["errors"][0]["category"] == "时态错误"
+
+
+def test_summarize_result_legacy_english_category_falls_back():
+    raw = '{"intent":"correction","correction":{"errors":[{"category":"grammar","error_type":"时态错误","correction":"went"}]}}'
+    s = _summarize_result(raw)
+    assert s["errors"][0]["category"] == "时态错误"
 
 
 def test_summarize_result_bad_json():

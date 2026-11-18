@@ -11,3 +11,8 @@ def test_model_category_falls_back_to_legacy_field():
 
 def test_model_category_missing_returns_empty():
     assert _model_category({}) == ""
+
+
+def test_model_category_ignores_legacy_english_enum():
+    # 旧产物同时有英文 category 枚举与中文 error_type
+    assert _model_category({"category": "grammar", "error_type": "冠词缺失"}) == "冠词缺失"

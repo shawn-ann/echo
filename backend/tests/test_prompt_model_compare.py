@@ -11,11 +11,18 @@ def json_dumps(obj):
 
 
 def test_summarize_output_extracts():
-    raw = json_dumps({"intent": "correction", "correction": {"has_errors": True, "errors": [{"category": "grammar", "error_type": "冠词缺失", "correction": "a job"}]}})
+    raw = json_dumps({"intent": "correction", "correction": {"errors": [{"category": "冠词缺失", "correction": "a job"}]}})
     s = _summarize_output(raw)
     assert len(s["errors"]) == 1
-    assert s["errors"][0]["error_type"] == "冠词缺失"
+    assert s["errors"][0]["category"] == "冠词缺失"
     assert s["ok"] is True
+
+
+def test_summarize_output_legacy_english_category_falls_back():
+    # 旧产物：category 是英文枚举 grammar，真实类型在 error_type
+    raw = json_dumps({"intent": "correction", "correction": {"errors": [{"category": "grammar", "error_type": "冠词缺失", "correction": "a job"}]}})
+    s = _summarize_output(raw)
+    assert s["errors"][0]["category"] == "冠词缺失"
 
 
 def test_summarize_output_bad_json():
