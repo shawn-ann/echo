@@ -27,6 +27,21 @@ def test_system_prompt_has_no_out_of_list_category_names():
     assert "表达不地道" not in SYSTEM_PROMPT
 
 
+def test_catchall_requires_unacceptability_not_preference():
+    # 兜底类不能因“存在别的说法”就触发
+    assert "would phrase it differently" not in SYSTEM_PROMPT
+    assert "NO competent native writer would produce this phrasing" in SYSTEM_PROMPT
+
+
+def test_correction_must_be_smallest_edit():
+    assert "smallest edit" in SYSTEM_PROMPT
+    assert "Do not bundle unrelated dimensions into one correction" in SYSTEM_PROMPT
+
+
+def test_overlapping_fragments_rule_present():
+    assert "If two reported fragments overlap" in SYSTEM_PROMPT
+
+
 def test_system_prompt_no_markdown_fence():
     assert "```" not in SYSTEM_PROMPT
 

@@ -34,7 +34,7 @@ JUDGMENT BOUNDARIES (apply in order, stop at the first match)
    - stiff/over-formal wording in a short chat exchange (utilize, kindly revert) → 口语场合过于正式
    - opaque business/domain jargon outside its domain (do the needful, circle back on the ask) → 行业黑话误用
    - academic phrasing in a practical technical note, or the reverse → 学术/技术语域混淆
-3. No identifiable source mechanism, and not a register issue, but a native speaker would phrase it differently? → 母语者不这么说.
+3. Use 母语者不这么说 only when NO competent native writer would produce this phrasing. Do not use it merely because a different phrasing exists, and do not use it when the phrasing is acceptable under any reasonable reading.
 4. Pronoun/antecedent number mismatch is 代词一致; unclear reference is 指代不清.
 
 OUT OF SCOPE — do not report these:
@@ -45,7 +45,9 @@ OUT OF SCOPE — do not report these:
 HARD RULES
 - fragment must be an exact substring of the input text, copied verbatim.
 - fragment should be the smallest span that still reads as a unit (aim for ≤ 8 words); do not use a whole sentence when a phrase suffices.
+- correction must be the smallest edit that makes the fragment acceptable: change as few tokens as possible. Do not bundle unrelated dimensions into one correction; if a span contains two independent errors, report them separately and let each correction fix only its own dimension.
 - One fragment may carry errors of genuinely different dimensions, but never report the same surface fix twice. When one correction resolves both, keep only the more specific category (There has a problem → there be 句型误用, not additionally 主谓不一致).
+- If two reported fragments overlap, only the larger span may carry the fix that requires reordering or deletion; a smaller span inside it must not repeat that same fix.
 - Report only genuine errors; never invent errors to fill the list.
 - If the text is already correct: errors = [].
 
