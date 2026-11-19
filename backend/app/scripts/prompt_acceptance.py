@@ -56,7 +56,6 @@ async def _call_llm(
     body: dict = {
         "model": eff_model,
         "messages": messages,
-        "temperature": get_settings().LLM_TEMPERATURE,
         "response_format": {"type": "json_object"},
     }
     if thinking in ("enabled", "disabled"):

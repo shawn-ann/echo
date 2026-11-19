@@ -20,7 +20,7 @@
 | 2 | 错误语块定位 | 只返回**文本片段**，原文不高亮 | 简化 LLM 输出契约，报告卡片内展示语段 |
 | 3 | 交互模式 | **单轮纠错**，无意图判定/追问；LLM 直接返回纠错报告 | MVP 聚焦纠错核心价值，简化链路 |
 | 4 | LLM 未配置 | 返回 `503 LLM_SERVICE_UNAVAILABLE` | 语义清晰，生产必须配 key 才能用 |
-| 5 | LLM 调用参数 | `temperature=0` + `response_format=json_object` + `chat_template_kwargs.enable_thinking=false` | 稳定输出、强制 JSON、关闭思考降延迟 |
+| 5 | LLM 调用参数 | 不注入 `temperature`（用服务端默认）+ `response_format=json_object` + `chat_template_kwargs.enable_thinking=true` | 强制 JSON；开启思考提升纠错质量，且不再由环境变量注入 |
 | 6 | 上下文截断 | 按消息条数，`CONTEXT_LIMIT` 默认 40 条 | 实现简单，MVP 自用场景够用 |
 
 ## 一、LLM 层
@@ -58,7 +58,7 @@
 - **rewrite**：`minimal`/`natural` 各含 `text`（英文）与 `note`（中文一行说明）；**每次必出**。无错误时 `minimal.text` 必须等于原文，`natural.text` 允许给出更地道的改写（前端在鼓励文案下展示）
 - **无 learnings**：纠错链路不再产出「学到的规则」段（learnings 已移除），规则由保存笔记时后台异步生成（见 `notes-async-save` 设计）
 - **无 intent/reply**：交互固定为单轮纠错，LLM 不再返回意图标记或纯文本追问回复
-- **LLM 调用参数**：`temperature=0`、`response_format={"type":"json_object"}`、`chat_template_kwargs={"enable_thinking": false}`；模型使用 `glm-5.2`
+- **LLM 调用参数**：不发送 `temperature`（交由服务端默认值）；`response_format={"type":"json_object"}`；`chat_template_kwargs={"enable_thinking": true}`（**代码内固定开启**，不受环境变量影响，`LLM_TEMPERATURE` / `LLM_ENABLE_THINKING` 已从 config 移除）；模型使用 `glm-5.2`
 - **真实提示词**：详见 `backend/app/prompts/correction_prompt.py`（V3：分类学词表 + `JUDGMENT BOUNDARIES` 判定优先级 + `OUT OF SCOPE`（大小写/标点风格不报）+ 硬规则 + 改写规则）；不含 `has_errors` / `{{input}}` 占位符，原文由 user 消息提供
 
 ### 1.3 解析与容错
@@ -327,7 +327,7 @@ CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 | T-C-09 | GET /messages | 空对话 | 200 `{messages: []}` | AC-C-11 |
 | T-C-10 | GET /messages | 有历史 | 200 全量正序，report 内嵌 | AC-C-11/12 |
 | T-C-11 | 数据隔离 | 不同 user 提交 | 各自对话互不可见 | PRD §3.2 |
-| T-C-12 | LLM 参数 | Real 调用 body | temperature=0、response_format=json_object、enable_thinking=false | §1.2 |
+| T-C-12 | LLM 参数 | Real 调用 body | 无 temperature、response_format=json_object、enable_thinking=true | §1.2 |
 
 ### 9.2 UI 功能验证（Playwright MCP / E2E）
 
@@ -363,6 +363,7 @@ CorrectionPage（替代 CorrectionPlaceholder，沿用现有导航栏）
 - V0.5 · 2026-08 · 恢复回车发送：§6.1 组件树 Composer 注释补充 Enter 发送/Shift+Enter 换行；§6.2 前端行为表新增「键盘发送」行；§七 三态表「输入为空/超限」补充 Enter 静默不发送；§八 场景矩阵新增键盘发送/换行/IME 合成期三条；§9.2 UI 验证新增 U-C-11/12（同步 Correction V2.8 / Overview V2.11）
 
 - V0.4 · 2026-08 · 单轮纠错改造：移除 intent/reply/追问；新输出契约（errors 去 category 加 error_type、rewrite 用 note、learnings {rule, example}、无错误 rewrite=null）；LLM 调用参数 temperature=0 + response_format + enable_thinking=false、模型 glm-5.2；messages.type 枚举移除 follow_up/reply（同步 Correction V2.7 / Overview V2.10）
+- V0.8 · 2026-11 · LLM 调用参数调整：思考模式在代码内固定开启（`enable_thinking=true`），不再由 `LLM_ENABLE_THINKING` 环境变量注入；不再发送 `temperature`，改用服务端默认值；config 移除 `LLM_TEMPERATURE` / `LLM_ENABLE_THINKING`，Settings 允许 `.env` 残留未知键；compose 与 `.env.example` 同步移除这两项
 - V0.3 · 2026-08 · §1.2/§2.4 契约与数据示例新增 learnings（学到的规则）结构；§6.1 组件树补 LearningsSection（同步 Correction V2.6 / Overview V2.9）
 - V0.2 · 2026-08 · 明确本轮不实现真实 LLM 调用（仅 Mock 路径），真实提示词另行编写文档，此处写明意图与契约约束（§1.2）；真实 LLM 冒烟标注为不阻塞交付的可选环节（§9.3）
 - V0.1 · 2026-08 · 初稿：LLM 层（客户端抽象 + 单次调用契约 + 解析容错）、数据模型（session_conversations/messages/correction_reports）、API 契约、上下文策略、前端组件、场景矩阵与验证方式；关键决策（Mock 测试、只返回文本片段、单次调用意图判定、未配置 503、移除改写下划线、CONTEXT_LIMIT=40）已同步更新 PRD

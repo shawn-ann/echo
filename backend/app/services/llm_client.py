@@ -36,7 +36,6 @@ class RealLLMClient(LLMClient):
 
     async def complete(self, messages: list[dict[str, Any]]) -> str:
         last_exc: Exception | None = None
-        settings = get_settings()
         for _attempt in range(3):
             try:
                 async with httpx.AsyncClient(timeout=120, transport=self._transport) as client:
@@ -46,8 +45,8 @@ class RealLLMClient(LLMClient):
                         json={
                             "model": self.model,
                             "messages": messages,
-                            "temperature": settings.LLM_TEMPERATURE,
-                            "chat_template_kwargs": {"enable_thinking": settings.LLM_ENABLE_THINKING},
+                            # 思考模式固定开启；temperature 不注入，交由服务端默认值
+                            "chat_template_kwargs": {"enable_thinking": True},
                             "response_format": {"type": "json_object"},
                         },
                     )
