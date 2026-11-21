@@ -5,6 +5,7 @@ import AppLayout from '@/components/AppLayout'
 import CorrectionPage from '@/pages/CorrectionPage'
 import Login from '@/pages/Login'
 import NotesPage from '@/pages/NotesPage'
+import StreamCorrectionPage from '@/pages/StreamCorrectionPage'
 import { useAuth } from '@/store/auth-context'
 import { AuthProvider } from '@/store/auth'
 import { ConversationProvider } from '@/store/conversation'
@@ -21,6 +22,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<RootRedirect />} />
+          <Route path="/stream" element={<StreamCorrectionPage />} />
           <Route element={<GuestGuard />}>
             <Route path="/login" element={<Login />} />
           </Route>
