@@ -77,6 +77,7 @@ Content-Type: application/json
 
 - `content`：1–2000 字符，沿用现有上限。
 - MVP 不校验 `Authorization`；仅本地联调使用。
+- 端点由 `STREAM_MVP_ENABLED` 控制，默认 `false`；本地启动需显式设为 `true`，避免误部署到公网。
 
 ### 响应
 

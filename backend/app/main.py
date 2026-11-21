@@ -42,7 +42,8 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(auth.router)
-    app.include_router(chat.router)
+    if settings.STREAM_MVP_ENABLED:
+        app.include_router(chat.router)
     app.include_router(messages.router)
     app.include_router(notes.router)
 

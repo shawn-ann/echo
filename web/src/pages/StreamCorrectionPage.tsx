@@ -58,10 +58,18 @@ export default function StreamCorrectionPage() {
               setPhase('rewriting')
               break
             case 'minimal':
-              setMinimal({ text: event.text, note: event.note })
+              if (event.text.trim()) {
+                setMinimal({ text: event.text, note: event.note })
+              } else {
+                setDegraded((prev) => [...prev, 'minimal: 改写生成失败'])
+              }
               break
             case 'fluency':
-              setFluency({ text: event.text, note: event.note })
+              if (event.text.trim()) {
+                setFluency({ text: event.text, note: event.note })
+              } else {
+                setDegraded((prev) => [...prev, 'fluency: 改写生成失败'])
+              }
               break
             case 'rewrite_degraded':
               setDegraded((prev) => [...prev, `${event.stage}: ${event.message}`])

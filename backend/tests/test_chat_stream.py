@@ -25,6 +25,12 @@ def test_rewrite_failure_maps_to_degraded():
     ]
 
 
+def test_empty_error_string_still_maps_to_degraded():
+    assert events_from_update("minimal_edit", {"minimal_error": ""}) == [
+        ("rewrite_degraded", {"stage": "minimal", "message": "改写生成失败"})
+    ]
+
+
 def test_unknown_node_emits_nothing():
     assert events_from_update("error_locate", {"raw_errors": []}) == []
 

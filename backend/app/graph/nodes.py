@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, Literal
 
 from app.graph.state import CorrectionState
@@ -6,6 +7,8 @@ from app.prompts.locate_prompt import build_locate_messages
 from app.prompts.rewrite_prompt import build_fluency_messages, build_minimal_messages
 from app.services.error_validation import validate_errors
 from app.services.llm_client import LLMClient
+
+logger = logging.getLogger(__name__)
 
 
 class LocateError(Exception):
@@ -78,8 +81,15 @@ def make_minimal_node(client: LLMClient):
                 "minimal_note": parsed["note"],
                 "minimal_error": None,
             }
-        except Exception as exc:
-            return {"minimal_text": "", "minimal_note": "", "minimal_error": str(exc)}
+        except Exception:
+            logger.exception(
+                "minimal_edit_failed request_id=%s", state.get("request_id", "-")
+            )
+            return {
+                "minimal_text": "",
+                "minimal_note": "",
+                "minimal_error": "最小修正生成失败",
+            }
 
     return minimal
 
@@ -98,8 +108,15 @@ def make_fluency_node(client: LLMClient):
                 "fluency_note": parsed["note"],
                 "fluency_error": None,
             }
-        except Exception as exc:
-            return {"fluency_text": "", "fluency_note": "", "fluency_error": str(exc)}
+        except Exception:
+            logger.exception(
+                "native_fluency_failed request_id=%s", state.get("request_id", "-")
+            )
+            return {
+                "fluency_text": "",
+                "fluency_note": "",
+                "fluency_error": "地道表达生成失败",
+            }
 
     return fluency
 

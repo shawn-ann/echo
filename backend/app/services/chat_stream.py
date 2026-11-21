@@ -42,8 +42,13 @@ def events_from_update(node: str, update: dict[str, Any]) -> list[tuple[str, dic
 
     if node in ("minimal_edit", "minimal_passthrough"):
         error = update.get("minimal_error")
-        if error:
-            return [("rewrite_degraded", {"stage": "minimal", "message": str(error)})]
+        if error is not None:
+            return [
+                (
+                    "rewrite_degraded",
+                    {"stage": "minimal", "message": str(error) or "改写生成失败"},
+                )
+            ]
         return [
             (
                 "minimal",
@@ -56,8 +61,13 @@ def events_from_update(node: str, update: dict[str, Any]) -> list[tuple[str, dic
 
     if node == "native_fluency":
         error = update.get("fluency_error")
-        if error:
-            return [("rewrite_degraded", {"stage": "fluency", "message": str(error)})]
+        if error is not None:
+            return [
+                (
+                    "rewrite_degraded",
+                    {"stage": "fluency", "message": str(error) or "改写生成失败"},
+                )
+            ]
         return [
             (
                 "fluency",

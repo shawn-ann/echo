@@ -3,9 +3,11 @@ import json
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
+from app.core.config import get_settings
+from app.main import create_app
 from app.routers import chat
 from app.services.chat_stream import stream_chat_events
-from app.services.llm_client import get_llm_client
+from app.services.llm_client import LLMUnavailableError, get_llm_client
 from tests.chat_fakes import ScriptedLLMClient
 
 TEXT = "Yesterday I go to school."
@@ -19,6 +21,22 @@ def _app(fake):
     app.include_router(chat.router)
     app.dependency_overrides[get_llm_client] = lambda: fake
     return app
+
+
+def test_chat_stream_router_disabled_by_default():
+    get_settings.cache_clear()
+    app = create_app()
+    assert "/api/v1/chat/stream" not in app.openapi()["paths"]
+
+
+def test_chat_stream_router_enabled_with_setting(monkeypatch):
+    monkeypatch.setenv("STREAM_MVP_ENABLED", "true")
+    get_settings.cache_clear()
+    try:
+        app = create_app()
+        assert "/api/v1/chat/stream" in app.openapi()["paths"]
+    finally:
+        get_settings.cache_clear()
 
 
 def _events(body: str) -> list[tuple[str, dict]]:
@@ -67,6 +85,20 @@ async def test_stream_one_rewrite_failure_keeps_other():
     assert "rewrite_degraded" in names
     assert "fluency" in names
     assert "minimal" not in names
+
+
+async def test_stream_message_less_llm_failure_is_degraded():
+    fake = ScriptedLLMClient(
+        locate=LOCATE_OK,
+        minimal=LLMUnavailableError(),
+        fluency=FLUENCY_OK,
+    )
+    async with AsyncClient(transport=ASGITransport(app=_app(fake)), base_url="http://test") as c:
+        r = await c.post("/api/v1/chat/stream", json={"content": TEXT})
+    events = _events(r.text)
+    degraded = [payload for name, payload in events if name == "rewrite_degraded"]
+    assert degraded == [{"stage": "minimal", "message": "最小修正生成失败"}]
+    assert "minimal" not in [name for name, _ in events]
 
 
 async def test_stream_rejects_empty_content():
