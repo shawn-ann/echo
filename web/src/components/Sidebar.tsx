@@ -1,6 +1,9 @@
 import { NavLink } from 'react-router-dom'
 
-const navItems = [{ to: '/correction', label: '纠错', icon: '✏️' }]
+const navItems = [
+  { to: '/correction', label: '纠错', icon: '✏️' },
+  { to: '/notes', label: '我的笔记', icon: '📖' },
+]
 
 export default function Sidebar() {
   return (
