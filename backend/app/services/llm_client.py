@@ -9,7 +9,13 @@ from app.core.errors import AppError
 
 
 class LLMClient:
-    async def complete(self, messages: list[dict[str, Any]]) -> str:
+    async def complete(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        thinking: bool = True,
+        json_mode: bool = True,
+    ) -> str:
         raise NotImplementedError
 
 
@@ -34,7 +40,22 @@ class RealLLMClient(LLMClient):
         self.model = model
         self._transport = transport
 
-    async def complete(self, messages: list[dict[str, Any]]) -> str:
+    async def complete(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        thinking: bool = True,
+        json_mode: bool = True,
+    ) -> str:
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": messages,
+            # temperature 不注入，交由服务端默认值
+            "chat_template_kwargs": {"enable_thinking": thinking},
+        }
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
+
         last_exc: Exception | None = None
         for _attempt in range(3):
             try:
@@ -42,13 +63,7 @@ class RealLLMClient(LLMClient):
                     r = await client.post(
                         f"{self.base_url}/chat/completions",
                         headers={"Authorization": f"Bearer {self.api_key}"},
-                        json={
-                            "model": self.model,
-                            "messages": messages,
-                            # 思考模式固定开启；temperature 不注入，交由服务端默认值
-                            "chat_template_kwargs": {"enable_thinking": True},
-                            "response_format": {"type": "json_object"},
-                        },
+                        json=payload,
                     )
                     r.raise_for_status()
                     return r.json()["choices"][0]["message"]["content"]
@@ -128,7 +143,13 @@ class MockLLMClient(LLMClient):
         self.responder = responder or _default_responder
         self.calls: list[list[dict[str, Any]]] = []
 
-    async def complete(self, messages: list[dict[str, Any]]) -> str:
+    async def complete(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        thinking: bool = True,
+        json_mode: bool = True,
+    ) -> str:
         self.calls.append(messages)
         return self.responder(messages)
 

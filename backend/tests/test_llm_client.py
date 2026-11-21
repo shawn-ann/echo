@@ -37,6 +37,23 @@ async def test_real_llm_retries_then_succeeds():
     assert calls["n"] == 3
 
 
+async def test_real_llm_respects_per_call_params():
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    client = RealLLMClient(
+        "https://api.example.com", "k", "m", transport=httpx.MockTransport(handler)
+    )
+    await client.complete(
+        [{"role": "user", "content": "hi"}], thinking=False, json_mode=False
+    )
+    assert captured["chat_template_kwargs"] == {"enable_thinking": False}
+    assert "response_format" not in captured
+
+
 async def test_real_llm_all_fail_raises_unavailable():
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("boom")
