@@ -79,9 +79,37 @@ class RealLLMClient(LLMClient):
 
 
 def _default_responder(messages: list[dict[str, Any]]) -> str:
-    """Mock 默认响应：区分纠错请求与笔记保存请求。"""
+    """Mock 默认响应：区分流式三节点、纠错请求与笔记保存请求。"""
+    system = messages[0].get("content", "") if messages and messages[0].get("role") == "system" else ""
     user_contents = [m["content"] for m in messages if m.get("role") == "user"]
     last = user_contents[-1] if user_contents else ""
+
+    if "TASK: LOCATE_ERRORS" in system:
+        return json.dumps(
+            {
+                "errors": [
+                    {
+                        "category": "时态错误",
+                        "fragment": "go",
+                        "correction": "went",
+                        "explanation": "过去时间应用过去式",
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        )
+
+    if "TASK: MINIMAL_EDIT" in system:
+        return json.dumps(
+            {"text": "Yesterday I went to school.", "note": "修正时态"},
+            ensure_ascii=False,
+        )
+
+    if "TASK: NATIVE_FLUENCY" in system:
+        return json.dumps(
+            {"text": "I went to school yesterday.", "note": "更自然"},
+            ensure_ascii=False,
+        )
 
     # 笔记保存请求（note_prompt 的 user content 含「## 原文」标记）
     if "## 原文" in last and "## 错误列表" in last:

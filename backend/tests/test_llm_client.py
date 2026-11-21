@@ -37,6 +37,18 @@ async def test_real_llm_retries_then_succeeds():
     assert calls["n"] == 3
 
 
+async def test_default_mock_handles_stream_prompts():
+    locate = await MockLLMClient().complete(
+        [{"role": "system", "content": "TASK: LOCATE_ERRORS"}, {"role": "user", "content": "x"}]
+    )
+    assert json.loads(locate)["errors"][0]["fragment"] == "go"
+
+    minimal = await MockLLMClient().complete(
+        [{"role": "system", "content": "TASK: MINIMAL_EDIT"}, {"role": "user", "content": "x"}]
+    )
+    assert json.loads(minimal)["text"] == "Yesterday I went to school."
+
+
 async def test_real_llm_respects_per_call_params():
     captured: dict = {}
 
