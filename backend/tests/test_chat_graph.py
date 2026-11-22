@@ -12,9 +12,18 @@ LOCATE_OK = '{"errors":[{"category":"时态错误","fragment":"go","correction":
 async def test_graph_returns_validated_errors():
     fake = ScriptedLLMClient(locate=LOCATE_OK)
     result = await build_graph(fake).ainvoke({"text": TEXT, "request_id": "t1"})
+    start = TEXT.index("go")
     assert result["has_errors"] is True
     assert result["errors"] == [
-        {"category": "时态错误", "fragment": "go", "correction": "went", "explanation": "过去时间用过去式"}
+        {
+            "error_id": "e1",
+            "category": "时态错误",
+            "fragment": "go",
+            "correction": "went",
+            "explanation": "过去时间用过去式",
+            "span_start": start,
+            "span_end": start + 2,
+        }
     ]
 
 

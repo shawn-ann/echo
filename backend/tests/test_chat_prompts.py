@@ -8,6 +8,8 @@ def test_locate_prompt_has_taxonomy_and_data_boundary():
     assert "时态错误" in messages[0]["content"]
     assert "技术术语误用" in messages[0]["content"]
     assert '"fragment"' in messages[0]["content"]
+    assert '"span_start"' in messages[0]["content"]
+    assert '"span_end"' in messages[0]["content"]
     assert "JUDGMENT BOUNDARIES" in messages[0]["content"]
     assert "Classify every error by what the minimal fix changes" in messages[0]["content"]
     assert "OUT OF SCOPE" in messages[0]["content"]

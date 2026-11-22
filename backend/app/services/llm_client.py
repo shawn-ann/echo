@@ -111,6 +111,8 @@ def _default_responder(messages: list[dict[str, Any]]) -> str:
                     {
                         "category": "时态错误",
                         "fragment": "go",
+                        "span_start": 0,
+                        "span_end": 0,
                         "correction": "went",
                         "explanation": "过去时间应用过去式",
                     }
