@@ -128,7 +128,7 @@ export default function StreamCorrectionPage() {
           <p className="text-center text-sm text-[#868c96]">正在分析…</p>
         )}
 
-        {started && (
+        {started && phase !== 'error' && (
           <div data-testid="stream-errors" className="rounded-xl border border-[#dee2e6] bg-white p-3">
             <p className="mb-2 text-sm font-semibold text-[#343a40]">错误分析</p>
             {errors.length > 0 ? (
@@ -170,8 +170,15 @@ export default function StreamCorrectionPage() {
         )}
 
         {error && (
-          <div className="rounded-lg border border-[#ffc9c9] bg-[#fff5f5] p-3 text-sm text-[#c92a2a]">
-            {error}
+          <div className="space-y-2 rounded-lg border border-[#ffc9c9] bg-[#fff5f5] p-3 text-sm text-[#c92a2a]">
+            <p>{error}</p>
+            <Button
+              onClick={handleStart}
+              disabled={text.trim().length === 0 || over}
+              className="h-8 bg-[#0ca678] px-3 text-white hover:bg-[#12c493] disabled:bg-[#99f0d8]"
+            >
+              重试
+            </Button>
           </div>
         )}
 

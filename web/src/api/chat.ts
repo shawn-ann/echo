@@ -79,12 +79,18 @@ export async function streamCorrection(
   onEvent: (event: ChatEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/chat/stream`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
-    signal,
-  })
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}/chat/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+      signal,
+    })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err
+    throw new Error('无法连接后端服务，请确认后端已启动')
+  }
 
   if (!res.ok) throw new Error(`请求失败（${res.status}）`)
   if (!res.body) throw new Error('当前浏览器不支持流式响应')
