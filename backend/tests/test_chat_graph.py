@@ -37,7 +37,17 @@ async def test_graph_runs_both_rewrites():
     assert result["fluency_text"] == "I went to school yesterday."
     assert result["fluency_note"] == "更自然"
     assert set(fake.calls) == {"locate", "minimal", "fluency"}
-    assert set(fake.reasoning_efforts) == {"high"}
+    params = {
+        name: (effort, temp)
+        for name, effort, temp in zip(
+            fake.calls, fake.reasoning_efforts, fake.temperatures
+        )
+    }
+    assert params == {
+        "locate": ("high", 0.1),
+        "minimal": ("low", 0.1),
+        "fluency": ("low", 0.3),
+    }
 
 
 async def test_graph_no_errors_uses_passthrough_and_still_runs_fluency():

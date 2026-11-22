@@ -2,7 +2,6 @@ import json
 import logging
 from typing import Any, Literal
 
-from app.core.config import get_settings
 from app.graph.state import CorrectionState
 from app.prompts.locate_prompt import build_locate_messages
 from app.prompts.rewrite_prompt import build_fluency_messages, build_minimal_messages
@@ -10,6 +9,12 @@ from app.services.error_validation import validate_errors
 from app.services.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
+
+LOCATE_REASONING_EFFORT = "high"
+REWRITE_REASONING_EFFORT = "low"
+LOCATE_TEMPERATURE = 0.1
+MINIMAL_TEMPERATURE = 0.1
+FLUENCY_TEMPERATURE = 0.3
 
 
 class LocateError(Exception):
@@ -28,10 +33,6 @@ def parse_json_object(raw: str) -> dict[str, Any]:
     return data
 
 
-def _stream_effort() -> str | None:
-    return get_settings().LLM_STREAM_REASONING_EFFORT or None
-
-
 def make_locate_node(client: LLMClient):
     async def locate(state: CorrectionState) -> dict[str, Any]:
         messages = build_locate_messages(state["text"])
@@ -41,7 +42,8 @@ def make_locate_node(client: LLMClient):
                 messages,
                 thinking=True,
                 json_mode=True,
-                reasoning_effort=_stream_effort(),
+                reasoning_effort=LOCATE_REASONING_EFFORT,
+                temperature=LOCATE_TEMPERATURE,
             )
             try:
                 data = parse_json_object(raw)
@@ -84,7 +86,8 @@ def make_minimal_node(client: LLMClient):
                 build_minimal_messages(state["text"], state.get("errors") or []),
                 thinking=False,
                 json_mode=True,
-                reasoning_effort=_stream_effort(),
+                reasoning_effort=REWRITE_REASONING_EFFORT,
+                temperature=MINIMAL_TEMPERATURE,
             )
             parsed = _parse_rewrite(raw)
             return {
@@ -112,7 +115,8 @@ def make_fluency_node(client: LLMClient):
                 build_fluency_messages(state["text"], state.get("errors") or []),
                 thinking=False,
                 json_mode=True,
-                reasoning_effort=_stream_effort(),
+                reasoning_effort=REWRITE_REASONING_EFFORT,
+                temperature=FLUENCY_TEMPERATURE,
             )
             parsed = _parse_rewrite(raw)
             return {

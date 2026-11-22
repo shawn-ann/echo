@@ -8,9 +8,19 @@ class ScriptedLLMClient(LLMClient):
         self.fluency = fluency
         self.calls: list[str] = []
         self.reasoning_efforts: list[str | None] = []
+        self.temperatures: list[float | None] = []
 
-    async def complete(self, messages, *, thinking=True, json_mode=True, reasoning_effort=None):
+    async def complete(
+        self,
+        messages,
+        *,
+        thinking=True,
+        json_mode=True,
+        reasoning_effort=None,
+        temperature=None,
+    ):
         self.reasoning_efforts.append(reasoning_effort)
+        self.temperatures.append(temperature)
         system = messages[0]["content"]
         if "TASK: LOCATE_ERRORS" in system:
             self.calls.append("locate")

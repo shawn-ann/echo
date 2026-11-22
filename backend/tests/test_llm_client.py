@@ -65,9 +65,10 @@ async def test_real_llm_respects_per_call_params():
     assert captured["chat_template_kwargs"] == {"enable_thinking": False}
     assert "response_format" not in captured
     assert "reasoning_effort" not in captured
+    assert "temperature" not in captured
 
 
-async def test_real_llm_sends_reasoning_effort():
+async def test_real_llm_sends_reasoning_effort_and_temperature():
     captured: dict = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -78,9 +79,12 @@ async def test_real_llm_sends_reasoning_effort():
         "https://api.example.com", "k", "glm-5.3", transport=httpx.MockTransport(handler)
     )
     await client.complete(
-        [{"role": "user", "content": "hi"}], reasoning_effort="high"
+        [{"role": "user", "content": "hi"}],
+        reasoning_effort="high",
+        temperature=0.1,
     )
     assert captured["reasoning_effort"] == "high"
+    assert captured["temperature"] == 0.1
 
 
 async def test_real_llm_bailian_enable_thinking_always_on():
