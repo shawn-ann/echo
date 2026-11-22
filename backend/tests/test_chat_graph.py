@@ -227,6 +227,56 @@ def test_resolve_target_short_fragment_does_not_match_other_token():
     assert result["resolution_status"] == "none"
 
 
+REWRITE_TURNS = [{
+    "turn_id": "t1",
+    "text": "I would like to know how is the wheather tomorrow? Then can I know what coat to dress.",
+    "errors": [{
+        "error_id": "e1", "category": "词序不当",
+        "fragment": "how is the wheather", "correction": "how the wheather is",
+        "explanation": "x", "span_start": 21, "span_end": 40,
+    }],
+    "minimal_text": "I would like to know how the wheather is tomorrow? Then I can know what coat to wear.",
+    "minimal_note": "x",
+    "fluency_text": "I'd like to know what the weather will be like tomorrow so I can decide which coat to wear.",
+    "fluency_note": "x",
+}]
+
+
+def test_resolve_target_rewrite_token_returns_turn_scope():
+    result = resolve_target_node({
+        "turns": REWRITE_TURNS, "content": "为什么省略would 什么时候简写？",
+    })
+    assert result["resolution_status"] == "turn"
+    assert result["resolved_turn_id"] == "t1"
+    assert result["resolved_error_id"] is None
+    assert result["target_error"] is None
+
+
+def test_resolve_target_word_reference_matches_multiword_fragment():
+    turns = [{
+        "turn_id": "t1",
+        "text": "I would like to know.",
+        "errors": [{
+            "error_id": "e1", "category": "冗余表达",
+            "fragment": "would like to know", "correction": "want to know",
+            "explanation": "x",
+        }],
+    }]
+    result = resolve_target_node({"turns": turns, "content": "为什么省略would？"})
+    assert result["resolution_status"] == "unique"
+    assert (result["resolved_turn_id"], result["resolved_error_id"]) == ("t1", "e1")
+
+
+def test_resolve_target_turn_scope_prefers_latest_matching_turn():
+    turns = [
+        {"turn_id": "t1", "text": "I would go.", "errors": []},
+        {"turn_id": "t2", "text": "I would like to go.", "errors": []},
+    ]
+    result = resolve_target_node({"turns": turns, "content": "为什么省略would？"})
+    assert result["resolution_status"] == "turn"
+    assert result["resolved_turn_id"] == "t2"
+
+
 def test_resolve_target_explicit_missing_sets_target_error():
     result = resolve_target_node({"turns": TURNS, "turn_id": "t1", "error_id": "e9"})
     assert result["resolution_status"] == "none"
@@ -275,6 +325,62 @@ async def test_explain_resolves_by_fragment_across_turns():
         "candidate_refs": [],
     })
     assert result["explanation_error_id"] == "e1"
+
+
+EXPLAIN_TURN_LEVEL = '{"text": "would like → \'d like 是口语缩写。", "turn_id": "t1", "error_id": null}'
+
+
+async def test_explain_allows_turn_level_answer_when_turn_has_errors():
+    fake = ScriptedLLMClient(locate=LOCATE_OK, explain=EXPLAIN_TURN_LEVEL)
+    result = await make_explain_node(fake)({
+        "turns": REWRITE_TURNS,
+        "question": "为什么省略would 什么时候简写？",
+        "resolution_status": "turn",
+        "resolved_turn_id": "t1",
+        "resolved_error_id": None,
+        "candidate_refs": [],
+    })
+    assert result["explanation"] == "would like → 'd like 是口语缩写。"
+    assert result["explanation_error"] is None
+    assert result["explanation_turn_id"] == "t1"
+    assert result["explanation_error_id"] is None
+
+
+async def test_explain_turn_level_rejects_unknown_error_id():
+    fake = ScriptedLLMClient(
+        locate=LOCATE_OK,
+        explain='{"text": "x", "turn_id": "t1", "error_id": "e9"}',
+    )
+    result = await make_explain_node(fake)({
+        "turns": REWRITE_TURNS,
+        "question": "为什么省略would？",
+        "resolution_status": "turn",
+        "resolved_turn_id": "t1",
+        "resolved_error_id": None,
+        "candidate_refs": [],
+    })
+    assert result["explanation_error"]
+
+
+async def test_explain_ambiguous_allows_clarifying_question():
+    turns = [
+        {"turn_id": "t1", "text": "I go.", "errors": [{"error_id": "e1", "fragment": "go"}]},
+        {"turn_id": "t2", "text": "He go.", "errors": [{"error_id": "e1", "fragment": "go"}]},
+    ]
+    fake = ScriptedLLMClient(
+        locate=LOCATE_OK,
+        explain='{"text": "你指的是哪一轮的 go？", "turn_id": "t2", "error_id": null}',
+    )
+    result = await make_explain_node(fake)({
+        "turns": turns,
+        "question": "为什么 go 要改？",
+        "resolution_status": "ambiguous",
+        "resolved_turn_id": None,
+        "resolved_error_id": None,
+        "candidate_refs": ["t2:e1", "t1:e1"],
+    })
+    assert result["explanation"] == "你指的是哪一轮的 go？"
+    assert result["explanation_error"] is None
 
 
 async def test_explain_without_history_returns_error():

@@ -40,3 +40,12 @@ def test_explain_prompt_contains_history_and_target():
     assert '"turn_id": "t1"' in messages[1]["content"]
     assert '"error_id": "e1"' in messages[1]["content"]
     assert "为什么 go 改成 went？" in messages[1]["content"]
+
+
+def test_explain_prompt_mentions_rewrites_and_turn_scope():
+    system = build_explain_messages([], "q", None, None)[0]["content"]
+    assert "minimal_text" in system
+    assert "fluency_text" in system
+    assert "turn level" in system.lower()
+    assert "omitted" in system.lower()
+

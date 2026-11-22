@@ -156,6 +156,50 @@ def _token_hit(needle: str, query: str) -> bool:
     return re.search(pattern, query, flags=re.IGNORECASE) is not None
 
 
+_LATIN_TOKEN = re.compile(r"[A-Za-z][A-Za-z']*")
+_EN_STOPWORDS = {
+    "the", "a", "an", "and", "or", "but", "is", "are", "am", "was", "were",
+    "be", "been", "being", "do", "does", "did", "to", "of", "in", "on", "at",
+    "for", "with", "by", "that", "this", "these", "those", "it", "its",
+    "i", "you", "he", "she", "we", "they", "my", "your", "our", "their",
+    "not", "no", "so", "as", "if", "than", "then", "there", "here",
+}
+
+
+def _content_words(text: str) -> set[str]:
+    """Latin words long enough to be meaningful search keys."""
+    return {
+        word.lower()
+        for word in _LATIN_TOKEN.findall(text)
+        if len(word) >= 3 and word.lower() not in _EN_STOPWORDS
+    }
+
+
+def _fragment_hit(fragment: str, query: str) -> bool:
+    """Match the whole fragment first, then any distinctive word inside it.
+
+    Single word references like "would" should match the fragment
+    "would like to know", which the whole-string check alone cannot do.
+    """
+    if _token_hit(fragment, query):
+        return True
+    return any(_token_hit(word, query) for word in _content_words(fragment))
+
+
+def _turn_text_match(turn: dict, words: set[str]) -> bool:
+    haystack = " ".join(
+        part
+        for part in (
+            turn.get("text") or "",
+            turn.get("minimal_text") or "",
+            turn.get("fluency_text") or "",
+        )
+        if part
+    )
+    return any(_token_hit(word, haystack) for word in words)
+
+
+
 def resolve_target_node(state: CorrectionState) -> dict[str, Any]:
     turns = list(state.get("turns") or [])
     question = state.get("content") or state.get("question") or ""
@@ -220,14 +264,28 @@ def resolve_target_node(state: CorrectionState) -> dict[str, Any]:
         for error in turn.get("errors") or []:
             fragment = error.get("fragment") or ""
             correction = error.get("correction") or ""
-            fragment_hit = _token_hit(fragment, query)
-            correction_hit = _token_hit(correction, query)
+            fragment_hit = _fragment_hit(fragment, query)
+            correction_hit = _fragment_hit(correction, query)
             if not fragment_hit and not correction_hit:
                 continue
             score = 2 if fragment_hit and correction_hit else 1
             candidates.append((score, turn["turn_id"], error["error_id"]))
 
     if not candidates:
+        # No error-level match: the question may be about a wording change in
+        # the rewrites ("why is would omitted?"). Resolve at turn level so the
+        # model can compare the source text against minimal/fluency versions.
+        words = _content_words(query)
+        if words:
+            for turn in reversed(scoped_turns):
+                if _turn_text_match(turn, words):
+                    return {
+                        "resolution_status": "turn",
+                        "resolved_turn_id": turn["turn_id"],
+                        "resolved_error_id": None,
+                        "candidate_refs": [],
+                        "target_error": None,
+                    }
         return {
             "resolution_status": "none",
             "resolved_turn_id": None,
@@ -356,8 +414,9 @@ def make_explain_node(client: LLMClient):
                     e.get("error_id") == out_error for e in out_turn_obj.get("errors", [])
                 )
             else:
-                # Rewrite-only follow-up (e.g. “why use what instead of how?”)
-                valid = not out_turn_obj.get("errors")
+                # Turn-level answer: rewrite comparison, an error-free turn, or
+                # a clarifying question when several candidates matched.
+                valid = True
             if not valid:
                 return {"explanation_error": "无法确定你指的是哪一条错误"}
 
