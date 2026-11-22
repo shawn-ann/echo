@@ -11,6 +11,7 @@ export interface CorrectionChatItem {
   role: 'assistant'
   kind: 'correction'
   status: 'streaming' | 'done' | 'error'
+  sourceText: string
   turnId: string
   errorsLoaded: boolean
   errors: ChatError[]
@@ -34,6 +35,7 @@ export interface PendingChatItem {
   role: 'assistant'
   kind: 'pending'
   status: 'streaming'
+  sourceText: string
   error: null
 }
 

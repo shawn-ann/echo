@@ -57,6 +57,7 @@ export default function StreamCorrectionPage() {
             role: 'assistant',
             kind: 'correction',
             status: 'streaming',
+            sourceText: patch.sourceText ?? '',
             turnId: patch.turnId ?? '',
             errorsLoaded: patch.errorsLoaded ?? false,
             errors: patch.errors ?? [],
@@ -75,6 +76,7 @@ export default function StreamCorrectionPage() {
             role: 'assistant',
             kind: 'correction',
             status: 'streaming',
+            sourceText: item.sourceText,
             turnId: patch.turnId ?? '',
             errorsLoaded: patch.errorsLoaded ?? false,
             errors: patch.errors ?? [],
@@ -234,6 +236,7 @@ export default function StreamCorrectionPage() {
         role: 'assistant',
         kind: 'pending',
         status: 'streaming',
+        sourceText: message,
         error: null,
       },
     ])
