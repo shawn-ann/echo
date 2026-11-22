@@ -16,7 +16,7 @@ LOCATE_OK = '{"errors":[{"category":"时态错误","fragment":"go","correction":
 
 async def test_graph_returns_validated_errors():
     fake = ScriptedLLMClient(locate=LOCATE_OK)
-    result = await build_graph(fake).ainvoke({"text": TEXT, "request_id": "t1"})
+    result = await build_graph(fake).ainvoke({"content": TEXT, "request_id": "t1"})
     start = TEXT.index("go")
     assert result["has_errors"] is True
     assert result["errors"] == [
@@ -35,7 +35,7 @@ async def test_graph_returns_validated_errors():
 async def test_graph_retries_locate_once_then_raises():
     fake = ScriptedLLMClient(locate="not-json")
     with pytest.raises(LocateError):
-        await build_graph(fake).ainvoke({"text": TEXT, "request_id": "t2"})
+        await build_graph(fake).ainvoke({"content": TEXT, "request_id": "t2"})
     assert fake.calls == ["locate", "locate"]
 
 
@@ -45,7 +45,7 @@ FLUENCY_OK = '{"text":"I went to school yesterday.","note":"更自然"}'
 
 async def test_graph_runs_both_rewrites():
     fake = ScriptedLLMClient(locate=LOCATE_OK, minimal=MINIMAL_OK, fluency=FLUENCY_OK)
-    result = await build_graph(fake).ainvoke({"text": TEXT, "request_id": "t3"})
+    result = await build_graph(fake).ainvoke({"content": TEXT, "request_id": "t3"})
     assert result["minimal_text"] == "Yesterday I went to school."
     assert result["minimal_note"] == "修正时态"
     assert result["fluency_text"] == "I went to school yesterday."
@@ -66,7 +66,7 @@ async def test_graph_runs_both_rewrites():
 
 async def test_graph_no_errors_uses_passthrough_and_still_runs_fluency():
     fake = ScriptedLLMClient(locate='{"errors":[]}', fluency=FLUENCY_OK)
-    result = await build_graph(fake).ainvoke({"text": TEXT, "request_id": "t4"})
+    result = await build_graph(fake).ainvoke({"content": TEXT, "request_id": "t4"})
     assert result["has_errors"] is False
     assert result["minimal_text"] == TEXT
     assert result["minimal_note"] == "原文未发现语法错误，保持原样"
@@ -76,7 +76,7 @@ async def test_graph_no_errors_uses_passthrough_and_still_runs_fluency():
 
 async def test_graph_minimal_failure_keeps_fluency():
     fake = ScriptedLLMClient(locate=LOCATE_OK, minimal=RuntimeError("boom"), fluency=FLUENCY_OK)
-    result = await build_graph(fake).ainvoke({"text": TEXT, "request_id": "t5"})
+    result = await build_graph(fake).ainvoke({"content": TEXT, "request_id": "t5"})
     assert result["minimal_error"] == "最小修正生成失败"
     assert result["fluency_text"] == "I went to school yesterday."
 
@@ -87,7 +87,7 @@ async def test_graph_message_less_llm_failure_still_marks_error():
         minimal=LLMUnavailableError(),
         fluency=FLUENCY_OK,
     )
-    result = await build_graph(fake).ainvoke({"text": TEXT, "request_id": "t6"})
+    result = await build_graph(fake).ainvoke({"content": TEXT, "request_id": "t6"})
     assert result["minimal_error"] == "最小修正生成失败"
     assert result["fluency_text"] == "I went to school yesterday."
 
@@ -208,4 +208,58 @@ async def test_explain_invalid_resolved_ids_returns_error():
         "resolved_error_id": "e1",
         "candidate_refs": [],
     })
+    assert result["explanation_error"]
+
+
+from langgraph.checkpoint.memory import MemorySaver
+
+
+async def test_followup_reuses_errors_without_locate():
+    fake = ScriptedLLMClient(locate=LOCATE_OK, minimal=MINIMAL_OK, fluency=FLUENCY_OK, explain=EXPLAIN_OK)
+    graph = build_graph(fake, MemorySaver())
+    config = {"configurable": {"thread_id": "t1"}}
+    await graph.ainvoke({"content": TEXT}, config=config)
+    fake.calls.clear()
+    result = await graph.ainvoke({"content": "为什么 go 改成 went？"}, config=config)
+    assert result["intent"] == "followup"
+    assert result["explanation"] == "go 是过去时间，所以用 went。"
+    assert result["explanation_turn_id"] == "t1"
+    assert result["explanation_error_id"] == "e1"
+    assert result["turns"]
+    assert "locate" not in fake.calls
+
+
+async def test_new_correction_clears_old_errors():
+    fake = ScriptedLLMClient(locate=LOCATE_OK, minimal=MINIMAL_OK, fluency=FLUENCY_OK, explain=EXPLAIN_OK)
+    graph = build_graph(fake, MemorySaver())
+    config = {"configurable": {"thread_id": "t2"}}
+    await graph.ainvoke({"content": TEXT}, config=config)
+    fake.locate = '{"errors":[{"category":"主谓不一致","fragment":"She go","correction":"She goes","explanation":"第三人称单数","span_start":0,"span_end":6}]}'
+    result = await graph.ainvoke({"content": "She go home."}, config=config)
+    assert result["intent"] == "correct"
+    assert result["errors"][0]["fragment"] == "She go"
+    assert result["errors"][0]["error_id"] == "e1"
+    assert result["explanation"] in (None, "")
+
+
+async def test_history_keeps_last_ten_turns():
+    fake = ScriptedLLMClient(locate=LOCATE_OK, minimal=MINIMAL_OK, fluency=FLUENCY_OK, explain=EXPLAIN_OK)
+    graph = build_graph(fake, MemorySaver())
+    config = {"configurable": {"thread_id": "t3"}}
+    for _ in range(11):
+        await graph.ainvoke({"content": TEXT}, config=config)
+    state = await graph.aget_state(config)
+    assert len(state.values["turns"]) == 10
+    assert state.values["turns"][0]["turn_id"] == "t2"
+    assert state.values["turns"][-1]["turn_id"] == "t11"
+
+
+async def test_threads_are_isolated():
+    fake = ScriptedLLMClient(locate=LOCATE_OK, minimal=MINIMAL_OK, fluency=FLUENCY_OK, explain=EXPLAIN_OK)
+    graph = build_graph(fake, MemorySaver())
+    await graph.ainvoke({"content": TEXT}, config={"configurable": {"thread_id": "a"}})
+    result = await graph.ainvoke(
+        {"content": "为什么？", "error_id": "e1"}, config={"configurable": {"thread_id": "b"}}
+    )
+    assert result["intent"] == "followup"
     assert result["explanation_error"]
