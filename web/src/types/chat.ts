@@ -29,16 +29,4 @@ export interface TextChatItem {
   error: string | null
 }
 
-export interface PendingChatItem {
-  id: string
-  role: 'assistant'
-  kind: 'pending'
-  status: 'streaming'
-  error: string | null
-}
-
-export type ChatItem =
-  | UserChatItem
-  | CorrectionChatItem
-  | TextChatItem
-  | PendingChatItem
+export type ChatItem = UserChatItem | CorrectionChatItem | TextChatItem

@@ -60,7 +60,7 @@ test('U-S-05 等待态统一显示思考中', async ({ page }) => {
   await page.getByPlaceholder(COMPOSER).fill('Yesterday I go to school.')
   await page.getByRole('button', { name: '发送', exact: true }).click()
 
-  await expect(page.getByText('思考中…')).toBeVisible()
+  await expect(page.getByTestId('thinking-indicator')).toContainText('思考中…')
   await expect(page.getByTestId('stream-errors')).toHaveCount(0)
   await expect(page.getByTestId('stream-errors')).toContainText('时态错误')
 })

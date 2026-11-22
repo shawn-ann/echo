@@ -7,6 +7,21 @@ interface Props {
   onAsk: (errorId: string) => void
 }
 
+function RewriteSkeleton({ title, testId }: { title: string; testId: string }) {
+  return (
+    <div
+      data-testid={testId}
+      className="rounded-lg border border-[#dee2e6] bg-white p-3"
+    >
+      <p className="text-sm font-semibold text-[#868e96]">{title}</p>
+      <div className="mt-3 space-y-2">
+        <div className="h-3 w-4/5 animate-pulse rounded bg-[#e9ecef]" />
+        <div className="h-3 w-3/5 animate-pulse rounded bg-[#e9ecef]" />
+      </div>
+    </div>
+  )
+}
+
 export default function ChatCorrectionMessage({ message, onAsk }: Props) {
   return (
     <div className="flex justify-start">
@@ -30,27 +45,31 @@ export default function ChatCorrectionMessage({ message, onAsk }: Props) {
           )}
         </div>
 
-        {message.minimal && (
-          <div className="mt-2">
+        <div className="mt-2">
+          {message.minimal ? (
             <StreamRewriteCard
               title="最小修正"
               text={message.minimal.text}
               note={message.minimal.note}
               testId="stream-minimal"
             />
-          </div>
-        )}
+          ) : message.status === 'streaming' ? (
+            <RewriteSkeleton title="最小修正" testId="stream-minimal-loading" />
+          ) : null}
+        </div>
 
-        {message.fluency && (
-          <div className="mt-2">
+        <div className="mt-2">
+          {message.fluency ? (
             <StreamRewriteCard
               title="地道表达"
               text={message.fluency.text}
               note={message.fluency.note}
               testId="stream-fluency"
             />
-          </div>
-        )}
+          ) : message.status === 'streaming' ? (
+            <RewriteSkeleton title="地道表达" testId="stream-fluency-loading" />
+          ) : null}
+        </div>
 
         {message.degraded.length > 0 && (
           <div className="mt-2 rounded-lg border border-[#ffd43b] bg-[#fff9db] p-3 text-sm text-[#8a6d00]">
