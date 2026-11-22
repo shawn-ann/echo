@@ -120,6 +120,33 @@ def test_route_cjk_question_with_prior_turn_is_followup():
     assert route_node(state)["intent"] == "followup"
 
 
+def test_route_english_with_chinese_placeholder_is_correct():
+    state = {
+        "content": "I don't like 辣椒。 - 有些词不会写",
+        "turns": [{"turn_id": "t1", "text": "What is the weather today?", "errors": []}],
+        "turn_seq": 1,
+    }
+    assert route_node(state)["intent"] == "correct"
+
+
+def test_route_english_question_with_chinese_note_is_correct():
+    state = {
+        "content": "What is the weather today? - 不会写 weather",
+        "turns": [{"turn_id": "t1", "text": "Hello.", "errors": []}],
+        "turn_seq": 1,
+    }
+    assert route_node(state)["intent"] == "correct"
+
+
+def test_route_chinese_followup_marker_after_english_start_is_followup():
+    state = {
+        "content": "what 为什么不用 how？",
+        "turns": [{"turn_id": "t1", "text": "What is the weather today?", "errors": []}],
+        "turn_seq": 1,
+    }
+    assert route_node(state)["intent"] == "followup"
+
+
 def test_route_error_id_forces_followup():
     state = {"content": "解释一下", "error_id": "e2", "errors": [{"error_id": "e1"}]}
     assert route_node(state)["intent"] == "followup"

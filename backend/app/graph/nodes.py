@@ -80,13 +80,27 @@ def validate_errors_node(state: CorrectionState) -> dict[str, Any]:
 
 
 _CJK = re.compile(r"[\u4e00-\u9fff]")
+_FOLLOWUP_MARKERS = re.compile(
+    r"为什么|为.{0,3}么|为啥|为何|怎么|如何|解释|区别|哪个|是否|能不能|可以吗|"
+    r"不用|还是|这个|这条|第.{1,3}个|更自然|换个说法|吗|呢"
+)
+_ENGLISH_START = re.compile(r"^\s*[A-Za-z]")
+_LATIN_WORD = re.compile(r"[A-Za-z][A-Za-z']*")
 
 
 def _looks_like_followup(content: str) -> bool:
     text = content.strip()
-    if not text or len(text) > 120:
+    if not text or len(text) > 200:
         return False
-    return bool(_CJK.search(text))
+    if not _CJK.search(text):
+        return False
+    if _FOLLOWUP_MARKERS.search(text):
+        return True
+    # An English sentence with a Chinese word/note is a new correction request,
+    # not a question about the previous one.
+    if _ENGLISH_START.search(text) and len(_LATIN_WORD.findall(text)) >= 2:
+        return False
+    return True
 
 
 def finalize_turn_node(state: CorrectionState) -> dict[str, Any]:
