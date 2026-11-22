@@ -12,6 +12,7 @@ export interface CorrectionChatItem {
   kind: 'correction'
   status: 'streaming' | 'done' | 'error'
   turnId: string
+  errorsLoaded: boolean
   errors: ChatError[]
   minimal: ChatRewrite | null
   fluency: ChatRewrite | null

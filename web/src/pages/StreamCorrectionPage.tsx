@@ -60,6 +60,7 @@ export default function StreamCorrectionPage() {
           kind: 'correction',
           status: 'streaming',
           turnId: patch.turnId ?? '',
+          errorsLoaded: patch.errorsLoaded ?? false,
           errors: patch.errors ?? [],
           minimal: patch.minimal ?? null,
           fluency: patch.fluency ?? null,
@@ -109,6 +110,7 @@ export default function StreamCorrectionPage() {
       case 'errors':
         updateCorrection(assistantId, {
           errors: event.errors,
+          errorsLoaded: true,
           turnId: event.turn_id,
         })
         break
