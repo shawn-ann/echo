@@ -64,6 +64,23 @@ async def test_real_llm_respects_per_call_params():
     )
     assert captured["chat_template_kwargs"] == {"enable_thinking": False}
     assert "response_format" not in captured
+    assert "reasoning_effort" not in captured
+
+
+async def test_real_llm_sends_reasoning_effort():
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    client = RealLLMClient(
+        "https://api.example.com", "k", "glm-5.3", transport=httpx.MockTransport(handler)
+    )
+    await client.complete(
+        [{"role": "user", "content": "hi"}], reasoning_effort="high"
+    )
+    assert captured["reasoning_effort"] == "high"
 
 
 async def test_real_llm_bailian_enable_thinking_always_on():

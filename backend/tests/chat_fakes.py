@@ -7,8 +7,10 @@ class ScriptedLLMClient(LLMClient):
         self.minimal = minimal
         self.fluency = fluency
         self.calls: list[str] = []
+        self.reasoning_efforts: list[str | None] = []
 
-    async def complete(self, messages, *, thinking=True, json_mode=True):
+    async def complete(self, messages, *, thinking=True, json_mode=True, reasoning_effort=None):
+        self.reasoning_efforts.append(reasoning_effort)
         system = messages[0]["content"]
         if "TASK: LOCATE_ERRORS" in system:
             self.calls.append("locate")

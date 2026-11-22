@@ -277,6 +277,8 @@ async def complete(
 
 `glm-5.3` 仅支持思考模式（`enable_thinking` 不允许为 `false`），因此百炼配置需加 `LLM_THINKING_ALWAYS_ON=true`；此时两个改写节点也会思考，原“改写关闭思考”的设计在该模型上不适用。
 
+流式三节点的思考深度由 `LLM_STREAM_REASONING_EFFORT` 控制，当前默认 `high`；后续可在重叠片段冲突消解完成后评估降到 `low`。旧 `/messages` 纠错与笔记生成不读取该配置，仍走服务端默认。
+
 ## 9. SSE 实现
 
 - 用 `stream_mode=["updates"]`，按 `(mode, chunk)` 解包；不要用单字符串再解包。

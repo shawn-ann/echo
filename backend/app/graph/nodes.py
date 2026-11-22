@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Any, Literal
 
+from app.core.config import get_settings
 from app.graph.state import CorrectionState
 from app.prompts.locate_prompt import build_locate_messages
 from app.prompts.rewrite_prompt import build_fluency_messages, build_minimal_messages
@@ -27,12 +28,21 @@ def parse_json_object(raw: str) -> dict[str, Any]:
     return data
 
 
+def _stream_effort() -> str | None:
+    return get_settings().LLM_STREAM_REASONING_EFFORT or None
+
+
 def make_locate_node(client: LLMClient):
     async def locate(state: CorrectionState) -> dict[str, Any]:
         messages = build_locate_messages(state["text"])
         last_error: Exception | None = None
         for _ in range(2):
-            raw = await client.complete(messages, thinking=True, json_mode=True)
+            raw = await client.complete(
+                messages,
+                thinking=True,
+                json_mode=True,
+                reasoning_effort=_stream_effort(),
+            )
             try:
                 data = parse_json_object(raw)
                 errors = data.get("errors")
@@ -74,6 +84,7 @@ def make_minimal_node(client: LLMClient):
                 build_minimal_messages(state["text"], state.get("errors") or []),
                 thinking=False,
                 json_mode=True,
+                reasoning_effort=_stream_effort(),
             )
             parsed = _parse_rewrite(raw)
             return {
@@ -101,6 +112,7 @@ def make_fluency_node(client: LLMClient):
                 build_fluency_messages(state["text"], state.get("errors") or []),
                 thinking=False,
                 json_mode=True,
+                reasoning_effort=_stream_effort(),
             )
             parsed = _parse_rewrite(raw)
             return {

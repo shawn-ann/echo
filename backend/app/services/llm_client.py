@@ -15,6 +15,7 @@ class LLMClient:
         *,
         thinking: bool = True,
         json_mode: bool = True,
+        reasoning_effort: str | None = None,
     ) -> str:
         raise NotImplementedError
 
@@ -50,6 +51,7 @@ class RealLLMClient(LLMClient):
         *,
         thinking: bool = True,
         json_mode: bool = True,
+        reasoning_effort: str | None = None,
     ) -> str:
         effective_thinking = True if self.thinking_always_on else thinking
         payload: dict[str, Any] = {
@@ -67,6 +69,8 @@ class RealLLMClient(LLMClient):
             payload["chat_template_kwargs"] = {"enable_thinking": effective_thinking}
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
+        if reasoning_effort:
+            payload["reasoning_effort"] = reasoning_effort
 
         last_exc: Exception | None = None
         for _attempt in range(3):
@@ -189,6 +193,7 @@ class MockLLMClient(LLMClient):
         *,
         thinking: bool = True,
         json_mode: bool = True,
+        reasoning_effort: str | None = None,
     ) -> str:
         self.calls.append(messages)
         return self.responder(messages)
