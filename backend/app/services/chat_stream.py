@@ -10,16 +10,15 @@ from typing import Any
 
 from fastapi import Request
 
-from app.graph.build import build_graph
-from app.services.llm_client import LLMClient
-
 logger = logging.getLogger(__name__)
 
 NODE_EVENT: dict[str, str] = {
+    "route": "intent",
     "validate_errors": "errors",
     "minimal_edit": "minimal",
     "minimal_passthrough": "minimal",
     "native_fluency": "fluency",
+    "explain": "explanation",
 }
 
 
@@ -29,11 +28,15 @@ def format_sse(event: str, payload: dict[str, Any]) -> str:
 
 
 def events_from_update(node: str, update: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    if node == "route":
+        return [("intent", {"intent": update.get("intent")})]
+
     if node == "validate_errors":
         return [
             (
                 "errors",
                 {
+                    "turn_id": update.get("current_turn_id", ""),
                     "has_errors": bool(update.get("has_errors")),
                     "errors": update.get("errors") or [],
                 },
@@ -78,31 +81,63 @@ def events_from_update(node: str, update: dict[str, Any]) -> list[tuple[str, dic
             )
         ]
 
+    if node == "explain":
+        error = update.get("explanation_error")
+        if error:
+            return [("error", {"code": "EXPLAIN_FAILED", "message": str(error)})]
+        return [
+            (
+                "explanation",
+                {
+                    "text": update.get("explanation", ""),
+                    "turn_id": update.get("explanation_turn_id"),
+                    "error_id": update.get("explanation_error_id"),
+                },
+            )
+        ]
+
     return []
 
 
 async def stream_chat_events(
-    text: str,
-    client: LLMClient,
+    content: str,
+    graph: Any,
     request: Request,
+    *,
+    thread_id: str,
+    intent: str | None = None,
+    turn_id: str | None = None,
+    error_id: str | None = None,
 ) -> AsyncIterator[str]:
     if await request.is_disconnected():
         return
 
+    yield format_sse("thread", {"thread_id": thread_id})
+
     queue: asyncio.Queue[tuple[str, dict[str, Any]] | None] = asyncio.Queue()
-    graph = build_graph(client)
     request_id = uuid.uuid4().hex
     has_errors = False
+    final_intent: str | None = None
 
     async def run() -> None:
-        nonlocal has_errors
+        nonlocal has_errors, final_intent
         try:
             async with asyncio.timeout(300):
                 async for _mode, chunk in graph.astream(
-                    {"text": text, "request_id": request_id},
+                    {
+                        "content": content,
+                        "hint_intent": intent,
+                        "turn_id": turn_id,
+                        "error_id": error_id,
+                        "thread_id": thread_id,
+                        "request_id": request_id,
+                    },
+                    config={"configurable": {"thread_id": thread_id}},
                     stream_mode=["updates"],
                 ):
                     for node, update in chunk.items():
+                        if node == "route":
+                            final_intent = update.get("intent")
                         if node == "validate_errors":
                             has_errors = bool(update.get("has_errors"))
                         for event, payload in events_from_update(node, update):
@@ -120,7 +155,9 @@ async def stream_chat_events(
                 )
             )
         finally:
-            await queue.put(("done", {"has_errors": has_errors}))
+            await queue.put(
+                ("done", {"intent": final_intent, "has_errors": has_errors})
+            )
             await queue.put(None)
 
     task = asyncio.create_task(run())

@@ -2,8 +2,31 @@ from app.services.chat_stream import events_from_update, format_sse
 
 
 def test_validate_update_maps_to_errors():
-    update = {"has_errors": True, "errors": [{"category": "时态错误"}]}
-    assert events_from_update("validate_errors", update) == [("errors", update)]
+    update = {"current_turn_id": "t1", "has_errors": True, "errors": [{"category": "时态错误"}]}
+    assert events_from_update("validate_errors", update) == [
+        ("errors", {"turn_id": "t1", "has_errors": True, "errors": [{"category": "时态错误"}]})
+    ]
+
+
+def test_route_update_maps_to_intent():
+    assert events_from_update("route", {"intent": "followup"}) == [
+        ("intent", {"intent": "followup"})
+    ]
+
+
+def test_explain_update_maps_to_explanation():
+    assert events_from_update(
+        "explain",
+        {"explanation": "因为...", "explanation_turn_id": "t2", "explanation_error_id": "e3"},
+    ) == [
+        ("explanation", {"text": "因为...", "turn_id": "t2", "error_id": "e3"})
+    ]
+
+
+def test_explain_error_maps_to_error():
+    assert events_from_update("explain", {"explanation_error": "没有可追问的错误"}) == [
+        ("error", {"code": "EXPLAIN_FAILED", "message": "没有可追问的错误"})
+    ]
 
 
 def test_minimal_update_maps_to_minimal():
