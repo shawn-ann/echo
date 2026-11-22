@@ -2,9 +2,10 @@ import type { ErrorBlock } from '@/api/messages'
 
 interface Props {
   error: ErrorBlock
+  onAsk?: () => void
 }
 
-export default function ErrorCard({ error }: Props) {
+export default function ErrorCard({ error, onAsk }: Props) {
   const isDeletion = error.correction.trim() === ''
 
   return (
@@ -25,6 +26,15 @@ export default function ErrorCard({ error }: Props) {
           <p className="text-sm font-medium text-[#2b8a3e]">✅ {error.correction}</p>
         )}
       </div>
+      {onAsk && (
+        <button
+          type="button"
+          onClick={onAsk}
+          className="mt-2 rounded-md border border-[#ced4da] bg-white px-2.5 py-1 text-xs text-[#495057] hover:bg-[#f1f3f5]"
+        >
+          追问这条
+        </button>
+      )}
     </div>
   )
 }

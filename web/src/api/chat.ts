@@ -1,10 +1,13 @@
 import { API_BASE } from './client'
 
 export interface ChatError {
+  error_id: string
   category: string
   fragment: string
   correction: string
   explanation: string
+  span_start: number
+  span_end: number
 }
 
 export interface ChatRewrite {
@@ -13,12 +16,22 @@ export interface ChatRewrite {
 }
 
 export type ChatEvent =
-  | { type: 'errors'; has_errors: boolean; errors: ChatError[] }
+  | { type: 'thread'; thread_id: string }
+  | { type: 'intent'; intent: 'correct' | 'followup' }
+  | { type: 'errors'; turn_id: string; has_errors: boolean; errors: ChatError[] }
   | { type: 'minimal'; text: string; note: string }
   | { type: 'fluency'; text: string; note: string }
   | { type: 'rewrite_degraded'; stage: 'minimal' | 'fluency'; message: string }
+  | { type: 'explanation'; text: string; turn_id: string | null; error_id: string | null }
   | { type: 'error'; code: string; message: string }
-  | { type: 'done'; has_errors: boolean }
+  | { type: 'done'; intent: 'correct' | 'followup' | null; has_errors: boolean }
+
+export interface StreamOptions {
+  threadId?: string
+  intent?: 'correct' | 'followup'
+  turnId?: string
+  errorId?: string
+}
 
 function parseFrame(frame: string): ChatEvent | null {
   let eventName = ''
@@ -37,9 +50,17 @@ function parseFrame(frame: string): ChatEvent | null {
   const data = JSON.parse(dataLines.join('\n')) as Record<string, unknown>
 
   switch (eventName) {
+    case 'thread':
+      return { type: 'thread', thread_id: String(data.thread_id ?? '') }
+    case 'intent':
+      return {
+        type: 'intent',
+        intent: data.intent === 'followup' ? 'followup' : 'correct',
+      }
     case 'errors':
       return {
         type: 'errors',
+        turn_id: String(data.turn_id ?? ''),
         has_errors: Boolean(data.has_errors),
         errors: (data.errors ?? []) as ChatError[],
       }
@@ -61,6 +82,13 @@ function parseFrame(frame: string): ChatEvent | null {
         stage: data.stage === 'fluency' ? 'fluency' : 'minimal',
         message: String(data.message ?? ''),
       }
+    case 'explanation':
+      return {
+        type: 'explanation',
+        text: String(data.text ?? ''),
+        turn_id: data.turn_id ? String(data.turn_id) : null,
+        error_id: data.error_id ? String(data.error_id) : null,
+      }
     case 'error':
       return {
         type: 'error',
@@ -68,7 +96,16 @@ function parseFrame(frame: string): ChatEvent | null {
         message: String(data.message ?? '请求失败，请重试'),
       }
     case 'done':
-      return { type: 'done', has_errors: Boolean(data.has_errors) }
+      return {
+        type: 'done',
+        intent:
+          data.intent === 'followup'
+            ? 'followup'
+            : data.intent === 'correct'
+              ? 'correct'
+              : null,
+        has_errors: Boolean(data.has_errors),
+      }
     default:
       return null
   }
@@ -78,13 +115,20 @@ export async function streamCorrection(
   content: string,
   onEvent: (event: ChatEvent) => void,
   signal?: AbortSignal,
+  options: StreamOptions = {},
 ): Promise<void> {
   let res: Response
   try {
     res = await fetch(`${API_BASE}/chat/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({
+        content,
+        thread_id: options.threadId,
+        intent: options.intent,
+        turn_id: options.turnId,
+        error_id: options.errorId,
+      }),
       signal,
     })
   } catch (err) {
