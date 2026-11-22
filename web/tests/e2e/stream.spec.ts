@@ -60,9 +60,19 @@ test('U-S-05 等待态统一显示思考中', async ({ page }) => {
   await page.getByPlaceholder(COMPOSER).fill('Yesterday I go to school.')
   await page.getByRole('button', { name: '发送', exact: true }).click()
 
-  await expect(page.getByTestId('thinking-indicator')).toContainText('思考中…')
+  const thinking = page.getByTestId('stream-thinking')
+  await expect(thinking).toContainText('思考中…')
   await expect(page.getByTestId('stream-errors')).toHaveCount(0)
+  // 等待态在消息流里、用户气泡之后，而不是输入框上方
+  await expect(page.getByTestId('thinking-indicator')).toHaveCount(0)
+  const userBox = await page.getByText('Yesterday I go to school.', { exact: true }).boundingBox()
+  const thinkingBox = await thinking.boundingBox()
+  expect(userBox!.y).toBeLessThan(thinkingBox!.y)
+
   await expect(page.getByTestId('stream-errors')).toContainText('时态错误')
+  // 内容到达后同一个气泡原位替换，不残留思考中
+  await expect(thinking).toHaveCount(0)
+  await expect(page.getByText('思考中…')).toHaveCount(0)
 })
 
 test('U-S-04 跨轮自由追问按片段解析', async ({ page }) => {

@@ -9,13 +9,12 @@ interface Props {
   onChange: (value: string) => void
   onSend: () => void
   busy: boolean
-  thinking: boolean
   selected: { turnId: string; errorId: string } | null
   onClearSelected: () => void
 }
 
 const ChatComposer = forwardRef<HTMLTextAreaElement, Props>(function ChatComposer(
-  { value, onChange, onSend, busy, thinking, selected, onClearSelected },
+  { value, onChange, onSend, busy, selected, onClearSelected },
   ref,
 ) {
   const over = value.length > MAX_LENGTH
@@ -37,13 +36,6 @@ const ChatComposer = forwardRef<HTMLTextAreaElement, Props>(function ChatCompose
   return (
     <div className="shrink-0 border-t border-[#dee2e6] bg-white px-4 py-3 md:px-8">
       <div className="mx-auto w-full max-w-3xl">
-        <div
-          className="h-5 text-xs text-[#868e96]"
-          aria-live="polite"
-          data-testid="thinking-indicator"
-        >
-          {thinking ? '思考中…' : ''}
-        </div>
         {selected && (
           <div className="mb-2 flex items-center gap-2">
             <span className="rounded-full bg-[#e6fcf5] px-3 py-1 text-xs text-[#0a7053]">

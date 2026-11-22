@@ -8,6 +8,7 @@ import {
 import ChatComposer from '@/components/correction/ChatComposer'
 import ChatCorrectionMessage from '@/components/correction/ChatCorrectionMessage'
 import ChatTextMessage from '@/components/correction/ChatTextMessage'
+import ChatThinkingMessage from '@/components/correction/ChatThinkingMessage'
 import UserBubble from '@/components/correction/UserBubble'
 import { Button } from '@/components/ui/button'
 import type { ChatItem, CorrectionChatItem, TextChatItem } from '@/types/chat'
@@ -23,7 +24,6 @@ export default function StreamCorrectionPage() {
   const [threadId, setThreadId] = useState<string | null>(null)
   const [selected, setSelected] = useState<SelectedTarget | null>(null)
   const [busy, setBusy] = useState(false)
-  const [thinking, setThinking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
@@ -44,10 +44,6 @@ export default function StreamCorrectionPage() {
   const nextId = () => {
     idRef.current += 1
     return `m${idRef.current}`
-  }
-
-  function updateItem(id: string, updater: (item: ChatItem) => ChatItem) {
-    setItems((prev) => prev.map((item) => (item.id === id ? updater(item) : item)))
   }
 
   function upsertCorrection(id: string, patch: Partial<CorrectionChatItem>) {
@@ -71,11 +67,25 @@ export default function StreamCorrectionPage() {
           },
         ]
       }
-      return prev.map((item) =>
-        item.id === id && item.role === 'assistant' && item.kind === 'correction'
-          ? { ...item, ...patch }
-          : item,
-      )
+      return prev.map((item) => {
+        if (item.id !== id || item.role !== 'assistant') return item
+        if (item.kind === 'pending') {
+          return {
+            id,
+            role: 'assistant',
+            kind: 'correction',
+            status: 'streaming',
+            turnId: patch.turnId ?? '',
+            errorsLoaded: patch.errorsLoaded ?? false,
+            errors: patch.errors ?? [],
+            minimal: patch.minimal ?? null,
+            fluency: patch.fluency ?? null,
+            degraded: patch.degraded ?? [],
+            error: patch.error ?? null,
+          }
+        }
+        return item.kind === 'correction' ? { ...item, ...patch } : item
+      })
     })
   }
 
@@ -95,11 +105,20 @@ export default function StreamCorrectionPage() {
           },
         ]
       }
-      return prev.map((item) =>
-        item.id === id && item.role === 'assistant' && item.kind === 'text'
-          ? { ...item, ...patch }
-          : item,
-      )
+      return prev.map((item) => {
+        if (item.id !== id || item.role !== 'assistant') return item
+        if (item.kind === 'pending') {
+          return {
+            id,
+            role: 'assistant',
+            kind: 'text',
+            status: 'streaming',
+            text: patch.text ?? '',
+            error: patch.error ?? null,
+          }
+        }
+        return item.kind === 'text' ? { ...item, ...patch } : item
+      })
     })
   }
 
@@ -124,7 +143,6 @@ export default function StreamCorrectionPage() {
         // content event (errors/explanation) arrives.
         break
       case 'errors':
-        setThinking(false)
         upsertCorrection(assistantId, {
           errors: event.errors,
           errorsLoaded: true,
@@ -153,26 +171,49 @@ export default function StreamCorrectionPage() {
         appendDegraded(assistantId, `${event.stage}: ${event.message}`)
         break
       case 'explanation':
-        setThinking(false)
         upsertText(assistantId, { text: event.text })
         break
       case 'error':
-        updateItem(assistantId, (item) =>
-          item.role === 'assistant'
-            ? { ...item, status: 'error', error: event.message }
-            : item,
-        )
-        setThinking(false)
+        setItems((prev) => {
+          const item = prev.find((candidate) => candidate.id === assistantId)
+          if (!item) return prev
+          if (item.role === 'assistant' && item.kind === 'pending') {
+            return prev.filter((candidate) => candidate.id !== assistantId)
+          }
+          return prev.map((candidate) => {
+            if (
+              candidate.id !== assistantId ||
+              candidate.role !== 'assistant' ||
+              candidate.kind === 'pending'
+            ) {
+              return candidate
+            }
+            return { ...candidate, status: 'error', error: event.message }
+          })
+        })
         setError(event.message)
         setBusy(false)
         break
       case 'done':
-        updateItem(assistantId, (item) =>
-          item.role === 'assistant' && item.status !== 'error'
-            ? { ...item, status: 'done' }
-            : item,
-        )
-        setThinking(false)
+        setItems((prev) => {
+          const item = prev.find((candidate) => candidate.id === assistantId)
+          if (!item) return prev
+          if (item.role === 'assistant' && item.kind === 'pending') {
+            return prev.filter((candidate) => candidate.id !== assistantId)
+          }
+          return prev.map((candidate) => {
+            if (
+              candidate.id !== assistantId ||
+              candidate.role !== 'assistant' ||
+              candidate.kind === 'pending'
+            ) {
+              return candidate
+            }
+            return candidate.status === 'error'
+              ? candidate
+              : { ...candidate, status: 'done' }
+          })
+        })
         setBusy(false)
         break
     }
@@ -185,12 +226,21 @@ export default function StreamCorrectionPage() {
     const userId = nextId()
     const assistantId = nextId()
     lastRequestRef.current = { content: message, options }
-    setItems((prev) => [...prev, { id: userId, role: 'user', text: message }])
+    setItems((prev) => [
+      ...prev,
+      { id: userId, role: 'user', text: message },
+      {
+        id: assistantId,
+        role: 'assistant',
+        kind: 'pending',
+        status: 'streaming',
+        error: null,
+      },
+    ])
     setContent('')
     setSelected(null)
     setError(null)
     setBusy(true)
-    setThinking(true)
 
     try {
       await streamCorrection(
@@ -202,13 +252,10 @@ export default function StreamCorrectionPage() {
     } catch (err) {
       if (controller.signal.aborted) return
       const message = err instanceof Error ? err.message : '请求失败，请重试'
+      setItems((prev) => prev.filter((item) => item.id !== assistantId))
       setError(message)
-      setThinking(false)
     } finally {
-      if (!controller.signal.aborted) {
-        setBusy(false)
-        setThinking(false)
-      }
+      if (!controller.signal.aborted) setBusy(false)
     }
   }
 
@@ -243,7 +290,6 @@ export default function StreamCorrectionPage() {
     setSelected(null)
     setError(null)
     setBusy(false)
-    setThinking(false)
   }
 
   return (
@@ -275,6 +321,9 @@ export default function StreamCorrectionPage() {
           {items.map((item) => {
             if (item.role === 'user') {
               return <UserBubble key={item.id} content={item.text} />
+            }
+            if (item.kind === 'pending') {
+              return <ChatThinkingMessage key={item.id} />
             }
             if (item.kind === 'correction') {
               return (
@@ -310,7 +359,6 @@ export default function StreamCorrectionPage() {
         onChange={setContent}
         onSend={handleSend}
         busy={busy}
-        thinking={thinking}
         selected={selected}
         onClearSelected={() => setSelected(null)}
       />
