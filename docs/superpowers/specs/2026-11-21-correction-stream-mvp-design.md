@@ -269,7 +269,13 @@ async def complete(
 - 改写使用 JSON 模式是本次取舍：多一个解析失败面，换取 `note` 的结构化；失败走 `rewrite_degraded`。
 - `MockLLMClient` 接受同样的参数并忽略，测试用脚本化 responder 区分三类请求。
 
-参数名以实际网关为准：现有代码用的是 `chat_template_kwargs.enable_thinking`；不照搬方案里的 `thinking: enabled`。实现前用一次真实请求验证。
+参数名以实际网关为准，通过 `LLM_THINKING_PARAM` 选择：
+
+- `chat_template_kwargs`：DeepSeek 现有行为；
+- `enable_thinking`：百炼 Qwen/GLM；
+- `thinking: {"type": "enabled"|"disabled"}`：Anthropic 风格网关。
+
+`glm-5.3` 仅支持思考模式（`enable_thinking` 不允许为 `false`），因此百炼配置需加 `LLM_THINKING_ALWAYS_ON=true`；此时两个改写节点也会思考，原“改写关闭思考”的设计在该模型上不适用。
 
 ## 9. SSE 实现
 

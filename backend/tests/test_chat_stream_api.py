@@ -23,10 +23,14 @@ def _app(fake):
     return app
 
 
-def test_chat_stream_router_disabled_by_default():
+def test_chat_stream_router_disabled_by_setting(monkeypatch):
+    monkeypatch.setenv("STREAM_MVP_ENABLED", "false")
     get_settings.cache_clear()
-    app = create_app()
-    assert "/api/v1/chat/stream" not in app.openapi()["paths"]
+    try:
+        app = create_app()
+        assert "/api/v1/chat/stream" not in app.openapi()["paths"]
+    finally:
+        get_settings.cache_clear()
 
 
 def test_chat_stream_router_enabled_with_setting(monkeypatch):

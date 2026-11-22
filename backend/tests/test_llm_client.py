@@ -66,6 +66,26 @@ async def test_real_llm_respects_per_call_params():
     assert "response_format" not in captured
 
 
+async def test_real_llm_bailian_enable_thinking_always_on():
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    client = RealLLMClient(
+        "https://api.example.com",
+        "k",
+        "glm-5.3",
+        transport=httpx.MockTransport(handler),
+        thinking_param="enable_thinking",
+        thinking_always_on=True,
+    )
+    await client.complete([{"role": "user", "content": "hi"}], thinking=False)
+    assert captured["enable_thinking"] is True
+    assert "chat_template_kwargs" not in captured
+
+
 async def test_real_llm_all_fail_raises_unavailable():
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("boom")

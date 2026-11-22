@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     LLM_API_KEY: str = ""
     LLM_MODEL: str = ""
     LLM_MODE: str = ""  # ""=真实调用（需配置）; "mock"=测试/演示用确定性 Mock
+    # 思考参数名：chat_template_kwargs（DeepSeek）/ enable_thinking（百炼 Qwen/GLM）/ thinking（Anthropic 风格）
+    LLM_THINKING_PARAM: str = "chat_template_kwargs"
+    # glm-5.3 等“仅思考模式”的模型必须固定为 True
+    LLM_THINKING_ALWAYS_ON: bool = False
     # 流式纠错实验端点：默认关闭，避免误部署到公网；本地联调显式设为 true
     STREAM_MVP_ENABLED: bool = False
     CONTEXT_LIMIT: int = 40

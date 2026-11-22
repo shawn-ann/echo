@@ -34,11 +34,15 @@ class RealLLMClient(LLMClient):
         api_key: str,
         model: str,
         transport: httpx.AsyncBaseTransport | None = None,
+        thinking_param: str = "chat_template_kwargs",
+        thinking_always_on: bool = False,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
         self._transport = transport
+        self.thinking_param = thinking_param
+        self.thinking_always_on = thinking_always_on
 
     async def complete(
         self,
@@ -47,12 +51,20 @@ class RealLLMClient(LLMClient):
         thinking: bool = True,
         json_mode: bool = True,
     ) -> str:
+        effective_thinking = True if self.thinking_always_on else thinking
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
             # temperature 不注入，交由服务端默认值
-            "chat_template_kwargs": {"enable_thinking": thinking},
         }
+        if self.thinking_param == "enable_thinking":
+            payload["enable_thinking"] = effective_thinking
+        elif self.thinking_param == "thinking":
+            payload["thinking"] = {
+                "type": "enabled" if effective_thinking else "disabled"
+            }
+        else:
+            payload["chat_template_kwargs"] = {"enable_thinking": effective_thinking}
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
 
@@ -188,4 +200,10 @@ def get_llm_client() -> LLMClient:
         return MockLLMClient()
     if not settings.LLM_BASE_URL or not settings.LLM_API_KEY:
         raise AppError(503, "LLM_SERVICE_UNAVAILABLE", "AI 服务未配置，请配置 LLM_BASE_URL/LLM_API_KEY")
-    return RealLLMClient(settings.LLM_BASE_URL, settings.LLM_API_KEY, settings.LLM_MODEL)
+    return RealLLMClient(
+        settings.LLM_BASE_URL,
+        settings.LLM_API_KEY,
+        settings.LLM_MODEL,
+        thinking_param=settings.LLM_THINKING_PARAM,
+        thinking_always_on=settings.LLM_THINKING_ALWAYS_ON,
+    )
