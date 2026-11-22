@@ -74,7 +74,6 @@ def validate_errors_node(state: CorrectionState) -> dict[str, Any]:
     return {
         "errors": errors,
         "has_errors": bool(errors),
-        "turn_id": turn_id,
         "current_turn_id": turn_id,
         "turns": turns,
     }
