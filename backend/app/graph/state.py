@@ -19,6 +19,7 @@ class CorrectionState(TypedDict, total=False):
     hint_intent: str
     turn_id: str
     error_id: str
+    rewrite_variant: str
     intent: str
 
     text: str
@@ -32,6 +33,7 @@ class CorrectionState(TypedDict, total=False):
     resolution_status: str
     resolved_turn_id: str | None
     resolved_error_id: str | None
+    resolved_variant: str | None
     candidate_refs: list[str]
     target_error: str | None
 
@@ -45,4 +47,5 @@ class CorrectionState(TypedDict, total=False):
     explanation: str
     explanation_turn_id: str | None
     explanation_error_id: str | None
+    explanation_focus: dict[str, Any] | None
     explanation_error: str | None

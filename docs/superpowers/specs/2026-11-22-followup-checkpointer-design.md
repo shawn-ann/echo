@@ -114,14 +114,19 @@ class TurnState(TypedDict):
     turn_id: str          # t1, t2...
     text: str
     errors: list[dict]    # 含 error_id/span/category/fragment/correction/explanation
+    minimal_text: str
+    minimal_note: str
+    fluency_text: str
+    fluency_note: str
 
 class ChatState(TypedDict, total=False):
     thread_id: str
     content: str          # 当前轮用户输入
     question: str         # 追问文本
     hint_intent: str      # 请求显式 intent
-    turn_id: str          # 追问目标轮次
-    error_id: str         # 追问目标错误
+    turn_id: str          # 追问目标轮次（显式）
+    error_id: str         # 追问目标错误（显式）
+    rewrite_variant: str  # 追问目标改写：minimal / fluency / both
     intent: str           # 本轮最终意图
 
     text: str             # 当前被纠错原文
@@ -138,10 +143,11 @@ class ChatState(TypedDict, total=False):
     minimal_error: str | None
     fluency_error: str | None
 
-    resolution_status: str      # direct / unique / ambiguous / none
+    resolution_status: str      # direct / turn / rewrite / fuzzy / none
     resolved_turn_id: str | None
     resolved_error_id: str | None
-    candidate_refs: list[str]
+    resolved_variant: str | None
+    candidate_refs: list[str]   # 预留给后续，当前恒空
     target_error: str | None
 
     explanation: str
@@ -263,58 +269,63 @@ route（规则）
 
 输入：
 
-- `turns`：最近 10 轮，每轮 `{turn_id, text, errors}`
-- `turn_id` / `error_id`（均可空）
+- `turns`：最近 10 轮，每轮 `{turn_id, text, errors, minimal_*, fluency_*}`
+- `turn_id` / `error_id` / `rewrite_variant`（均可空）
 - 用户问题
 
 输出：
 
 ```python
 {
-    "resolution_status": "direct" | "unique" | "ambiguous" | "none",
+    "resolution_status": "direct" | "turn" | "rewrite" | "fuzzy" | "none",
     "resolved_turn_id": str | None,
     "resolved_error_id": str | None,
-    "candidate_refs": list[str],   # ["t2:e1", "t3:e2"]
+    "resolved_variant": "minimal" | "fluency" | "both" | None,
+    "candidate_refs": [],          # 预留字段，当前恒为空
     "target_error": str | None,
 }
 ```
 
 顺序：
 
-1. 显式 `turn_id` + `error_id` 存在且能在 `turns` 中找到 → `direct`
-2. 只有 `error_id` → 默认最新一轮查找；找到 → `direct`
-3. 未给显式 ID → 在最近 10 轮按问题中的 `fragment` / `correction` 匹配：
-   - 同时出现原片段和修正结果（“go 改成 went”）→ pair 匹配
-   - 只出现单边 → 单边匹配
-   - 只有一个候选 → `unique`
-   - 多个候选 → `ambiguous`，返回 `candidate_refs`
-   - 无候选 → `none`
-4. 显式引用找不到 → `none`，并在 state 标记 `target_error`，不重新纠错
+1. 显式 `turn_id`：
+   - 该轮不存在 → `none` + `target_error`（`找不到指定的轮次` / `历史已超出范围`）
+   - 同时给了 `error_id`：存在 → `direct`；不存在 → `none` + `target_error`
+   - 否则 → `rewrite`（带 `rewrite_variant`）或 `turn`
+2. 只有显式 `error_id`：在最近 10 轮中查找该错误 → `direct`；找不到 → `none` + `target_error`
+3. 只有 `rewrite_variant`：目标为最新一轮 → `rewrite`
+4. 都没有 → `fuzzy`：不解析、不猜测，把整段 `turns` 交给 explain 由模型定位
 
-`resolve_target` 不调用 LLM，不做语义猜测。
+`resolve_target` 不调用 LLM，也不做正则匹配。代码只处理确定性引用
+（UI 点选、显式 ID），自由文本的语言理解归模型。
 
 ### 10.2 `explain`
 
 输入：
 
-- `turns`
+- `turns`（完整结构，含 errors 与两版改写；未来新增字段自动带入）
 - `resolution_status`
-- `resolved_turn_id` / `resolved_error_id`
-- `candidate_refs`
+- `resolved_turn_id` / `resolved_error_id` / `resolved_variant`
 - 用户问题
 
 输出：
 
 ```json
-{"text": "为什么这么改的解释...", "turn_id": "t2", "error_id": "e2"}
+{
+  "text": "为什么这么改的解释...",
+  "turn_id": "t2",
+  "error_id": "e2",
+  "focus": {"kind": "error|rewrite|turn", "variant": "minimal|fluency|both|null"}
+}
 ```
 
 行为：
 
-- `direct` / `unique`：只解释该条
-- `ambiguous`：带候选让模型选择，或反问“你指的是哪一处？”
-- `none`：允许模型在最近 10 轮里做语义兜底；仍无法确定则反问
-- 模型返回的 `turn_id/error_id` 必须回查 `turns`；不合法时改为反问，不能编造
+- `direct`：显式选中的错误是权威目标，模型返回的 `turn_id/error_id` 不一致 → 报错
+- `turn` / `rewrite`：以用户给定的轮次和改写版本为准，模型返回的错误只做存在性校验
+- `fuzzy`：模型自行在最近 10 轮里定位轮次、错误或改写；不合法时回退到最近一轮并写日志，**不因解析不一致而丢弃答案**
+- 追问对象不限于错误：模型可对比原文、Minimal、Fluency，回答“为什么省略/简写/更自然/两版区别”
+- 模型无法区分多个同等合理的解释时，才反问“你指的是哪一处？”
 
 约束：
 
@@ -323,7 +334,7 @@ route（规则）
 - 可以评估替代写法（“改成 xxx 可以吗”），返回“可以/不可以 + 原因”；本轮不自动应用
 - 使用 `thinking` 开启（GLM-5.3 无法关闭）+ `reasoning_effort=low` + `temperature=0.2`
 - 失败时发 `explanation_error` / `error`，不阻塞线程状态
-- `turns` 只保留最近 10 轮；更早的引用返回“历史已超出范围”
+- `turns` 只保留最近 10 轮；更早的显式引用返回“历史已超出范围”
 
 ## 11. Checkpointer
 

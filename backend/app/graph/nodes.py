@@ -128,7 +128,7 @@ def route_node(state: CorrectionState) -> dict[str, Any]:
 
     if hint in ("correct", "followup"):
         intent = hint
-    elif state.get("turn_id") or state.get("error_id"):
+    elif state.get("turn_id") or state.get("error_id") or state.get("rewrite_variant"):
         intent = "followup"
     elif not prior_turns and not prior_errors and not state.get("turn_seq"):
         intent = "correct"
@@ -147,181 +147,88 @@ def _for_turn(turns: list[dict], turn_id: str) -> dict | None:
     return next((turn for turn in turns if turn.get("turn_id") == turn_id), None)
 
 
-def _token_hit(needle: str, query: str) -> bool:
-    """Match whole tokens, so 'He' does not match 'she' and 'a' does not match 'an'."""
-    value = needle.strip()
-    if not value:
-        return False
-    pattern = rf"(?<![A-Za-z0-9]){re.escape(value)}(?![A-Za-z0-9])"
-    return re.search(pattern, query, flags=re.IGNORECASE) is not None
+REWRITE_VARIANTS = ("minimal", "fluency", "both")
 
 
-_LATIN_TOKEN = re.compile(r"[A-Za-z][A-Za-z']*")
-_EN_STOPWORDS = {
-    "the", "a", "an", "and", "or", "but", "is", "are", "am", "was", "were",
-    "be", "been", "being", "do", "does", "did", "to", "of", "in", "on", "at",
-    "for", "with", "by", "that", "this", "these", "those", "it", "its",
-    "i", "you", "he", "she", "we", "they", "my", "your", "our", "their",
-    "not", "no", "so", "as", "if", "than", "then", "there", "here",
-}
+def _clean_variant(value: str | None) -> str | None:
+    return value if value in REWRITE_VARIANTS else None
 
 
-def _content_words(text: str) -> set[str]:
-    """Latin words long enough to be meaningful search keys."""
+def _scope(
+    status: str,
+    *,
+    turn_id: str | None = None,
+    error_id: str | None = None,
+    variant: str | None = None,
+    target_error: str | None = None,
+) -> dict[str, Any]:
     return {
-        word.lower()
-        for word in _LATIN_TOKEN.findall(text)
-        if len(word) >= 3 and word.lower() not in _EN_STOPWORDS
+        "resolution_status": status,
+        "resolved_turn_id": turn_id,
+        "resolved_error_id": error_id,
+        "resolved_variant": variant,
+        "candidate_refs": [],
+        "target_error": target_error,
     }
 
 
-def _fragment_hit(fragment: str, query: str) -> bool:
-    """Match the whole fragment first, then any distinctive word inside it.
-
-    Single word references like "would" should match the fragment
-    "would like to know", which the whole-string check alone cannot do.
-    """
-    if _token_hit(fragment, query):
-        return True
-    return any(_token_hit(word, query) for word in _content_words(fragment))
-
-
-def _turn_text_match(turn: dict, words: set[str]) -> bool:
-    haystack = " ".join(
-        part
-        for part in (
-            turn.get("text") or "",
-            turn.get("minimal_text") or "",
-            turn.get("fluency_text") or "",
-        )
-        if part
-    )
-    return any(_token_hit(word, haystack) for word in words)
-
+def _missing_turn_error(state: CorrectionState, turn_id: str) -> str:
+    turn_seq = state.get("turn_seq")
+    if isinstance(turn_seq, int) and turn_seq > 0:
+        try:
+            seq = int(turn_id.lstrip("t"))
+        except ValueError:
+            seq = 0
+        if seq and seq <= turn_seq - 10:
+            return "历史已超出范围"
+    return "找不到指定的轮次"
 
 
 def resolve_target_node(state: CorrectionState) -> dict[str, Any]:
-    turns = list(state.get("turns") or [])
-    question = state.get("content") or state.get("question") or ""
-    explicit_turn = state.get("turn_id")
-    explicit_error = state.get("error_id")
+    """Resolve only deterministic references.
 
-    if explicit_turn and explicit_error:
+    Free-text refers to an error, a rewrite, or the whole turn are resolved by
+    the explain model from the full turn data. Guessing here would silently
+    override the user's intent, so code stays out of fuzzy matching.
+    """
+    turns = list(state.get("turns") or [])
+    explicit_turn = state.get("turn_id") or None
+    explicit_error = state.get("error_id") or None
+    explicit_variant = _clean_variant(state.get("rewrite_variant"))
+
+    if explicit_turn:
         turn = _for_turn(turns, explicit_turn)
-        found = turn and any(e.get("error_id") == explicit_error for e in turn["errors"])
-        if not found:
-            target_error = "找不到指定的错误条目"
-            turn_seq = state.get("turn_seq")
-            if turn and not found:
-                target_error = "找不到指定的错误条目"
-            elif isinstance(turn_seq, int) and turn_seq > 10:
-                try:
-                    seq = int(explicit_turn.lstrip("t"))
-                except ValueError:
-                    seq = 0
-                if seq and seq <= turn_seq - 10:
-                    target_error = "历史已超出范围"
-            return {
-                "resolution_status": "none",
-                "resolved_turn_id": None,
-                "resolved_error_id": None,
-                "candidate_refs": [],
-                "target_error": target_error,
-            }
-        return {
-            "resolution_status": "direct",
-            "resolved_turn_id": explicit_turn,
-            "resolved_error_id": explicit_error,
-            "candidate_refs": [],
-            "target_error": None,
-        }
+        if not turn:
+            return _scope(
+                "none", target_error=_missing_turn_error(state, explicit_turn)
+            )
+        if explicit_error:
+            if any(e.get("error_id") == explicit_error for e in turn.get("errors") or []):
+                return _scope("direct", turn_id=explicit_turn, error_id=explicit_error)
+            return _scope("none", target_error="找不到指定的错误条目")
+        return _scope(
+            "rewrite" if explicit_variant else "turn",
+            turn_id=explicit_turn,
+            variant=explicit_variant,
+        )
 
     if explicit_error:
-        if turns:
-            latest = turns[-1]
-            if any(e.get("error_id") == explicit_error for e in latest["errors"]):
-                return {
-                    "resolution_status": "direct",
-                    "resolved_turn_id": latest["turn_id"],
-                    "resolved_error_id": explicit_error,
-                    "candidate_refs": [],
-                    "target_error": None,
-                }
-        return {
-            "resolution_status": "none",
-            "resolved_turn_id": None,
-            "resolved_error_id": None,
-            "candidate_refs": [],
-            "target_error": "找不到指定的错误条目",
-        }
+        for turn in turns:
+            if any(e.get("error_id") == explicit_error for e in turn.get("errors") or []):
+                return _scope("direct", turn_id=turn["turn_id"], error_id=explicit_error)
+        return _scope("none", target_error="找不到指定的错误条目")
 
-    scoped_turns = [_for_turn(turns, explicit_turn)] if explicit_turn else turns
-    scoped_turns = [turn for turn in scoped_turns if turn]
-    query = question
-    candidates: list[tuple[int, str, str]] = []
+    if not turns:
+        return _scope("none")
 
-    for turn in reversed(scoped_turns):
-        for error in turn.get("errors") or []:
-            fragment = error.get("fragment") or ""
-            correction = error.get("correction") or ""
-            fragment_hit = _fragment_hit(fragment, query)
-            correction_hit = _fragment_hit(correction, query)
-            if not fragment_hit and not correction_hit:
-                continue
-            score = 2 if fragment_hit and correction_hit else 1
-            candidates.append((score, turn["turn_id"], error["error_id"]))
+    if explicit_variant:
+        return _scope(
+            "rewrite", turn_id=turns[-1]["turn_id"], variant=explicit_variant
+        )
 
-    if not candidates:
-        # No error-level match: the question may be about a wording change in
-        # the rewrites ("why is would omitted?"). Resolve at turn level so the
-        # model can compare the source text against minimal/fluency versions.
-        words = _content_words(query)
-        if words:
-            for turn in reversed(scoped_turns):
-                if _turn_text_match(turn, words):
-                    return {
-                        "resolution_status": "turn",
-                        "resolved_turn_id": turn["turn_id"],
-                        "resolved_error_id": None,
-                        "candidate_refs": [],
-                        "target_error": None,
-                    }
-        return {
-            "resolution_status": "none",
-            "resolved_turn_id": None,
-            "resolved_error_id": None,
-            "candidate_refs": [],
-            "target_error": None,
-        }
-
-    pairs = [c for c in candidates if c[0] == 2]
-    if len(pairs) == 1:
-        _, turn_id, error_id = pairs[0]
-        return {
-            "resolution_status": "unique",
-            "resolved_turn_id": turn_id,
-            "resolved_error_id": error_id,
-            "candidate_refs": [],
-            "target_error": None,
-        }
-    if len(candidates) == 1:
-        _, turn_id, error_id = candidates[0]
-        return {
-            "resolution_status": "unique",
-            "resolved_turn_id": turn_id,
-            "resolved_error_id": error_id,
-            "candidate_refs": [],
-            "target_error": None,
-        }
-
-    refs = [f"{turn_id}:{error_id}" for _, turn_id, error_id in candidates]
-    return {
-        "resolution_status": "ambiguous",
-        "resolved_turn_id": None,
-        "resolved_error_id": None,
-        "candidate_refs": refs,
-        "target_error": None,
-    }
+    # Free text: hand every turn to the model, which knows how to read both
+    # errors and rewrites. No regex guessing.
+    return _scope("fuzzy")
 
 
 def reset_correction_node(state: CorrectionState) -> dict[str, Any]:
@@ -332,6 +239,7 @@ def reset_correction_node(state: CorrectionState) -> dict[str, Any]:
         "current_turn_id": f"t{turn_seq}",
         "turn_id": "",
         "error_id": "",
+        "rewrite_variant": "",
         "errors": [],
         "has_errors": False,
         "minimal_text": "",
@@ -343,11 +251,13 @@ def reset_correction_node(state: CorrectionState) -> dict[str, Any]:
         "resolution_status": "",
         "resolved_turn_id": None,
         "resolved_error_id": None,
+        "resolved_variant": None,
         "candidate_refs": [],
         "target_error": None,
         "explanation": "",
         "explanation_turn_id": None,
         "explanation_error_id": None,
+        "explanation_focus": None,
         "explanation_error": None,
     }
 
@@ -363,7 +273,8 @@ def make_explain_node(client: LLMClient):
         status = state.get("resolution_status") or "none"
         selected_turn = state.get("resolved_turn_id")
         selected_error = state.get("resolved_error_id")
-        if status in ("direct", "unique") and (
+        selected_variant = state.get("resolved_variant")
+        if status == "direct" and (
             not selected_turn
             or not selected_error
             or not _for_turn(turns, selected_turn)
@@ -380,6 +291,7 @@ def make_explain_node(client: LLMClient):
             selected_turn,
             selected_error,
             state.get("candidate_refs") or [],
+            selected_variant,
         )
         try:
             raw = await client.complete(
@@ -394,36 +306,59 @@ def make_explain_node(client: LLMClient):
             if not isinstance(text, str) or not text.strip():
                 raise ValueError("explanation text must be non-empty")
 
-            if status in ("direct", "unique"):
+            if status == "direct":
+                # Explicit UI selection is authoritative.
                 if data.get("turn_id") and data["turn_id"] != selected_turn:
                     return {"explanation_error": "解释结果与选定错误不一致"}
                 if data.get("error_id") and data["error_id"] != selected_error:
                     return {"explanation_error": "解释结果与选定错误不一致"}
                 out_turn = selected_turn
                 out_error = selected_error
+                out_variant = None
+            elif status in ("turn", "rewrite"):
+                # Explicit turn/variant: trust the user's scope over the model.
+                out_turn = selected_turn or turns[-1]["turn_id"]
+                out_error = data.get("error_id") or None
+                out_variant = selected_variant
             else:
+                # Free text: the model resolves the reference. Never reject the
+                # answer because of a resolution mismatch; fall back and log.
                 out_turn = data.get("turn_id") or selected_turn
-                if not out_turn and turns:
-                    out_turn = turns[-1].get("turn_id")
-                out_error = data.get("error_id")
-            out_turn_obj = _for_turn(turns, out_turn) if out_turn else None
-            if not out_turn_obj:
-                return {"explanation_error": "无法确定你指的是哪一轮"}
-            if out_error:
-                valid = any(
-                    e.get("error_id") == out_error for e in out_turn_obj.get("errors", [])
-                )
-            else:
-                # Turn-level answer: rewrite comparison, an error-free turn, or
-                # a clarifying question when several candidates matched.
-                valid = True
-            if not valid:
-                return {"explanation_error": "无法确定你指的是哪一条错误"}
+                if not _for_turn(turns, out_turn):
+                    if out_turn:
+                        logger.warning(
+                            "explain_unknown_turn request_id=%s turn_id=%s",
+                            state.get("request_id", "-"),
+                            out_turn,
+                        )
+                    out_turn = turns[-1]["turn_id"]
+                out_error = data.get("error_id") or None
+                out_variant = None
 
+            out_turn_obj = _for_turn(turns, out_turn)
+            if out_error and not any(
+                e.get("error_id") == out_error
+                for e in (out_turn_obj or {}).get("errors", [])
+            ):
+                logger.warning(
+                    "explain_unknown_error request_id=%s turn_id=%s error_id=%s",
+                    state.get("request_id", "-"),
+                    out_turn,
+                    out_error,
+                )
+                out_error = None
+
+            focus = {
+                "kind": "error" if out_error else ("rewrite" if out_variant else "turn"),
+                "turn_id": out_turn,
+                "error_id": out_error,
+                "variant": out_variant,
+            }
             return {
                 "explanation": text,
                 "explanation_turn_id": out_turn,
                 "explanation_error_id": out_error,
+                "explanation_focus": focus,
                 "explanation_error": None,
             }
         except Exception:

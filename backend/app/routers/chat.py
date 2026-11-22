@@ -41,6 +41,7 @@ async def chat_stream(
             intent=payload.intent,
             turn_id=payload.turn_id,
             error_id=payload.error_id,
+            rewrite_variant=payload.rewrite_variant,
         ),
         media_type="text/event-stream",
         headers={

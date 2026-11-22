@@ -43,9 +43,11 @@ def test_explain_prompt_contains_history_and_target():
 
 
 def test_explain_prompt_mentions_rewrites_and_turn_scope():
-    system = build_explain_messages([], "q", None, None)[0]["content"]
+    messages = build_explain_messages([], "q", "t1", None, variant="both")
+    system = messages[0]["content"]
     assert "minimal_text" in system
     assert "fluency_text" in system
-    assert "turn level" in system.lower()
+    assert "selected_error_id" in system
     assert "omitted" in system.lower()
+    assert '"selected_variant": "both"' in messages[1]["content"]
 

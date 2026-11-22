@@ -9,3 +9,4 @@ class ChatRequest(BaseModel):
     intent: Literal["correct", "followup"] | None = None
     turn_id: str | None = Field(default=None, pattern=r"^t\d+$")
     error_id: str | None = Field(default=None, pattern=r"^e\d+$")
+    rewrite_variant: Literal["minimal", "fluency", "both"] | None = None

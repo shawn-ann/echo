@@ -108,6 +108,7 @@ async def stream_chat_events(
     intent: str | None = None,
     turn_id: str | None = None,
     error_id: str | None = None,
+    rewrite_variant: str | None = None,
 ) -> AsyncIterator[str]:
     if await request.is_disconnected():
         return
@@ -129,6 +130,7 @@ async def stream_chat_events(
                         "hint_intent": intent,
                         "turn_id": turn_id,
                         "error_id": error_id,
+                        "rewrite_variant": rewrite_variant or "",
                         "thread_id": thread_id,
                         "request_id": request_id,
                     },
