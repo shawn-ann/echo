@@ -160,6 +160,55 @@ def test_resolve_target_none_when_no_match():
     assert result["candidate_refs"] == []
 
 
+def test_resolve_target_does_not_match_he_inside_she():
+    turns = [{
+        "turn_id": "t1",
+        "text": "He go.",
+        "errors": [{"error_id": "e1", "fragment": "He", "correction": "They"}],
+    }]
+    result = resolve_target_node({"turns": turns, "content": "为什么 she 要改？"})
+    assert result["resolution_status"] == "none"
+
+
+def test_resolve_target_matches_deletion_fragment_with_leading_space():
+    turns = [{
+        "turn_id": "t1",
+        "text": "I very like it.",
+        "errors": [{"error_id": "e1", "fragment": " very", "correction": ""}],
+    }]
+    result = resolve_target_node({"turns": turns, "content": "为什么删掉 very？"})
+    assert result["resolution_status"] == "unique"
+    assert result["resolved_error_id"] == "e1"
+
+
+def test_resolve_target_short_fragment_does_not_match_other_token():
+    turns = [{
+        "turn_id": "t1",
+        "text": "a apple",
+        "errors": [{"error_id": "e1", "fragment": "a", "correction": "the"}],
+    }]
+    result = resolve_target_node({"turns": turns, "content": "为什么这里用 an？"})
+    assert result["resolution_status"] == "none"
+
+
+def test_resolve_target_explicit_missing_sets_target_error():
+    result = resolve_target_node({"turns": TURNS, "turn_id": "t1", "error_id": "e9"})
+    assert result["resolution_status"] == "none"
+    assert result["target_error"]
+
+
+def test_resolve_target_trimmed_history_returns_range_error():
+    turns = [{
+        "turn_id": "t2",
+        "text": TEXT,
+        "errors": [{"error_id": "e1", "fragment": "go", "correction": "went"}],
+    }]
+    result = resolve_target_node({
+        "turns": turns, "turn_id": "t1", "error_id": "e1", "turn_seq": 11,
+    })
+    assert result["target_error"] == "历史已超出范围"
+
+
 EXPLAIN_OK = '{"text": "go 是过去时间，所以用 went。", "turn_id": "t1", "error_id": "e1"}'
 
 
@@ -211,6 +260,37 @@ async def test_explain_invalid_resolved_ids_returns_error():
     assert result["explanation_error"]
 
 
+async def test_explain_honors_target_error():
+    fake = ScriptedLLMClient(locate=LOCATE_OK, explain=EXPLAIN_OK)
+    result = await make_explain_node(fake)({
+        "turns": TURNS,
+        "question": "为什么",
+        "target_error": "找不到指定的错误条目",
+    })
+    assert result["explanation_error"] == "找不到指定的错误条目"
+
+
+async def test_explain_direct_rejects_model_switch():
+    turns = TURNS + [{
+        "turn_id": "t2",
+        "text": TEXT,
+        "errors": [{"error_id": "e1", "fragment": "go", "correction": "goes"}],
+    }]
+    fake = ScriptedLLMClient(
+        locate=LOCATE_OK,
+        explain='{"text": "x", "turn_id": "t2", "error_id": "e1"}',
+    )
+    result = await make_explain_node(fake)({
+        "turns": turns,
+        "question": "为什么",
+        "resolution_status": "direct",
+        "resolved_turn_id": "t1",
+        "resolved_error_id": "e1",
+        "candidate_refs": [],
+    })
+    assert result["explanation_error"]
+
+
 from langgraph.checkpoint.memory import MemorySaver
 
 
@@ -240,6 +320,16 @@ async def test_new_correction_clears_old_errors():
     assert result["errors"][0]["fragment"] == "She go"
     assert result["errors"][0]["error_id"] == "e1"
     assert result["explanation"] in (None, "")
+
+
+async def test_empty_error_correction_does_not_add_turn():
+    fake = ScriptedLLMClient(locate='{"errors":[]}', fluency=FLUENCY_OK)
+    graph = build_graph(fake, MemorySaver())
+    config = {"configurable": {"thread_id": "t-empty"}}
+    await graph.ainvoke({"content": TEXT}, config=config)
+    state = await graph.aget_state(config)
+    assert state.values.get("turns", []) == []
+    assert state.values["turn_seq"] == 1
 
 
 async def test_history_keeps_last_ten_turns():

@@ -150,6 +150,12 @@ export default function StreamCorrectionPage() {
     const question = followupText.trim()
     if (!question || !threadId || busy) return
 
+    const turnId = selectedTurnId
+    const errorId = selectedErrorId
+    setSelectedTurnId(null)
+    setSelectedErrorId(null)
+    setFollowupText('')
+
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
@@ -166,8 +172,8 @@ export default function StreamCorrectionPage() {
         {
           threadId,
           intent: 'followup',
-          turnId: selectedTurnId ?? undefined,
-          errorId: selectedErrorId ?? undefined,
+          turnId: turnId ?? undefined,
+          errorId: errorId ?? undefined,
         },
       )
     } catch (err) {
@@ -225,10 +231,13 @@ export default function StreamCorrectionPage() {
               data-testid="stream-errors"
               className="rounded-xl border border-[#dee2e6] bg-white p-3"
             >
-              <p className="mb-2 text-sm font-semibold text-[#343a40]">
-                错误分析
-                <span className="ml-2 text-xs font-normal text-[#868c96]">{report.turnId}</span>
-              </p>
+              <div className="mb-2">
+                <p className="text-sm font-semibold text-[#343a40]">
+                  错误分析
+                  <span className="ml-2 text-xs font-normal text-[#868c96]">{report.turnId}</span>
+                </p>
+                <p className="truncate text-xs text-[#868c96]">{report.text}</p>
+              </div>
               {report.errors.length > 0 ? (
                 <div className="space-y-2">
                   {report.errors.map((item, index) => (

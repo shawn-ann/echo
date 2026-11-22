@@ -1,4 +1,7 @@
 import json
+import time
+from concurrent.futures import ThreadPoolExecutor
+from types import SimpleNamespace
 
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
@@ -24,6 +27,27 @@ def _app(fake):
     app.include_router(chat.router)
     app.state.chat_graph = build_graph(fake, MemorySaver())
     return app
+
+
+def test_get_chat_graph_builds_once_under_concurrency(monkeypatch):
+    calls: list[int] = []
+    fake_graph = object()
+
+    def fake_build(*args, **kwargs):
+        time.sleep(0.02)
+        calls.append(1)
+        return fake_graph
+
+    monkeypatch.setattr(chat, "build_graph", fake_build)
+    monkeypatch.setattr(chat, "get_llm_client", lambda: object())
+    app = SimpleNamespace(state=SimpleNamespace())
+    request = SimpleNamespace(app=app)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: chat.get_chat_graph(request), range(2)))
+
+    assert len(calls) == 1
+    assert results[0] is results[1] is fake_graph
 
 
 def test_chat_stream_router_disabled_by_setting(monkeypatch):

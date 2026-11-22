@@ -69,8 +69,9 @@ def validate_errors_node(state: CorrectionState) -> dict[str, Any]:
     )
     turn_id = state.get("current_turn_id") or state.get("turn_id") or "t1"
     turns = list(state.get("turns") or [])
-    turns.append({"turn_id": turn_id, "text": state["text"], "errors": errors})
-    turns = turns[-10:]
+    if errors:
+        turns.append({"turn_id": turn_id, "text": state["text"], "errors": errors})
+        turns = turns[-10:]
     return {
         "errors": errors,
         "has_errors": bool(errors),
@@ -104,7 +105,7 @@ def route_node(state: CorrectionState) -> dict[str, Any]:
         intent = hint
     elif state.get("turn_id") or state.get("error_id"):
         intent = "followup"
-    elif not prior_turns and not prior_errors:
+    elif not prior_turns and not prior_errors and not state.get("turn_seq"):
         intent = "correct"
     elif _looks_like_followup(content):
         intent = "followup"
@@ -121,6 +122,15 @@ def _for_turn(turns: list[dict], turn_id: str) -> dict | None:
     return next((turn for turn in turns if turn.get("turn_id") == turn_id), None)
 
 
+def _token_hit(needle: str, query: str) -> bool:
+    """Match whole tokens, so 'He' does not match 'she' and 'a' does not match 'an'."""
+    value = needle.strip()
+    if not value:
+        return False
+    pattern = rf"(?<![A-Za-z0-9]){re.escape(value)}(?![A-Za-z0-9])"
+    return re.search(pattern, query, flags=re.IGNORECASE) is not None
+
+
 def resolve_target_node(state: CorrectionState) -> dict[str, Any]:
     turns = list(state.get("turns") or [])
     question = state.get("content") or state.get("question") or ""
@@ -131,12 +141,23 @@ def resolve_target_node(state: CorrectionState) -> dict[str, Any]:
         turn = _for_turn(turns, explicit_turn)
         found = turn and any(e.get("error_id") == explicit_error for e in turn["errors"])
         if not found:
+            target_error = "找不到指定的错误条目"
+            turn_seq = state.get("turn_seq")
+            if turn and not found:
+                target_error = "找不到指定的错误条目"
+            elif isinstance(turn_seq, int) and turn_seq > 10:
+                try:
+                    seq = int(explicit_turn.lstrip("t"))
+                except ValueError:
+                    seq = 0
+                if seq and seq <= turn_seq - 10:
+                    target_error = "历史已超出范围"
             return {
                 "resolution_status": "none",
                 "resolved_turn_id": None,
                 "resolved_error_id": None,
                 "candidate_refs": [],
-                "target_error": "找不到指定的错误条目",
+                "target_error": target_error,
             }
         return {
             "resolution_status": "direct",
@@ -167,15 +188,15 @@ def resolve_target_node(state: CorrectionState) -> dict[str, Any]:
 
     scoped_turns = [_for_turn(turns, explicit_turn)] if explicit_turn else turns
     scoped_turns = [turn for turn in scoped_turns if turn]
-    query = question.casefold()
+    query = question
     candidates: list[tuple[int, str, str]] = []
 
     for turn in reversed(scoped_turns):
         for error in turn.get("errors") or []:
-            fragment = (error.get("fragment") or "").casefold()
-            correction = (error.get("correction") or "").casefold()
-            fragment_hit = bool(fragment) and fragment in query
-            correction_hit = bool(correction) and correction in query
+            fragment = error.get("fragment") or ""
+            correction = error.get("correction") or ""
+            fragment_hit = _token_hit(fragment, query)
+            correction_hit = _token_hit(correction, query)
             if not fragment_hit and not correction_hit:
                 continue
             score = 2 if fragment_hit and correction_hit else 1
@@ -251,6 +272,8 @@ def reset_correction_node(state: CorrectionState) -> dict[str, Any]:
 def make_explain_node(client: LLMClient):
     async def explain(state: CorrectionState) -> dict[str, Any]:
         turns = list(state.get("turns") or [])
+        if state.get("target_error"):
+            return {"explanation_error": state["target_error"]}
         if not turns:
             return {"explanation_error": "没有可追问的错误"}
 
@@ -288,8 +311,16 @@ def make_explain_node(client: LLMClient):
             if not isinstance(text, str) or not text.strip():
                 raise ValueError("explanation text must be non-empty")
 
-            out_turn = data.get("turn_id") or selected_turn
-            out_error = data.get("error_id") or selected_error
+            if status in ("direct", "unique"):
+                if data.get("turn_id") and data["turn_id"] != selected_turn:
+                    return {"explanation_error": "解释结果与选定错误不一致"}
+                if data.get("error_id") and data["error_id"] != selected_error:
+                    return {"explanation_error": "解释结果与选定错误不一致"}
+                out_turn = selected_turn
+                out_error = selected_error
+            else:
+                out_turn = data.get("turn_id") or selected_turn
+                out_error = data.get("error_id") or selected_error
             out_turn_obj = _for_turn(turns, out_turn) if out_turn else None
             valid = bool(
                 out_turn_obj

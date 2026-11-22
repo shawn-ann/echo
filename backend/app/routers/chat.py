@@ -1,3 +1,4 @@
+import threading
 import uuid
 
 from fastapi import APIRouter, Depends, Request
@@ -10,13 +11,17 @@ from app.services.chat_stream import stream_chat_events
 from app.services.llm_client import get_llm_client
 
 router = APIRouter(prefix="/api/v1", tags=["chat"])
+_graph_lock = threading.Lock()
 
 
 def get_chat_graph(request: Request):
     graph = getattr(request.app.state, "chat_graph", None)
     if graph is None:
-        graph = build_graph(get_llm_client(), MemorySaver())
-        request.app.state.chat_graph = graph
+        with _graph_lock:
+            graph = getattr(request.app.state, "chat_graph", None)
+            if graph is None:
+                graph = build_graph(get_llm_client(), MemorySaver())
+                request.app.state.chat_graph = graph
     return graph
 
 

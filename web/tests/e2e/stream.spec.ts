@@ -21,6 +21,16 @@ test('U-S-02 后端不可达时显示可重试错误，不展示空错误面板'
 })
 
 test('U-S-03 纠错后追问返回解释', async ({ page }) => {
+  const bodies: Record<string, unknown>[] = []
+  page.on('request', (request) => {
+    if (!request.url().includes('/chat/stream')) return
+    try {
+      bodies.push(request.postDataJSON() as Record<string, unknown>)
+    } catch {
+      // ignore non-JSON requests
+    }
+  })
+
   await page.goto('/stream')
   await page.getByPlaceholder('输入英文，开始流式纠错').fill('Yesterday I go to school.')
   await page.getByRole('button', { name: '开始' }).click()
@@ -29,6 +39,14 @@ test('U-S-03 纠错后追问返回解释', async ({ page }) => {
   await page.getByPlaceholder('输入追问，例如：为什么这么改？').fill('为什么这么改？')
   await page.getByRole('button', { name: '发送追问' }).click()
   await expect(page.getByTestId('stream-explanation')).toContainText('go 是过去时间')
+
+  // 点击后只消费一次显式引用；下一次自由追问不能再带 error_id。
+  await page.getByPlaceholder('输入追问，例如：为什么这么改？').fill('为什么这里用 an？')
+  await page.getByRole('button', { name: '发送追问' }).click()
+  await expect(page.getByTestId('stream-explanation')).toBeVisible()
+  const followups = bodies.filter((body) => body.intent === 'followup')
+  expect(followups.length).toBeGreaterThanOrEqual(2)
+  expect(followups[1].error_id).toBeUndefined()
 })
 
 test('U-S-04 跨轮自由追问按片段解析', async ({ page }) => {
