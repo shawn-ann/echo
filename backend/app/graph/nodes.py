@@ -69,9 +69,8 @@ def validate_errors_node(state: CorrectionState) -> dict[str, Any]:
     )
     turn_id = state.get("current_turn_id") or state.get("turn_id") or "t1"
     turns = list(state.get("turns") or [])
-    if errors:
-        turns.append({"turn_id": turn_id, "text": state["text"], "errors": errors})
-        turns = turns[-10:]
+    turns.append({"turn_id": turn_id, "text": state["text"], "errors": errors})
+    turns = turns[-10:]
     return {
         "errors": errors,
         "has_errors": bool(errors),
@@ -80,19 +79,31 @@ def validate_errors_node(state: CorrectionState) -> dict[str, Any]:
     }
 
 
-_FOLLOWUP_MARKERS = re.compile(
-    r"为什么|怎么|如何|解释|这个|这条|第.{1,3}个|有没有|更自然|换个说法|吗|呢|？|\?"
-)
 _CJK = re.compile(r"[\u4e00-\u9fff]")
 
 
 def _looks_like_followup(content: str) -> bool:
     text = content.strip()
-    if not text or len(text) > 80:
+    if not text or len(text) > 120:
         return False
-    if not _CJK.search(text):
-        return False
-    return bool(_FOLLOWUP_MARKERS.search(text))
+    return bool(_CJK.search(text))
+
+
+def finalize_turn_node(state: CorrectionState) -> dict[str, Any]:
+    turn_id = state.get("current_turn_id")
+    turns = [dict(turn) for turn in (state.get("turns") or [])]
+    for turn in turns:
+        if turn.get("turn_id") == turn_id:
+            turn.update(
+                {
+                    "minimal_text": state.get("minimal_text", ""),
+                    "minimal_note": state.get("minimal_note", ""),
+                    "fluency_text": state.get("fluency_text", ""),
+                    "fluency_note": state.get("fluency_note", ""),
+                }
+            )
+            break
+    return {"turns": turns}
 
 
 def route_node(state: CorrectionState) -> dict[str, Any]:
@@ -320,13 +331,19 @@ def make_explain_node(client: LLMClient):
                 out_error = selected_error
             else:
                 out_turn = data.get("turn_id") or selected_turn
-                out_error = data.get("error_id") or selected_error
+                if not out_turn and turns:
+                    out_turn = turns[-1].get("turn_id")
+                out_error = data.get("error_id")
             out_turn_obj = _for_turn(turns, out_turn) if out_turn else None
-            valid = bool(
-                out_turn_obj
-                and out_error
-                and any(e.get("error_id") == out_error for e in out_turn_obj["errors"])
-            )
+            if not out_turn_obj:
+                return {"explanation_error": "无法确定你指的是哪一轮"}
+            if out_error:
+                valid = any(
+                    e.get("error_id") == out_error for e in out_turn_obj.get("errors", [])
+                )
+            else:
+                # Rewrite-only follow-up (e.g. “why use what instead of how?”)
+                valid = not out_turn_obj.get("errors")
             if not valid:
                 return {"explanation_error": "无法确定你指的是哪一条错误"}
 

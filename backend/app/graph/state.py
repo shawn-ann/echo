@@ -1,10 +1,14 @@
 from typing import Any, TypedDict
 
 
-class TurnState(TypedDict):
+class TurnState(TypedDict, total=False):
     turn_id: str
     text: str
     errors: list[dict[str, Any]]
+    minimal_text: str
+    minimal_note: str
+    fluency_text: str
+    fluency_note: str
 
 
 class CorrectionState(TypedDict, total=False):

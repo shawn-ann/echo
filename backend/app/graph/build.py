@@ -3,6 +3,7 @@ from typing import Any
 from langgraph.graph import END, StateGraph
 
 from app.graph.nodes import (
+    finalize_turn_node,
     make_explain_node,
     make_fluency_node,
     make_locate_node,
@@ -27,6 +28,7 @@ def build_graph(client: LLMClient, checkpointer: Any = None):
     graph.add_node("minimal_edit", make_minimal_node(client))
     graph.add_node("minimal_passthrough", minimal_passthrough_node)
     graph.add_node("native_fluency", make_fluency_node(client))
+    graph.add_node("finalize_turn", finalize_turn_node)
     graph.add_node("resolve_target", resolve_target_node)
     graph.add_node("explain", make_explain_node(client))
 
@@ -51,8 +53,9 @@ def build_graph(client: LLMClient, checkpointer: Any = None):
     )
     graph.add_edge("validate_errors", "native_fluency")
     graph.add_edge("resolve_target", "explain")
-    graph.add_edge("minimal_edit", END)
-    graph.add_edge("minimal_passthrough", END)
-    graph.add_edge("native_fluency", END)
+    graph.add_edge("minimal_edit", "finalize_turn")
+    graph.add_edge("minimal_passthrough", "finalize_turn")
+    graph.add_edge("native_fluency", "finalize_turn")
+    graph.add_edge("finalize_turn", END)
     graph.add_edge("explain", END)
     return graph.compile(checkpointer=checkpointer)

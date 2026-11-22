@@ -111,6 +111,15 @@ def test_route_english_sentence_with_errors_is_correct():
     assert route_node(state)["intent"] == "correct"
 
 
+def test_route_cjk_question_with_prior_turn_is_followup():
+    state = {
+        "content": "为社么用what，不用how",
+        "turns": [{"turn_id": "t1", "text": "What is the weather today?", "errors": []}],
+        "turn_seq": 1,
+    }
+    assert route_node(state)["intent"] == "followup"
+
+
 def test_route_error_id_forces_followup():
     state = {"content": "解释一下", "error_id": "e2", "errors": [{"error_id": "e1"}]}
     assert route_node(state)["intent"] == "followup"
@@ -322,14 +331,34 @@ async def test_new_correction_clears_old_errors():
     assert result["explanation"] in (None, "")
 
 
-async def test_empty_error_correction_does_not_add_turn():
+async def test_empty_error_correction_keeps_turn_with_rewrites():
     fake = ScriptedLLMClient(locate='{"errors":[]}', fluency=FLUENCY_OK)
     graph = build_graph(fake, MemorySaver())
     config = {"configurable": {"thread_id": "t-empty"}}
     await graph.ainvoke({"content": TEXT}, config=config)
     state = await graph.aget_state(config)
-    assert state.values.get("turns", []) == []
+    assert len(state.values["turns"]) == 1
+    assert state.values["turns"][0]["errors"] == []
+    assert state.values["turns"][0]["fluency_text"] == "I went to school yesterday."
     assert state.values["turn_seq"] == 1
+
+
+async def test_followup_after_no_error_uses_rewrites_without_locate():
+    fake = ScriptedLLMClient(
+        locate='{"errors":[]}',
+        fluency=FLUENCY_OK,
+        explain='{"text": "原句语法正确，地道改写更自然。", "turn_id": "t1", "error_id": null}',
+    )
+    graph = build_graph(fake, MemorySaver())
+    config = {"configurable": {"thread_id": "t-noerr"}}
+    await graph.ainvoke({"content": "What is the weather today?"}, config=config)
+    fake.calls.clear()
+    result = await graph.ainvoke(
+        {"content": "为社么用what，不用how"}, config=config
+    )
+    assert result["intent"] == "followup"
+    assert result["explanation"] == "原句语法正确，地道改写更自然。"
+    assert "locate" not in fake.calls
 
 
 async def test_history_keeps_last_ten_turns():
