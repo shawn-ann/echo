@@ -51,17 +51,41 @@ export default function StreamCorrectionPage() {
   }
 
   function updateCorrection(id: string, patch: Partial<CorrectionChatItem>) {
-    updateItem(id, (item) =>
-      item.role === 'assistant' && item.kind === 'correction'
-        ? { ...item, ...patch }
-        : item,
-    )
+    updateItem(id, (item) => {
+      if (item.role !== 'assistant') return item
+      if (item.kind === 'pending') {
+        return {
+          id,
+          role: 'assistant',
+          kind: 'correction',
+          status: 'streaming',
+          turnId: patch.turnId ?? '',
+          errors: patch.errors ?? [],
+          minimal: patch.minimal ?? null,
+          fluency: patch.fluency ?? null,
+          degraded: patch.degraded ?? [],
+          error: patch.error ?? null,
+        }
+      }
+      return item.kind === 'correction' ? { ...item, ...patch } : item
+    })
   }
 
   function updateText(id: string, patch: Partial<TextChatItem>) {
-    updateItem(id, (item) =>
-      item.role === 'assistant' && item.kind === 'text' ? { ...item, ...patch } : item,
-    )
+    updateItem(id, (item) => {
+      if (item.role !== 'assistant') return item
+      if (item.kind === 'pending') {
+        return {
+          id,
+          role: 'assistant',
+          kind: 'text',
+          status: 'streaming',
+          text: patch.text ?? '',
+          error: patch.error ?? null,
+        }
+      }
+      return item.kind === 'text' ? { ...item, ...patch } : item
+    })
   }
 
   function appendDegraded(id: string, value: string) {
@@ -79,29 +103,8 @@ export default function StreamCorrectionPage() {
         setThreadId(event.thread_id)
         break
       case 'intent':
-        if (event.intent === 'followup') {
-          updateItem(assistantId, () => ({
-            id: assistantId,
-            role: 'assistant',
-            kind: 'text',
-            status: 'streaming',
-            text: '',
-            error: null,
-          }))
-        } else {
-          updateItem(assistantId, () => ({
-            id: assistantId,
-            role: 'assistant',
-            kind: 'correction',
-            status: 'streaming',
-            turnId: '',
-            errors: [],
-            minimal: null,
-            fluency: null,
-            degraded: [],
-            error: null,
-          }))
-        }
+        // Waiting UI stays a single “思考中…” bubble until the first
+        // content event (errors/explanation) arrives.
         break
       case 'errors':
         updateCorrection(assistantId, {

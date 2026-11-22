@@ -51,6 +51,20 @@ test('U-S-03 纠错后追问返回解释', async ({ page }) => {
   expect(lastRequest?.error_id).toBeUndefined()
 })
 
+test('U-S-05 等待态统一显示思考中', async ({ page }) => {
+  await page.route('**/api/v1/chat/stream', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    await route.continue()
+  })
+  await page.goto('/stream')
+  await page.getByPlaceholder(COMPOSER).fill('Yesterday I go to school.')
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+
+  await expect(page.getByText('思考中…')).toBeVisible()
+  await expect(page.getByTestId('stream-errors')).toHaveCount(0)
+  await expect(page.getByTestId('stream-errors')).toContainText('时态错误')
+})
+
 test('U-S-04 跨轮自由追问按片段解析', async ({ page }) => {
   await page.goto('/stream')
   const input = page.getByPlaceholder(COMPOSER)

@@ -10,7 +10,7 @@ export default function ChatTextMessage({ message }: { message: TextChatItem }) 
         className="max-w-[92%] rounded-xl border border-[#dee2e6] bg-white p-3 text-[#212529]"
       >
         {message.status === 'streaming' && !message.text ? (
-          <p className="text-sm text-[#868e96]">正在解释…</p>
+          <p className="text-sm text-[#868e96]">思考中…</p>
         ) : (
           <>
             <p className="mb-1 text-sm font-semibold text-[#343a40]">解释</p>

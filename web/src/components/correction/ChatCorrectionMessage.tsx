@@ -24,7 +24,7 @@ export default function ChatCorrectionMessage({ message, onAsk }: Props) {
               ))}
             </div>
           ) : message.status === 'streaming' ? (
-            <p className="text-sm text-[#868e96]">正在分析…</p>
+            <p className="text-sm text-[#868e96]">思考中…</p>
           ) : (
             <p className="text-sm text-[#0a7053]">未检测到语法错误</p>
           )}
