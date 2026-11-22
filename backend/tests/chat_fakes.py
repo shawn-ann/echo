@@ -2,10 +2,11 @@ from app.services.llm_client import LLMClient
 
 
 class ScriptedLLMClient(LLMClient):
-    def __init__(self, *, locate, minimal="", fluency=""):
+    def __init__(self, *, locate, minimal="", fluency="", explain=""):
         self.locate = locate
         self.minimal = minimal
         self.fluency = fluency
+        self.explain = explain
         self.calls: list[str] = []
         self.reasoning_efforts: list[str | None] = []
         self.temperatures: list[float | None] = []
@@ -37,4 +38,9 @@ class ScriptedLLMClient(LLMClient):
             if isinstance(self.fluency, Exception):
                 raise self.fluency
             return self.fluency
+        if "TASK: EXPLAIN_ERROR" in system:
+            self.calls.append("explain")
+            if isinstance(self.explain, Exception):
+                raise self.explain
+            return self.explain
         raise AssertionError(f"unexpected prompt: {system[:80]}")

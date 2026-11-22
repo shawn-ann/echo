@@ -1,3 +1,4 @@
+from app.prompts.explain_prompt import build_explain_messages
 from app.prompts.locate_prompt import build_locate_messages
 from app.prompts.rewrite_prompt import build_fluency_messages, build_minimal_messages
 
@@ -30,3 +31,12 @@ def test_fluency_prompt_accepts_empty_errors():
     messages = build_fluency_messages("Hello.", [])
     assert "TASK: NATIVE_FLUENCY" in messages[0]["content"]
     assert '"errors": []' in messages[1]["content"]
+
+
+def test_explain_prompt_contains_history_and_target():
+    turns = [{"turn_id": "t1", "text": "I go.", "errors": [{"error_id": "e1"}]}]
+    messages = build_explain_messages(turns, "为什么 go 改成 went？", "t1", "e1")
+    assert "TASK: EXPLAIN_ERROR" in messages[0]["content"]
+    assert '"turn_id": "t1"' in messages[1]["content"]
+    assert '"error_id": "e1"' in messages[1]["content"]
+    assert "为什么 go 改成 went？" in messages[1]["content"]

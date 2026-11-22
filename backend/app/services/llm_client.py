@@ -133,6 +133,16 @@ def _default_responder(messages: list[dict[str, Any]]) -> str:
             ensure_ascii=False,
         )
 
+    if "TASK: EXPLAIN_ERROR" in system:
+        return json.dumps(
+            {
+                "text": "go 是过去时间，所以用 went。",
+                "turn_id": "t1",
+                "error_id": "e1",
+            },
+            ensure_ascii=False,
+        )
+
     # 笔记保存请求（note_prompt 的 user content 含「## 原文」标记）
     if "## 原文" in last and "## 错误列表" in last:
         return json.dumps(
