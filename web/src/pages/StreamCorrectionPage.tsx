@@ -2,47 +2,38 @@ import { useEffect, useRef, useState } from 'react'
 
 import {
   streamCorrection,
-  type ChatError,
   type ChatEvent,
-  type ChatRewrite,
+  type StreamOptions,
 } from '@/api/chat'
-import ErrorCard from '@/components/correction/ErrorCard'
-import StreamRewriteCard from '@/components/correction/StreamRewriteCard'
+import ChatComposer from '@/components/correction/ChatComposer'
+import ChatCorrectionMessage from '@/components/correction/ChatCorrectionMessage'
+import ChatTextMessage from '@/components/correction/ChatTextMessage'
+import LoadingBubble from '@/components/correction/LoadingBubble'
+import UserBubble from '@/components/correction/UserBubble'
 import { Button } from '@/components/ui/button'
+import type { ChatItem, CorrectionChatItem, TextChatItem } from '@/types/chat'
 
-const MAX_LENGTH = 2000
-
-type Phase = 'idle' | 'locating' | 'rewriting' | 'followup' | 'done' | 'error'
-
-interface Report {
+interface SelectedTarget {
   turnId: string
-  text: string
-  errors: ChatError[]
-}
-
-interface Explanation {
-  text: string
-  turnId: string | null
-  errorId: string | null
+  errorId: string
 }
 
 export default function StreamCorrectionPage() {
-  const [text, setText] = useState('')
-  const [phase, setPhase] = useState<Phase>('idle')
+  const [items, setItems] = useState<ChatItem[]>([])
+  const [content, setContent] = useState('')
   const [threadId, setThreadId] = useState<string | null>(null)
-  const [reports, setReports] = useState<Report[]>([])
-  const [minimal, setMinimal] = useState<ChatRewrite | null>(null)
-  const [fluency, setFluency] = useState<ChatRewrite | null>(null)
-  const [degraded, setDegraded] = useState<string[]>([])
+  const [selected, setSelected] = useState<SelectedTarget | null>(null)
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [followupText, setFollowupText] = useState('')
-  const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null)
-  const [selectedErrorId, setSelectedErrorId] = useState<string | null>(null)
-  const [explanation, setExplanation] = useState<Explanation | null>(null)
   const abortRef = useRef<AbortController | null>(null)
-  const terminalErrorRef = useRef(false)
-  const lastSubmittedRef = useRef('')
-  const followupRef = useRef<HTMLInputElement>(null)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const idRef = useRef(0)
+  const lastRequestRef = useRef<{ content: string; options: StreamOptions } | null>(null)
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [items, error])
 
   useEffect(() => {
     return () => {
@@ -50,295 +41,277 @@ export default function StreamCorrectionPage() {
     }
   }, [])
 
-  const busy = phase === 'locating' || phase === 'rewriting' || phase === 'followup'
-  const over = text.length > MAX_LENGTH
-  const disabled = busy || text.trim().length === 0 || over
-  const followupDisabled = busy || !threadId || followupText.trim().length === 0
+  const nextId = () => {
+    idRef.current += 1
+    return `m${idRef.current}`
+  }
 
-  function handleEvent(event: ChatEvent, controller: AbortController) {
+  function updateItem(id: string, updater: (item: ChatItem) => ChatItem) {
+    setItems((prev) => prev.map((item) => (item.id === id ? updater(item) : item)))
+  }
+
+  function updateCorrection(id: string, patch: Partial<CorrectionChatItem>) {
+    updateItem(id, (item) =>
+      item.role === 'assistant' && item.kind === 'correction'
+        ? { ...item, ...patch }
+        : item,
+    )
+  }
+
+  function updateText(id: string, patch: Partial<TextChatItem>) {
+    updateItem(id, (item) =>
+      item.role === 'assistant' && item.kind === 'text' ? { ...item, ...patch } : item,
+    )
+  }
+
+  function appendDegraded(id: string, value: string) {
+    updateItem(id, (item) =>
+      item.role === 'assistant' && item.kind === 'correction'
+        ? { ...item, degraded: [...item.degraded, value] }
+        : item,
+    )
+  }
+
+  function handleEvent(event: ChatEvent, assistantId: string, controller: AbortController) {
     if (controller.signal.aborted) return
     switch (event.type) {
       case 'thread':
         setThreadId(event.thread_id)
         break
       case 'intent':
-        if (event.intent === 'followup') setPhase('followup')
+        if (event.intent === 'followup') {
+          updateItem(assistantId, () => ({
+            id: assistantId,
+            role: 'assistant',
+            kind: 'text',
+            status: 'streaming',
+            text: '',
+            error: null,
+          }))
+        } else {
+          updateItem(assistantId, () => ({
+            id: assistantId,
+            role: 'assistant',
+            kind: 'correction',
+            status: 'streaming',
+            turnId: '',
+            errors: [],
+            minimal: null,
+            fluency: null,
+            degraded: [],
+            error: null,
+          }))
+        }
         break
       case 'errors':
-        setReports((prev) =>
-          [
-            ...prev,
-            {
-              turnId: event.turn_id,
-              text: lastSubmittedRef.current,
-              errors: event.errors,
-            },
-          ].slice(-10),
-        )
-        setPhase('rewriting')
+        updateCorrection(assistantId, {
+          errors: event.errors,
+          turnId: event.turn_id,
+        })
         break
       case 'minimal':
         if (event.text.trim()) {
-          setMinimal({ text: event.text, note: event.note })
+          updateCorrection(assistantId, {
+            minimal: { text: event.text, note: event.note },
+          })
         } else {
-          setDegraded((prev) => [...prev, 'minimal: 改写生成失败'])
+          appendDegraded(assistantId, 'minimal: 改写生成失败')
         }
         break
       case 'fluency':
         if (event.text.trim()) {
-          setFluency({ text: event.text, note: event.note })
+          updateCorrection(assistantId, {
+            fluency: { text: event.text, note: event.note },
+          })
         } else {
-          setDegraded((prev) => [...prev, 'fluency: 改写生成失败'])
+          appendDegraded(assistantId, 'fluency: 改写生成失败')
         }
         break
       case 'rewrite_degraded':
-        setDegraded((prev) => [...prev, `${event.stage}: ${event.message}`])
+        appendDegraded(assistantId, `${event.stage}: ${event.message}`)
         break
       case 'explanation':
-        setExplanation({
-          text: event.text,
-          turnId: event.turn_id,
-          errorId: event.error_id,
-        })
-        setPhase('done')
+        updateText(assistantId, { text: event.text })
         break
       case 'error':
-        terminalErrorRef.current = true
+        updateItem(assistantId, (item) => {
+          if (item.role === 'assistant' && item.kind === 'correction') {
+            return { ...item, status: 'error', error: event.message }
+          }
+          return {
+            id: assistantId,
+            role: 'assistant',
+            kind: 'text',
+            status: 'error',
+            text: '',
+            error: event.message,
+          }
+        })
         setError(event.message)
-        setPhase('error')
+        setBusy(false)
         break
       case 'done':
-        if (!terminalErrorRef.current) setPhase('done')
+        updateItem(assistantId, (item) => {
+          if (item.role === 'assistant' && item.kind !== 'pending') {
+            return item.status === 'error' ? item : { ...item, status: 'done' }
+          }
+          return item
+        })
+        setBusy(false)
         break
     }
   }
 
-  async function handleStart() {
-    const content = text.trim()
-    if (!content || disabled) return
-
+  async function send(message: string, options: StreamOptions) {
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
-    terminalErrorRef.current = false
-    lastSubmittedRef.current = content
-    setPhase('locating')
-    setMinimal(null)
-    setFluency(null)
-    setDegraded([])
+    const userId = nextId()
+    const assistantId = nextId()
+    lastRequestRef.current = { content: message, options }
+    setItems((prev) => [
+      ...prev,
+      { id: userId, role: 'user', text: message },
+      {
+        id: assistantId,
+        role: 'assistant',
+        kind: 'pending',
+        status: 'streaming',
+        error: null,
+      },
+    ])
+    setContent('')
+    setSelected(null)
     setError(null)
-    setExplanation(null)
-    setSelectedTurnId(null)
-    setSelectedErrorId(null)
+    setBusy(true)
 
     try {
       await streamCorrection(
-        content,
-        (event) => handleEvent(event, controller),
+        message,
+        (event) => handleEvent(event, assistantId, controller),
         controller.signal,
-        { threadId: threadId ?? undefined, intent: 'correct' },
+        options,
       )
     } catch (err) {
       if (controller.signal.aborted) return
-      terminalErrorRef.current = true
-      setError(err instanceof Error ? err.message : '请求失败，请重试')
-      setPhase('error')
+      const message = err instanceof Error ? err.message : '请求失败，请重试'
+      updateItem(assistantId, () => ({
+        id: assistantId,
+        role: 'assistant',
+        kind: 'text',
+        status: 'error',
+        text: '',
+        error: message,
+      }))
+      setError(message)
+    } finally {
+      if (!controller.signal.aborted) setBusy(false)
     }
   }
 
-  async function handleFollowup() {
-    const question = followupText.trim()
-    if (!question || !threadId || busy) return
-
-    const turnId = selectedTurnId
-    const errorId = selectedErrorId
-    setSelectedTurnId(null)
-    setSelectedErrorId(null)
-    setFollowupText('')
-
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
-    terminalErrorRef.current = false
-    setError(null)
-    setExplanation(null)
-    setPhase('followup')
-
-    try {
-      await streamCorrection(
-        question,
-        (event) => handleEvent(event, controller),
-        controller.signal,
-        {
-          threadId,
-          intent: 'followup',
-          turnId: turnId ?? undefined,
-          errorId: errorId ?? undefined,
-        },
-      )
-    } catch (err) {
-      if (controller.signal.aborted) return
-      terminalErrorRef.current = true
-      setError(err instanceof Error ? err.message : '请求失败，请重试')
-      setPhase('error')
+  function handleSend() {
+    const message = content.trim()
+    if (!message || busy) return
+    const options: StreamOptions = { threadId: threadId ?? undefined }
+    if (selected) {
+      options.intent = 'followup'
+      options.turnId = selected.turnId
+      options.errorId = selected.errorId
     }
+    void send(message, options)
+  }
+
+  function handleRetry() {
+    const request = lastRequestRef.current
+    if (!request || busy) return
+    void send(request.content, request.options)
   }
 
   function handleAsk(turnId: string, errorId: string) {
-    setSelectedTurnId(turnId)
-    setSelectedErrorId(errorId)
-    followupRef.current?.focus()
+    setSelected({ turnId, errorId })
+    composerRef.current?.focus()
+  }
+
+  function handleNewChat() {
+    abortRef.current?.abort()
+    setItems([])
+    setContent('')
+    setThreadId(null)
+    setSelected(null)
+    setError(null)
+    setBusy(false)
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] p-4 md:p-8">
-      <div className="mx-auto w-full max-w-3xl space-y-4">
-        <header className="space-y-1">
-          <h1 className="text-xl font-semibold text-[#212529]">流式纠错实验</h1>
-          <p className="text-sm text-[#868c96]">先出错误列表，再出两版改写。支持追问最近 10 轮。</p>
-        </header>
-
-        <div className="space-y-2 rounded-xl border border-[#dee2e6] bg-white p-4">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="输入英文，开始流式纠错"
-            rows={4}
-            className="w-full resize-y rounded-lg border border-[#ced4da] bg-[#f8f9fa] px-3.5 py-2.5 text-base focus-visible:border-[#0ca678] focus-visible:ring-[#0ca678]/50"
-          />
-          <div className="flex items-center justify-between gap-3">
-            <span className={`text-sm ${over ? 'text-[#fa5252]' : 'text-[#868c96]'}`}>
-              {over ? '请将文本缩短至 2000 字符以内再提交' : `${text.length}/${MAX_LENGTH}`}
-            </span>
-            <Button
-              onClick={handleStart}
-              disabled={disabled}
-              className="h-10 bg-[#0ca678] px-5 text-white hover:bg-[#12c493] disabled:bg-[#99f0d8]"
-            >
-              {busy ? '分析中…' : '开始'}
-            </Button>
-          </div>
+    <div className="flex h-screen flex-col bg-[#f8f9fa]">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#dee2e6] bg-white px-4 md:px-6">
+        <div>
+          <p className="text-sm font-semibold text-[#0a7053]">Echo · 流式纠错</p>
+          <p className="text-xs text-[#868e96]">支持最近 10 轮追问</p>
         </div>
+        <Button
+          variant="outline"
+          onClick={handleNewChat}
+          className="h-8 border-[#ced4da] bg-white px-3 text-[#343a40] hover:bg-[#f1f3f5]"
+        >
+          新对话
+        </Button>
+      </header>
 
-        {phase === 'locating' && (
-          <p className="text-center text-sm text-[#868c96]">正在分析…</p>
-        )}
-
-        {phase !== 'error' &&
-          reports.map((report) => (
-            <div
-              key={report.turnId}
-              data-testid="stream-errors"
-              className="rounded-xl border border-[#dee2e6] bg-white p-3"
-            >
-              <div className="mb-2">
-                <p className="text-sm font-semibold text-[#343a40]">
-                  错误分析
-                  <span className="ml-2 text-xs font-normal text-[#868c96]">{report.turnId}</span>
-                </p>
-                <p className="truncate text-xs text-[#868c96]">{report.text}</p>
-              </div>
-              {report.errors.length > 0 ? (
-                <div className="space-y-2">
-                  {report.errors.map((item, index) => (
-                    <ErrorCard
-                      key={`${index}-${item.error_id}-${item.fragment}`}
-                      error={item}
-                      onAsk={() => handleAsk(report.turnId, item.error_id)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-[#0a7053]">未检测到语法错误</p>
-              )}
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-3xl space-y-4 p-4 md:p-6">
+          {items.length === 0 && !busy && (
+            <div className="flex min-h-[50vh] items-center justify-center">
+              <p className="text-center text-[#868e96]">
+                输入英文开始纠错；也可以点击错误卡片追问，或直接继续提问。
+              </p>
             </div>
-          ))}
+          )}
 
-        {minimal && (
-          <StreamRewriteCard
-            title="最小修正"
-            text={minimal.text}
-            note={minimal.note}
-            testId="stream-minimal"
-          />
-        )}
+          {items.map((item) => {
+            if (item.role === 'user') {
+              return <UserBubble key={item.id} content={item.text} />
+            }
+            if (item.kind === 'pending') {
+              return <LoadingBubble key={item.id} />
+            }
+            if (item.kind === 'correction') {
+              return (
+                <ChatCorrectionMessage
+                  key={item.id}
+                  message={item}
+                  onAsk={(errorId) => handleAsk(item.turnId, errorId)}
+                />
+              )
+            }
+            return <ChatTextMessage key={item.id} message={item} />
+          })}
 
-        {fluency && (
-          <StreamRewriteCard
-            title="地道表达"
-            text={fluency.text}
-            note={fluency.note}
-            testId="stream-fluency"
-          />
-        )}
-
-        {degraded.length > 0 && (
-          <div className="rounded-lg border border-[#ffd43b] bg-[#fff9db] p-3 text-sm text-[#8a6d00]">
-            {degraded.map((item) => (
-              <p key={item}>部分改写生成失败：{item}</p>
-            ))}
-          </div>
-        )}
-
-        {reports.length > 0 && (
-          <div className="space-y-2 rounded-xl border border-[#dee2e6] bg-white p-3">
-            <p className="text-sm font-semibold text-[#343a40]">追问</p>
-            <div className="flex flex-col gap-2 md:flex-row">
-              <input
-                ref={followupRef}
-                value={followupText}
-                onChange={(e) => setFollowupText(e.target.value)}
-                placeholder="输入追问，例如：为什么这么改？"
-                className="min-w-0 flex-1 rounded-lg border border-[#ced4da] bg-[#f8f9fa] px-3 py-2 text-sm focus-visible:border-[#0ca678] focus-visible:ring-[#0ca678]/50"
-              />
+          {error && (
+            <div className="rounded-lg border border-[#ffc9c9] bg-[#fff5f5] p-3 text-sm text-[#c92a2a]">
+              <p>{error}</p>
               <Button
-                onClick={handleFollowup}
-                disabled={followupDisabled}
-                className="h-9 bg-[#0ca678] px-4 text-white hover:bg-[#12c493] disabled:bg-[#99f0d8]"
+                onClick={handleRetry}
+                disabled={busy}
+                className="mt-2 h-8 bg-[#0ca678] px-3 text-white hover:bg-[#12c493] disabled:bg-[#99f0d8]"
               >
-                {phase === 'followup' ? '解释中…' : '发送追问'}
+                重试
               </Button>
             </div>
-            {selectedTurnId && selectedErrorId && (
-              <p className="text-xs text-[#868e96]">
-                当前追问：{selectedTurnId}:{selectedErrorId}
-              </p>
-            )}
-          </div>
-        )}
-
-        {explanation && (
-          <div
-            data-testid="stream-explanation"
-            className="rounded-xl border border-[#dee2e6] bg-white p-3"
-          >
-            <p className="mb-1 text-sm font-semibold text-[#343a40]">
-              解释
-              {explanation.turnId && explanation.errorId && (
-                <span className="ml-2 text-xs font-normal text-[#868c96]">
-                  {explanation.turnId}:{explanation.errorId}
-                </span>
-              )}
-            </p>
-            <p className="text-sm whitespace-pre-wrap text-[#212529]">{explanation.text}</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="space-y-2 rounded-lg border border-[#ffc9c9] bg-[#fff5f5] p-3 text-sm text-[#c92a2a]">
-            <p>{error}</p>
-            <Button
-              onClick={handleStart}
-              disabled={text.trim().length === 0 || over}
-              className="h-8 bg-[#0ca678] px-3 text-white hover:bg-[#12c493] disabled:bg-[#99f0d8]"
-            >
-              重试
-            </Button>
-          </div>
-        )}
-
-        {phase === 'done' && <p className="text-center text-xs text-[#868c96]">完成</p>}
+          )}
+          <div ref={bottomRef} />
+        </div>
       </div>
+
+      <ChatComposer
+        ref={composerRef}
+        value={content}
+        onChange={setContent}
+        onSend={handleSend}
+        busy={busy}
+        selected={selected}
+        onClearSelected={() => setSelected(null)}
+      />
     </div>
   )
 }
