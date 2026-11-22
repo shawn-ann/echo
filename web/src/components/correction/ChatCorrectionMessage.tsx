@@ -17,10 +17,12 @@ function sameText(a: string, b: string) {
 
 export default function ChatCorrectionMessage({ message, onAsk }: Props) {
   const streaming = message.status === 'streaming'
-  const sourceText = message.sourceText
+  const sourceText = message.sourceText ?? ''
   const minimalText = message.minimal?.text ?? sourceText
-  const minimalEmpty = !!message.minimal && sameText(message.minimal.text, sourceText)
-  const fluencyEmpty = !!message.fluency && sameText(message.fluency.text, minimalText)
+  const minimalEmpty =
+    !!message.minimal && !!sourceText && sameText(message.minimal.text, sourceText)
+  const fluencyEmpty =
+    !!message.fluency && !!minimalText && sameText(message.fluency.text, minimalText)
 
   return (
     <div className="flex justify-start">
