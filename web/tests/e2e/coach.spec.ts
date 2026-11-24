@@ -106,3 +106,17 @@ test('U-CO-06 显示思考耗时与完成总耗时', async ({ page }) => {
   await expect(timing).toHaveText(/^思考 \d+\.\ds · 总耗时 \d+\.\ds$/)
   await expect(page.getByTestId('coach-reasoning')).toContainText('思考过程 ·')
 })
+
+test('U-CO-07 带结尾提问的英文草稿走纠错而不是问答', async ({ page }) => {
+  await page.goto('/coach')
+  await page
+    .getByPlaceholder(COMPOSER)
+    .fill(
+      'It seems this job is unstable, maybe there are some network 波动，GCP Prometheus can not pull the metric from AIP Prometheus within 1 mins? Do you have any idea about this?',
+    )
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+
+  await expect(page.getByText('纠错', { exact: true }).last()).toBeVisible()
+  await expect(page.getByTestId('coach-errors')).toContainText('错误分析')
+  await expect(page.getByTestId('coach-answer')).toHaveCount(0)
+})

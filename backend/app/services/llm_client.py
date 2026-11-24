@@ -1,4 +1,5 @@
 import json
+import re
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
@@ -354,7 +355,8 @@ def _coach_mock_response(last_user: str) -> str:
         "how",
         "what",
     )
-    if any(marker in text.lower() for marker in question_markers):
+    english_words = re.findall(r"[A-Za-z][A-Za-z']*", text)
+    if len(english_words) < 8 and any(marker in text.lower() for marker in question_markers):
         return json.dumps(
             {
                 "mode": "answer",
