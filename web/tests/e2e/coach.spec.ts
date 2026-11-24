@@ -88,3 +88,15 @@ test('U-CO-05 思考过程自动滚动到最新内容', async ({ page }) => {
     ),
   ).toBe(true)
 })
+
+test('U-CO-06 显示思考耗时与完成总耗时', async ({ page }) => {
+  await page.goto('/coach')
+  await page.getByPlaceholder(COMPOSER).fill('Yesterday I go to school.')
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+
+  const timing = page.getByTestId('coach-timing')
+  await expect(timing).toContainText('总耗时')
+  await expect(timing).toContainText('思考')
+  await expect(timing).toHaveText(/^思考 \d+\.\ds · 总耗时 \d+\.\ds$/)
+  await expect(page.getByTestId('coach-reasoning')).toContainText('思考过程 ·')
+})

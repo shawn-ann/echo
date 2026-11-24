@@ -25,6 +25,9 @@ interface CoachItem {
   id: string
   role: 'assistant'
   status: 'streaming' | 'done' | 'error'
+  startedAt: number
+  thinkingMs: number | null
+  doneMs: number | null
   mode: CoachMode | null
   reasoning: string
   errors: CoachError[]
@@ -74,6 +77,7 @@ export default function CoachPage() {
   const [history, setHistory] = useState<CoachHistoryMessage[]>([])
   const [content, setContent] = useState('')
   const [busy, setBusy] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
   const abortRef = useRef<AbortController | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const idRef = useRef(0)
@@ -85,6 +89,13 @@ export default function CoachPage() {
   useEffect(() => {
     return () => abortRef.current?.abort()
   }, [])
+
+  useEffect(() => {
+    if (!busy) return
+    setNow(Date.now())
+    const timer = window.setInterval(() => setNow(Date.now()), 200)
+    return () => window.clearInterval(timer)
+  }, [busy])
 
   const nextId = () => {
     idRef.current += 1
@@ -99,10 +110,19 @@ export default function CoachPage() {
     )
   }
 
+  function markContent(item: CoachItem, at: number): CoachItem {
+    return item.thinkingMs == null
+      ? { ...item, thinkingMs: at - item.startedAt }
+      : item
+  }
+
   function handleEvent(event: CoachEvent, assistantId: string) {
+    const at = Date.now()
     switch (event.kind) {
       case 'report_start':
-        updateAssistant(assistantId, (item) => ({ ...item, mode: event.mode }))
+        updateAssistant(assistantId, (item) =>
+          markContent({ ...item, mode: event.mode }, at),
+        )
         break
       case 'reasoning':
         updateAssistant(assistantId, (item) => ({
@@ -120,17 +140,28 @@ export default function CoachPage() {
             reason: event.reason,
             fix: event.fix,
           }
-          return { ...item, errors: errors.filter((value): value is CoachError => Boolean(value)) }
+          return markContent(
+            {
+              ...item,
+              errors: errors.filter((value): value is CoachError => Boolean(value)),
+            },
+            at,
+          )
         })
         break
       case 'rewrite_ready':
-        updateAssistant(assistantId, (item) => ({
-          ...item,
-          rewrites: {
-            ...item.rewrites,
-            [event.variant]: { text: event.text, note: event.note },
-          },
-        }))
+        updateAssistant(assistantId, (item) =>
+          markContent(
+            {
+              ...item,
+              rewrites: {
+                ...item.rewrites,
+                [event.variant]: { text: event.text, note: event.note },
+              },
+            },
+            at,
+          ),
+        )
         break
       case 'learning_added':
         updateAssistant(assistantId, (item) => {
@@ -142,25 +173,28 @@ export default function CoachPage() {
             rule: event.rule,
             examples: event.examples,
           }
-          return {
-            ...item,
-            learnings: learnings.filter(
-              (value): value is CoachLearning => Boolean(value),
-            ),
-          }
+          return markContent(
+            {
+              ...item,
+              learnings: learnings.filter(
+                (value): value is CoachLearning => Boolean(value),
+              ),
+            },
+            at,
+          )
         })
         break
       case 'answer_delta':
-        updateAssistant(assistantId, (item) => ({
-          ...item,
-          answer: item.answer + event.text,
-        }))
+        updateAssistant(assistantId, (item) =>
+          markContent({ ...item, answer: item.answer + event.text }, at),
+        )
         break
       case 'error':
         updateAssistant(assistantId, (item) => ({
           ...item,
           status: 'error',
           error: event.message,
+          doneMs: at - item.startedAt,
         }))
         setBusy(false)
         break
@@ -168,13 +202,14 @@ export default function CoachPage() {
         if (event.report) {
           const report = event.report
           updateAssistant(assistantId, (item) => ({
-            ...item,
+            ...markContent(item, at),
             status: 'done',
             mode: report.mode,
             errors: report.mode === 'correct' ? report.errors : [],
             rewrites: report.mode === 'correct' ? report.rewrites : {},
             learnings: report.mode === 'correct' ? report.learnings : [],
             answer: report.mode === 'answer' ? report.answer : '',
+            doneMs: at - item.startedAt,
           }))
           setHistory((prev) => [...prev, compactReport(report)])
         } else {
@@ -182,6 +217,7 @@ export default function CoachPage() {
             ...item,
             status: 'error',
             error: '报告解析失败，请重试',
+            doneMs: at - item.startedAt,
           }))
         }
         setBusy(false)
@@ -208,6 +244,9 @@ export default function CoachPage() {
         id: assistantId,
         role: 'assistant',
         status: 'streaming',
+        startedAt: Date.now(),
+        thinkingMs: null,
+        doneMs: null,
         mode: null,
         reasoning: '',
         errors: [],
@@ -233,6 +272,7 @@ export default function CoachPage() {
         ...item,
         status: 'error',
         error: message,
+        doneMs: Date.now() - item.startedAt,
       }))
     } finally {
       if (!controller.signal.aborted) setBusy(false)
@@ -283,7 +323,7 @@ export default function CoachPage() {
             if (item.role === 'user') {
               return <UserBubble key={item.id} content={item.text} />
             }
-            return <CoachMessage key={item.id} message={item} />
+            return <CoachMessage key={item.id} message={item} now={now} />
           })}
 
           <div ref={bottomRef} />
@@ -327,7 +367,7 @@ export default function CoachPage() {
   )
 }
 
-function CoachMessage({ message }: { message: CoachItem }) {
+function CoachMessage({ message, now }: { message: CoachItem; now: number }) {
   const streaming = message.status === 'streaming'
   const mode = message.mode
   const hasContent =
@@ -336,6 +376,17 @@ function CoachMessage({ message }: { message: CoachItem }) {
     message.errors.length > 0 ||
     Object.keys(message.rewrites).length > 0 ||
     message.learnings.length > 0
+
+  const formatSeconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`
+  const elapsed = streaming ? now - message.startedAt : message.doneMs
+  const timing =
+    message.doneMs != null
+      ? message.thinkingMs != null
+        ? `思考 ${formatSeconds(message.thinkingMs)} · 总耗时 ${formatSeconds(message.doneMs)}`
+        : `总耗时 ${formatSeconds(message.doneMs)}`
+      : message.thinkingMs != null
+        ? `思考 ${formatSeconds(message.thinkingMs)} · 已用时 ${formatSeconds(elapsed ?? 0)}`
+        : `已用时 ${formatSeconds(elapsed ?? 0)}`
 
   return (
     <div className="flex justify-start">
@@ -348,10 +399,24 @@ function CoachMessage({ message }: { message: CoachItem }) {
             </span>
           )}
           {streaming && <span className="text-xs text-[#868e96]">流式生成中…</span>}
+          <span
+            data-testid="coach-timing"
+            className="ml-auto text-xs text-[#868e96]"
+            aria-live="polite"
+          >
+            {timing}
+          </span>
         </div>
 
         {message.reasoning && (
-          <ReasoningPanel text={message.reasoning} />
+          <ReasoningPanel
+            text={message.reasoning}
+            label={
+              message.thinkingMs != null
+                ? `思考过程 · ${formatSeconds(message.thinkingMs)}`
+                : '思考过程'
+            }
+          />
         )}
 
         {!hasContent && streaming && (
@@ -486,7 +551,7 @@ function CoachMessage({ message }: { message: CoachItem }) {
   )
 }
 
-function ReasoningPanel({ text }: { text: string }) {
+function ReasoningPanel({ text, label }: { text: string; label: string }) {
   const [open, setOpen] = useState(true)
   const preRef = useRef<HTMLPreElement>(null)
   const pinnedRef = useRef(true)
@@ -505,7 +570,7 @@ function ReasoningPanel({ text }: { text: string }) {
       className="mb-2 rounded-lg border border-[#e9ecef] bg-[#f8f9fa]"
     >
       <summary className="cursor-pointer px-3 py-2 text-xs text-[#868e96]">
-        思考过程
+        {label}
       </summary>
       <pre
         ref={preRef}
