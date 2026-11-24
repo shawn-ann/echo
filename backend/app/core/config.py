@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     LLM_THINKING_ALWAYS_ON: bool = False
     # 流式纠错实验端点：默认关闭，避免误部署到公网；本地联调显式设为 true
     STREAM_MVP_ENABLED: bool = False
+    # Coach 流式教练端点：独立开关，默认关闭
+    COACH_MVP_ENABLED: bool = False
     CONTEXT_LIMIT: int = 40
     CORRECTION_STYLE: str = "casual"  # 纠错场景：casual（日常/职场口语，默认）/ formal（正式书面）
 

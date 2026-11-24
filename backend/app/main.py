@@ -9,7 +9,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.db import async_session_factory
-from app.routers import auth, chat, health, messages, notes
+from app.routers import auth, chat, coach, health, messages, notes
 
 
 def _error_response(status_code: int, code: str, message: str, details: dict | None = None):
@@ -44,6 +44,8 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     if settings.STREAM_MVP_ENABLED:
         app.include_router(chat.router)
+    if settings.COACH_MVP_ENABLED:
+        app.include_router(coach.router)
     app.include_router(messages.router)
     app.include_router(notes.router)
 

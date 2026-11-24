@@ -1,5 +1,5 @@
 import json
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 import httpx
@@ -19,6 +19,19 @@ class LLMClient:
         temperature: float | None = None,
     ) -> str:
         raise NotImplementedError
+
+    async def complete_stream(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        thinking: bool = True,
+        json_mode: bool = True,
+        reasoning_effort: str | None = None,
+        temperature: float | None = None,
+    ) -> AsyncIterator[dict[str, str]]:
+        """按增量产出 {"type": "reasoning"|"content", "text": ...}。"""
+        raise NotImplementedError
+        yield {}  # pragma: no cover - 让类型层面成为 async generator
 
 
 class LLMTimeoutError(Exception):
@@ -97,12 +110,100 @@ class RealLLMClient(LLMClient):
             raise LLMTimeoutError from last_exc
         raise LLMUnavailableError from last_exc
 
+    async def complete_stream(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        thinking: bool = True,
+        json_mode: bool = True,
+        reasoning_effort: str | None = None,
+        temperature: float | None = None,
+    ) -> AsyncIterator[dict[str, str]]:
+        payload = self._build_payload(
+            messages,
+            thinking=thinking,
+            json_mode=json_mode,
+            reasoning_effort=reasoning_effort,
+            temperature=temperature,
+        )
+        payload["stream"] = True
+        try:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(300.0, connect=10.0), transport=self._transport
+            ) as client:
+                async with client.stream(
+                    "POST",
+                    f"{self.base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                    json=payload,
+                ) as response:
+                    if response.status_code >= 400:
+                        await response.aread()
+                        raise LLMUnavailableError(
+                            f"LLM returned status {response.status_code}"
+                        )
+                    async for line in response.aiter_lines():
+                        if not line.startswith("data:"):
+                            continue
+                        data = line[5:].strip()
+                        if not data or data == "[DONE]":
+                            continue
+                        try:
+                            obj = json.loads(data)
+                            delta = obj["choices"][0].get("delta") or {}
+                        except (json.JSONDecodeError, KeyError, IndexError, TypeError):
+                            continue
+                        reasoning = delta.get("reasoning_content") or delta.get("reasoning")
+                        if reasoning:
+                            yield {"type": "reasoning", "text": str(reasoning)}
+                        content = delta.get("content")
+                        if content:
+                            yield {"type": "content", "text": str(content)}
+        except httpx.TimeoutException as exc:
+            raise LLMTimeoutError from exc
+        except httpx.HTTPError as exc:
+            raise LLMUnavailableError from exc
+
+    def _build_payload(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        thinking: bool,
+        json_mode: bool,
+        reasoning_effort: str | None,
+        temperature: float | None,
+    ) -> dict[str, Any]:
+        effective_thinking = True if self.thinking_always_on else thinking
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": messages,
+            # temperature 不注入，交由服务端默认值
+        }
+        if self.thinking_param == "enable_thinking":
+            payload["enable_thinking"] = effective_thinking
+        elif self.thinking_param == "thinking":
+            payload["thinking"] = {
+                "type": "enabled" if effective_thinking else "disabled"
+            }
+        else:
+            payload["chat_template_kwargs"] = {"enable_thinking": effective_thinking}
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
+        if reasoning_effort:
+            payload["reasoning_effort"] = reasoning_effort
+        if temperature is not None:
+            payload["temperature"] = temperature
+        return payload
+
 
 def _default_responder(messages: list[dict[str, Any]]) -> str:
     """Mock 默认响应：区分流式三节点、纠错请求与笔记保存请求。"""
     system = messages[0].get("content", "") if messages and messages[0].get("role") == "system" else ""
     user_contents = [m["content"] for m in messages if m.get("role") == "user"]
     last = user_contents[-1] if user_contents else ""
+
+    if "You are an English coach" in system:
+        return _coach_mock_response(last)
 
     if "TASK: LOCATE_ERRORS" in system:
         return json.dumps(
@@ -214,6 +315,99 @@ class MockLLMClient(LLMClient):
     ) -> str:
         self.calls.append(messages)
         return self.responder(messages)
+
+    async def complete_stream(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        thinking: bool = True,
+        json_mode: bool = True,
+        reasoning_effort: str | None = None,
+        temperature: float | None = None,
+    ) -> AsyncIterator[dict[str, str]]:
+        self.calls.append(messages)
+        yield {"type": "reasoning", "text": "正在分析句子结构与表达是否自然…"}
+        text = self.responder(messages)
+        for start in range(0, len(text), 32):
+            yield {"type": "content", "text": text[start : start + 32]}
+
+
+def _coach_mock_response(last_user: str) -> str:
+    """Mock coach：中文提问走 answer，其余走 correct，字段顺序与真实契约一致。"""
+    text = last_user.strip()
+    question_markers = (
+        "?",
+        "？",
+        "为什么",
+        "怎么",
+        "如何",
+        "什么",
+        "吗",
+        "呢",
+        "why",
+        "how",
+        "what",
+    )
+    if any(marker in text.lower() for marker in question_markers):
+        return json.dumps(
+            {
+                "mode": "answer",
+                "answer": (
+                    "turn on 是英语里“打开（电器/灯）”的固定搭配，"
+                    "open 一般只用于门、窗等可物理开合的东西。\n"
+                    "例如：Could you turn on the light? 比 Could you open the light? 自然得多。"
+                ),
+            },
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+
+    return json.dumps(
+        {
+            "mode": "correct",
+            "has_errors": True,
+            "errors": [
+                {
+                    "severity": "Major",
+                    "fragment": "go",
+                    "type": "时态错误",
+                    "reason": "yesterday 表示过去，动词应使用过去式",
+                    "fix": "went",
+                },
+                {
+                    "severity": "Minor",
+                    "fragment": "very big",
+                    "type": "中式直译",
+                    "reason": "very big 在正式描述中不够自然",
+                    "fix": "substantial",
+                },
+            ],
+            "rewrites": {
+                "formal": {
+                    "text": "Yesterday I went to school and saw a substantial building.",
+                    "note": "更正式、更具体的表达",
+                },
+                "casual": {
+                    "text": "I went to school yesterday and saw a really big building.",
+                    "note": "口语里 really big 更自然",
+                },
+                "minimal": {
+                    "text": "Yesterday I went to school and saw a very big building."
+                },
+            },
+            "learnings": [
+                {
+                    "pattern": "过去时间要用过去式",
+                    "wrong": "yesterday + 动词原形",
+                    "right": "yesterday + 动词过去式",
+                    "rule": "句中出现 yesterday 等过去时间状语时，谓语动词需使用过去式。",
+                    "examples": ["Yesterday I go to school. ❌ → Yesterday I went to school. ✅"],
+                }
+            ],
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
 
 
 def get_llm_client() -> LLMClient:

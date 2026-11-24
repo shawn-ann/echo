@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthGuard, GuestGuard } from '@/components/AuthGuard'
 import AppLayout from '@/components/AppLayout'
 import CorrectionPage from '@/pages/CorrectionPage'
+import CoachPage from '@/pages/CoachPage'
 import Login from '@/pages/Login'
 import NotesPage from '@/pages/NotesPage'
 import StreamCorrectionPage from '@/pages/StreamCorrectionPage'
@@ -23,6 +24,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/stream" element={<StreamCorrectionPage />} />
+          <Route path="/coach" element={<CoachPage />} />
           <Route element={<GuestGuard />}>
             <Route path="/login" element={<Login />} />
           </Route>

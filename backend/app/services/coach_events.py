@@ -1,0 +1,134 @@
+"""把增量 JSON 差分映射成稳定的 SSE 领域事件。"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from app.services.partial_json import Partial, wrap
+
+SCHEMA_VERSION = 1
+REWRITE_VARIANTS = ("formal", "casual", "minimal")
+
+
+def _str(node: Partial | None) -> str | None:
+    if node is None or not node.complete or not isinstance(node.value, str):
+        return None
+    return node.value
+
+
+def _str_list(node: Partial | None) -> list[str] | None:
+    if node is None or not node.complete or not isinstance(node.value, list):
+        return None
+    items = [_str(item) for item in node.value]
+    if any(item is None for item in items):
+        return None
+    return [item for item in items if item is not None]
+
+
+class CoachEventMapper:
+    """幂等差分器：同一份数据可多次 feed，只发新增且已闭合的内容。"""
+
+    def __init__(self) -> None:
+        self.mode: str | None = None
+        self._mode_emitted = False
+        self._errors_emitted = 0
+        self._rewrites_emitted: set[str] = set()
+        self._learnings_emitted = 0
+        self._answer_length = 0
+
+    def feed(self, partial: Partial | None) -> list[tuple[str, dict[str, Any]]]:
+        if partial is None or not isinstance(partial.value, dict):
+            return []
+
+        events = self._emit_mode(partial)
+        if not self._mode_emitted:
+            return events
+        if self.mode == "correct":
+            events += self._emit_errors(partial)
+            events += self._emit_rewrites(partial)
+            events += self._emit_learnings(partial)
+        elif self.mode == "answer":
+            events += self._emit_answer(partial)
+        return events
+
+    def feed_report(self, report: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+        """用校验后的完整报告做最后一次差分，补齐漏掉的条目。"""
+        return self.feed(wrap(report))
+
+    def _emit_mode(self, partial: Partial) -> list[tuple[str, dict[str, Any]]]:
+        if self._mode_emitted:
+            return []
+        mode = _str(partial.value.get("mode"))
+        if mode not in ("correct", "answer"):
+            return []
+        self.mode = mode
+        self._mode_emitted = True
+        return [("report_start", {"schema_version": SCHEMA_VERSION, "mode": mode})]
+
+    def _emit_errors(self, partial: Partial) -> list[tuple[str, dict[str, Any]]]:
+        events: list[tuple[str, dict[str, Any]]] = []
+        node = partial.value.get("errors")
+        if node is None or not isinstance(node.value, list):
+            return events
+        for index, item in enumerate(node.value):
+            if index < self._errors_emitted:
+                continue
+            if not item.complete or not isinstance(item.value, dict):
+                break
+            values = {key: _str(item.value.get(key)) for key in ("severity", "fragment", "type", "reason", "fix")}
+            if any(value is None for value in values.values()):
+                break
+            events.append(("error_added", {"index": index, **values}))
+            self._errors_emitted = index + 1
+        return events
+
+    def _emit_rewrites(self, partial: Partial) -> list[tuple[str, dict[str, Any]]]:
+        events: list[tuple[str, dict[str, Any]]] = []
+        node = partial.value.get("rewrites")
+        if node is None or not isinstance(node.value, dict):
+            return events
+        for variant in REWRITE_VARIANTS:
+            if variant in self._rewrites_emitted:
+                continue
+            item = node.value.get(variant)
+            if item is None or not item.complete or not isinstance(item.value, dict):
+                continue
+            text = _str(item.value.get("text"))
+            if text is None:
+                continue
+            payload: dict[str, Any] = {"variant": variant, "text": text}
+            note = _str(item.value.get("note"))
+            if note:
+                payload["note"] = note
+            events.append(("rewrite_ready", payload))
+            self._rewrites_emitted.add(variant)
+        return events
+
+    def _emit_learnings(self, partial: Partial) -> list[tuple[str, dict[str, Any]]]:
+        events: list[tuple[str, dict[str, Any]]] = []
+        node = partial.value.get("learnings")
+        if node is None or not isinstance(node.value, list):
+            return events
+        for index, item in enumerate(node.value):
+            if index < self._learnings_emitted:
+                continue
+            if not item.complete or not isinstance(item.value, dict):
+                break
+            values = {
+                key: _str(item.value.get(key))
+                for key in ("pattern", "wrong", "right", "rule")
+            }
+            examples = _str_list(item.value.get("examples"))
+            if any(value is None for value in values.values()) or examples is None:
+                break
+            events.append(("learning_added", {"index": index, **values, "examples": examples}))
+            self._learnings_emitted = index + 1
+        return events
+
+    def _emit_answer(self, partial: Partial) -> list[tuple[str, dict[str, Any]]]:
+        text = _str(partial.value.get("answer"))
+        if text is None or len(text) <= self._answer_length:
+            return []
+        delta = text[self._answer_length :]
+        self._answer_length = len(text)
+        return [("answer_delta", {"text": delta})]
