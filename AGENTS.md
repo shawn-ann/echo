@@ -4,9 +4,9 @@ High-signal guidance for OpenCode sessions. Echo = LLM-powered English-correctio
 
 ## Branch & deploy
 
-- Active branch is **`v0.1`** (not `master`). `master` is stale; all work lands on `v0.1`.
-- **Pushing to `v0.1` deploys to production** via `.github/workflows/deploy.yml` (build → Aliyun ACR → SSH to ECS, live at `https://echo.hootooa.com`). Do not push to `v0.1` just to test.
-- Deploy triggers on the **branch** `v0.1`, not a tag (despite docs phrasing "git push origin v0.1").
+- Active branch is **`master`**. All work lands on `master`.
+- **Pushing to `master` deploys to production** via `.github/workflows/deploy.yml` (build → Aliyun ACR → SSH to ECS, live at `https://echo.hootooa.com`). Do not push to `master` just to test.
+- Deploy triggers on the **branch** `master`, not a tag.
 
 ## Commands
 

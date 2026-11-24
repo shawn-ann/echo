@@ -25,6 +25,8 @@ services:
       LLM_BASE_URL: ${LLM_BASE_URL}
       LLM_API_KEY: ${LLM_API_KEY}
       LLM_MODEL: ${LLM_MODEL}
+      STREAM_MVP_ENABLED: ${STREAM_MVP_ENABLED:-true}
+      COACH_MVP_ENABLED: ${COACH_MVP_ENABLED:-true}
 
   web:
     image: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com/echo-rep/web:latest
