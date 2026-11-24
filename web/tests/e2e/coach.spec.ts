@@ -71,3 +71,20 @@ test('U-CO-04 后端不可达时显示错误', async ({ page }) => {
   await page.getByRole('button', { name: '发送', exact: true }).click()
   await expect(page.getByText('无法连接后端服务，请确认后端已启动')).toBeVisible()
 })
+
+test('U-CO-05 思考过程自动滚动到最新内容', async ({ page }) => {
+  await page.goto('/coach')
+  await page.getByPlaceholder(COMPOSER).fill('Yesterday I go to school.')
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+
+  const pre = page.getByTestId('coach-reasoning-content')
+  await expect(pre).toBeVisible()
+  await expect
+    .poll(async () => pre.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(0)
+  expect(
+    await pre.evaluate(
+      (el) => el.scrollHeight - el.scrollTop - el.clientHeight < 8,
+    ),
+  ).toBe(true)
+})

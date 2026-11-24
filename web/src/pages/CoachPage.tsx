@@ -351,18 +351,7 @@ function CoachMessage({ message }: { message: CoachItem }) {
         </div>
 
         {message.reasoning && (
-          <details
-            data-testid="coach-reasoning"
-            open={streaming}
-            className="mb-2 rounded-lg border border-[#e9ecef] bg-[#f8f9fa]"
-          >
-            <summary className="cursor-pointer px-3 py-2 text-xs text-[#868e96]">
-              思考过程
-            </summary>
-            <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap px-3 pb-2 text-xs leading-relaxed text-[#868e96]">
-              {message.reasoning}
-            </pre>
-          </details>
+          <ReasoningPanel text={message.reasoning} />
         )}
 
         {!hasContent && streaming && (
@@ -494,5 +483,42 @@ function CoachMessage({ message }: { message: CoachItem }) {
         )}
       </div>
     </div>
+  )
+}
+
+function ReasoningPanel({ text }: { text: string }) {
+  const [open, setOpen] = useState(true)
+  const preRef = useRef<HTMLPreElement>(null)
+  const pinnedRef = useRef(true)
+
+  useEffect(() => {
+    const el = preRef.current
+    if (!el || !open || !pinnedRef.current) return
+    el.scrollTop = el.scrollHeight
+  }, [text, open])
+
+  return (
+    <details
+      data-testid="coach-reasoning"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+      className="mb-2 rounded-lg border border-[#e9ecef] bg-[#f8f9fa]"
+    >
+      <summary className="cursor-pointer px-3 py-2 text-xs text-[#868e96]">
+        思考过程
+      </summary>
+      <pre
+        ref={preRef}
+        data-testid="coach-reasoning-content"
+        onScroll={(event) => {
+          const el = event.currentTarget
+          pinnedRef.current =
+            el.scrollHeight - el.scrollTop - el.clientHeight < 24
+        }}
+        className="max-h-48 overflow-y-auto whitespace-pre-wrap px-3 pb-2 text-xs leading-relaxed text-[#868e96]"
+      >
+        {text}
+      </pre>
+    </details>
   )
 }

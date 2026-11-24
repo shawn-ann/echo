@@ -326,7 +326,13 @@ class MockLLMClient(LLMClient):
         temperature: float | None = None,
     ) -> AsyncIterator[dict[str, str]]:
         self.calls.append(messages)
-        yield {"type": "reasoning", "text": "正在分析句子结构与表达是否自然…"}
+        yield {
+            "type": "reasoning",
+            "text": "\n".join(
+                f"第 {index} 步：检查句子结构、时态、冠词与搭配是否自然。"
+                for index in range(1, 31)
+            ),
+        }
         text = self.responder(messages)
         for start in range(0, len(text), 32):
             yield {"type": "content", "text": text[start : start + 32]}
