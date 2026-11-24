@@ -1,6 +1,13 @@
+import TimingText from '@/components/correction/TimingText'
 import type { TextChatItem } from '@/types/chat'
 
-export default function ChatTextMessage({ message }: { message: TextChatItem }) {
+export default function ChatTextMessage({
+  message,
+  now,
+}: {
+  message: TextChatItem
+  now: number
+}) {
   if (message.status === 'error') return null
 
   return (
@@ -13,7 +20,16 @@ export default function ChatTextMessage({ message }: { message: TextChatItem }) 
           <p className="text-sm text-[#868e96]">思考中…</p>
         ) : (
           <>
-            <p className="mb-1 text-sm font-semibold text-[#343a40]">解释</p>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-[#343a40]">解释</p>
+              <TimingText
+                startedAt={message.startedAt}
+                thinkingMs={message.thinkingMs}
+                doneMs={message.doneMs}
+                now={now}
+                testId="stream-timing"
+              />
+            </div>
             <p className="whitespace-pre-wrap text-sm">{message.text}</p>
           </>
         )}

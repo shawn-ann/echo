@@ -5,6 +5,7 @@ import type { Message } from '@/api/messages'
 export interface ConversationState {
   messages: Message[]
   pending: boolean
+  pendingStartedAt: number | null
   error: string | null
   sessionExpired: boolean
   load: () => Promise<void>

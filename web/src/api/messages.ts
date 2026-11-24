@@ -30,6 +30,7 @@ export interface Message {
   content: string | null
   report: CorrectionReport | null
   created_at: string
+  durationMs?: number
 }
 
 export interface SubmitResult {

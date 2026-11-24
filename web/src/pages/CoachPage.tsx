@@ -12,6 +12,8 @@ import {
   type CoachVariant,
 } from '@/api/coach'
 import RewriteBox from '@/components/correction/RewriteBox'
+import TimingText from '@/components/correction/TimingText'
+import { formatSeconds } from '@/lib/time'
 import UserBubble from '@/components/correction/UserBubble'
 import { Button } from '@/components/ui/button'
 
@@ -377,17 +379,6 @@ function CoachMessage({ message, now }: { message: CoachItem; now: number }) {
     Object.keys(message.rewrites).length > 0 ||
     message.learnings.length > 0
 
-  const formatSeconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`
-  const elapsed = streaming ? now - message.startedAt : message.doneMs
-  const timing =
-    message.doneMs != null
-      ? message.thinkingMs != null
-        ? `思考 ${formatSeconds(message.thinkingMs)} · 总耗时 ${formatSeconds(message.doneMs)}`
-        : `总耗时 ${formatSeconds(message.doneMs)}`
-      : message.thinkingMs != null
-        ? `思考 ${formatSeconds(message.thinkingMs)} · 已用时 ${formatSeconds(elapsed ?? 0)}`
-        : `已用时 ${formatSeconds(elapsed ?? 0)}`
-
   return (
     <div className="flex justify-start">
       <div className="w-full max-w-[90%] rounded-xl border border-[#dee2e6] bg-white p-3">
@@ -399,12 +390,14 @@ function CoachMessage({ message, now }: { message: CoachItem; now: number }) {
             </span>
           )}
           {streaming && <span className="text-xs text-[#868e96]">流式生成中…</span>}
-          <span
-            data-testid="coach-timing"
-            className="ml-auto text-xs text-[#868e96]"
-            aria-live="polite"
-          >
-            {timing}
+          <span className="ml-auto">
+            <TimingText
+              startedAt={message.startedAt}
+              thinkingMs={message.reasoning ? message.thinkingMs : null}
+              doneMs={message.doneMs}
+              now={now}
+              testId="coach-timing"
+            />
           </span>
         </div>
 

@@ -15,6 +15,8 @@ test('U-S-01 流式纠错先错误后改写', async ({ page }) => {
   await expect(page.getByTestId('stream-errors')).toContainText('时态错误')
   await expect(page.getByTestId('stream-minimal')).toContainText('Yesterday I went to school.')
   await expect(page.getByTestId('stream-fluency')).toContainText('I went to school yesterday.')
+  await expect(page.getByTestId('stream-timing')).toContainText('总耗时')
+  await expect(page.getByTestId('stream-timing')).toContainText('思考')
 })
 
 test('U-S-02 后端不可达时显示可重试错误，不展示空错误面板', async ({ page }) => {

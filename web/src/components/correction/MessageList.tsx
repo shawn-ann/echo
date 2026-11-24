@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import CorrectionReportCard from '@/components/correction/CorrectionReportCard'
 import LoadingBubble from '@/components/correction/LoadingBubble'
@@ -6,12 +6,21 @@ import UserBubble from '@/components/correction/UserBubble'
 import { useConversation } from '@/store/conversation-context'
 
 export default function MessageList() {
-  const { messages, pending, error, sessionExpired, retry, relogin } = useConversation()
+  const { messages, pending, pendingStartedAt, error, sessionExpired, retry, relogin } =
+    useConversation()
+  const [now, setNow] = useState(() => Date.now())
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length, pending])
+
+  useEffect(() => {
+    if (!pending) return
+    setNow(Date.now())
+    const timer = window.setInterval(() => setNow(Date.now()), 200)
+    return () => window.clearInterval(timer)
+  }, [pending])
 
   const failedTemp = messages.filter((m) => m.id.startsWith('tmp-')).at(-1)
 
@@ -32,10 +41,14 @@ export default function MessageList() {
           m.role === 'user' ? (
             <UserBubble key={m.id} content={m.content ?? ''} />
           ) : m.report ? (
-            <CorrectionReportCard key={m.id} report={m.report} />
+            <CorrectionReportCard
+              key={m.id}
+              report={m.report}
+              durationMs={m.durationMs}
+            />
           ) : null,
         )}
-        {pending && <LoadingBubble />}
+        {pending && <LoadingBubble startedAt={pendingStartedAt} now={now} />}
         {sessionExpired && (
           <div className="text-center text-sm text-[#fa5252]">
             <p>会话已过期，请重新登录</p>

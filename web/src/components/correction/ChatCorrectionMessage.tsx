@@ -1,9 +1,11 @@
 import ErrorCard from '@/components/correction/ErrorCard'
 import RewriteBox from '@/components/correction/RewriteBox'
+import TimingText from '@/components/correction/TimingText'
 import type { CorrectionChatItem } from '@/types/chat'
 
 interface Props {
   message: CorrectionChatItem
+  now: number
   onAsk: (errorId: string) => void
 }
 
@@ -15,7 +17,7 @@ function sameText(a: string, b: string) {
   return a.trim() === b.trim()
 }
 
-export default function ChatCorrectionMessage({ message, onAsk }: Props) {
+export default function ChatCorrectionMessage({ message, now, onAsk }: Props) {
   const streaming = message.status === 'streaming'
   const sourceText = message.sourceText ?? ''
   const minimalText = message.minimal?.text ?? sourceText
@@ -28,7 +30,16 @@ export default function ChatCorrectionMessage({ message, onAsk }: Props) {
     <div className="flex justify-start">
       <div className="w-full max-w-[90%] rounded-xl border border-[#dee2e6] bg-white p-3">
         <div data-testid="stream-errors" className="rounded-lg border border-[#dee2e6] p-3">
-          <p className="mb-2 text-sm font-semibold text-[#343a40]">错误分析</p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-[#343a40]">错误分析</p>
+            <TimingText
+              startedAt={message.startedAt}
+              thinkingMs={message.thinkingMs}
+              doneMs={message.doneMs}
+              now={now}
+              testId="stream-timing"
+            />
+          </div>
           {message.errors.length > 0 ? (
             <div className="space-y-2">
               {message.errors.map((error) => (

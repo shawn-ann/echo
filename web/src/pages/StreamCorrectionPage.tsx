@@ -13,6 +13,15 @@ import UserBubble from '@/components/correction/UserBubble'
 import { Button } from '@/components/ui/button'
 import type { ChatItem, CorrectionChatItem, TextChatItem } from '@/types/chat'
 
+function withThinking<T extends { startedAt: number; thinkingMs: number | null }>(
+  item: T,
+  mark: boolean,
+  at: number,
+): T {
+  if (!mark || item.thinkingMs != null) return item
+  return { ...item, thinkingMs: at - item.startedAt }
+}
+
 interface SelectedTarget {
   turnId: string
   errorId: string
@@ -25,6 +34,7 @@ export default function StreamCorrectionPage() {
   const [selected, setSelected] = useState<SelectedTarget | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [now, setNow] = useState(() => Date.now())
   const abortRef = useRef<AbortController | null>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -41,85 +51,130 @@ export default function StreamCorrectionPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!busy) return
+    setNow(Date.now())
+    const timer = window.setInterval(() => setNow(Date.now()), 200)
+    return () => window.clearInterval(timer)
+  }, [busy])
+
   const nextId = () => {
     idRef.current += 1
     return `m${idRef.current}`
   }
 
-  function upsertCorrection(id: string, patch: Partial<CorrectionChatItem>) {
+  function upsertCorrection(
+    id: string,
+    patch: Partial<CorrectionChatItem>,
+    markThinking = false,
+  ) {
+    const at = Date.now()
     setItems((prev) => {
       const exists = prev.some((item) => item.id === id)
       if (!exists) {
         return [
           ...prev,
-          {
-            id,
-            role: 'assistant',
-            kind: 'correction',
-            status: 'streaming',
-            sourceText: patch.sourceText ?? '',
-            turnId: patch.turnId ?? '',
-            errorsLoaded: patch.errorsLoaded ?? false,
-            errors: patch.errors ?? [],
-            minimal: patch.minimal ?? null,
-            fluency: patch.fluency ?? null,
-            degraded: patch.degraded ?? [],
-            error: patch.error ?? null,
-          },
+          withThinking(
+            {
+              id,
+              role: 'assistant',
+              kind: 'correction',
+              status: 'streaming',
+              sourceText: patch.sourceText ?? '',
+              startedAt: patch.startedAt ?? at,
+              thinkingMs: patch.thinkingMs ?? null,
+              doneMs: patch.doneMs ?? null,
+              turnId: patch.turnId ?? '',
+              errorsLoaded: patch.errorsLoaded ?? false,
+              errors: patch.errors ?? [],
+              minimal: patch.minimal ?? null,
+              fluency: patch.fluency ?? null,
+              degraded: patch.degraded ?? [],
+              error: patch.error ?? null,
+            } as CorrectionChatItem,
+            markThinking,
+            at,
+          ),
         ]
       }
       return prev.map((item) => {
         if (item.id !== id || item.role !== 'assistant') return item
         if (item.kind === 'pending') {
-          return {
-            id,
-            role: 'assistant',
-            kind: 'correction',
-            status: 'streaming',
-            sourceText: item.sourceText,
-            turnId: patch.turnId ?? '',
-            errorsLoaded: patch.errorsLoaded ?? false,
-            errors: patch.errors ?? [],
-            minimal: patch.minimal ?? null,
-            fluency: patch.fluency ?? null,
-            degraded: patch.degraded ?? [],
-            error: patch.error ?? null,
-          }
+          return withThinking(
+            {
+              id,
+              role: 'assistant',
+              kind: 'correction',
+              status: 'streaming',
+              sourceText: item.sourceText,
+              startedAt: item.startedAt,
+              thinkingMs: null,
+              doneMs: null,
+              turnId: patch.turnId ?? '',
+              errorsLoaded: patch.errorsLoaded ?? false,
+              errors: patch.errors ?? [],
+              minimal: patch.minimal ?? null,
+              fluency: patch.fluency ?? null,
+              degraded: patch.degraded ?? [],
+              error: patch.error ?? null,
+            } as CorrectionChatItem,
+            markThinking,
+            at,
+          )
         }
-        return item.kind === 'correction' ? { ...item, ...patch } : item
+        return item.kind === 'correction'
+          ? withThinking({ ...item, ...patch }, markThinking, at)
+          : item
       })
     })
   }
 
-  function upsertText(id: string, patch: Partial<TextChatItem>) {
+  function upsertText(id: string, patch: Partial<TextChatItem>, markThinking = false) {
+    const at = Date.now()
     setItems((prev) => {
       const exists = prev.some((item) => item.id === id)
       if (!exists) {
         return [
           ...prev,
-          {
-            id,
-            role: 'assistant',
-            kind: 'text',
-            status: 'streaming',
-            text: patch.text ?? '',
-            error: patch.error ?? null,
-          },
+          withThinking(
+            {
+              id,
+              role: 'assistant',
+              kind: 'text',
+              status: 'streaming',
+              startedAt: patch.startedAt ?? at,
+              thinkingMs: patch.thinkingMs ?? null,
+              doneMs: patch.doneMs ?? null,
+              text: patch.text ?? '',
+              error: patch.error ?? null,
+            } as TextChatItem,
+            markThinking,
+            at,
+          ),
         ]
       }
       return prev.map((item) => {
         if (item.id !== id || item.role !== 'assistant') return item
         if (item.kind === 'pending') {
-          return {
-            id,
-            role: 'assistant',
-            kind: 'text',
-            status: 'streaming',
-            text: patch.text ?? '',
-            error: patch.error ?? null,
-          }
+          return withThinking(
+            {
+              id,
+              role: 'assistant',
+              kind: 'text',
+              status: 'streaming',
+              startedAt: item.startedAt,
+              thinkingMs: null,
+              doneMs: null,
+              text: patch.text ?? '',
+              error: patch.error ?? null,
+            } as TextChatItem,
+            markThinking,
+            at,
+          )
         }
-        return item.kind === 'text' ? { ...item, ...patch } : item
+        return item.kind === 'text'
+          ? withThinking({ ...item, ...patch }, markThinking, at)
+          : item
       })
     })
   }
@@ -145,11 +200,15 @@ export default function StreamCorrectionPage() {
         // content event (errors/explanation) arrives.
         break
       case 'errors':
-        upsertCorrection(assistantId, {
-          errors: event.errors,
-          errorsLoaded: true,
-          turnId: event.turn_id,
-        })
+        upsertCorrection(
+          assistantId,
+          {
+            errors: event.errors,
+            errorsLoaded: true,
+            turnId: event.turn_id,
+          },
+          true,
+        )
         break
       case 'minimal':
         if (event.text.trim()) {
@@ -173,7 +232,7 @@ export default function StreamCorrectionPage() {
         appendDegraded(assistantId, `${event.stage}: ${event.message}`)
         break
       case 'explanation':
-        upsertText(assistantId, { text: event.text })
+        upsertText(assistantId, { text: event.text }, true)
         break
       case 'error':
         setItems((prev) => {
@@ -190,7 +249,12 @@ export default function StreamCorrectionPage() {
             ) {
               return candidate
             }
-            return { ...candidate, status: 'error', error: event.message }
+            return {
+              ...candidate,
+              status: 'error',
+              error: event.message,
+              doneMs: Date.now() - candidate.startedAt,
+            }
           })
         })
         setError(event.message)
@@ -213,7 +277,11 @@ export default function StreamCorrectionPage() {
             }
             return candidate.status === 'error'
               ? candidate
-              : { ...candidate, status: 'done' }
+              : {
+                  ...candidate,
+                  status: 'done',
+                  doneMs: Date.now() - candidate.startedAt,
+                }
           })
         })
         setBusy(false)
@@ -237,6 +305,7 @@ export default function StreamCorrectionPage() {
         kind: 'pending',
         status: 'streaming',
         sourceText: message,
+        startedAt: Date.now(),
         error: null,
       },
     ])
@@ -326,18 +395,19 @@ export default function StreamCorrectionPage() {
               return <UserBubble key={item.id} content={item.text} />
             }
             if (item.kind === 'pending') {
-              return <ChatThinkingMessage key={item.id} />
+              return <ChatThinkingMessage key={item.id} startedAt={item.startedAt} now={now} />
             }
             if (item.kind === 'correction') {
               return (
                 <ChatCorrectionMessage
                   key={item.id}
                   message={item}
+                  now={now}
                   onAsk={(errorId) => handleAsk(item.turnId, errorId)}
                 />
               )
             }
-            return <ChatTextMessage key={item.id} message={item} />
+            return <ChatTextMessage key={item.id} message={item} now={now} />
           })}
 
           {error && (

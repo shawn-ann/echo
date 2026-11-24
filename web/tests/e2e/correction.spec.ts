@@ -31,6 +31,7 @@ test('U-C-02 提交含错英文呈现纠错报告', async ({ page }) => {
   await expect(page.getByText('改写').first()).toBeVisible()
   await expect(page.getByText('最小修正').first()).toBeVisible()
   await expect(page.getByText('地道表达').first()).toBeVisible()
+  await expect(page.getByTestId('correction-timing').first()).toContainText('总耗时')
 })
 
 // U-C-03 无错误文本 → 鼓励文案

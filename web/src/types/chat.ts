@@ -12,6 +12,9 @@ export interface CorrectionChatItem {
   kind: 'correction'
   status: 'streaming' | 'done' | 'error'
   sourceText: string
+  startedAt: number
+  thinkingMs: number | null
+  doneMs: number | null
   turnId: string
   errorsLoaded: boolean
   errors: ChatError[]
@@ -26,6 +29,9 @@ export interface TextChatItem {
   role: 'assistant'
   kind: 'text'
   status: 'streaming' | 'done' | 'error'
+  startedAt: number
+  thinkingMs: number | null
+  doneMs: number | null
   text: string
   error: string | null
 }
@@ -36,6 +42,7 @@ export interface PendingChatItem {
   kind: 'pending'
   status: 'streaming'
   sourceText: string
+  startedAt: number
   error: null
 }
 

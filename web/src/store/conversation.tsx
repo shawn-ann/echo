@@ -18,6 +18,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const [messages, setMessages] = useState<messagesApi.Message[]>([])
   const [pending, setPending] = useState(false)
+  const [pendingStartedAt, setPendingStartedAt] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [sessionExpired, setSessionExpired] = useState(false)
   const mounted = useRef(true)
@@ -46,15 +47,21 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   const submit = useCallback(
     async (tempId: string, content: string): Promise<boolean> => {
       setPending(true)
+      setPendingStartedAt(Date.now())
       setError(null)
       setSessionExpired(false)
+      const startedAt = Date.now()
       try {
         const result = await messagesApi.submitMessage(content)
         if (mounted.current) {
+          const assistantMessage = {
+            ...result.assistant_message,
+            durationMs: Date.now() - startedAt,
+          }
           setMessages((prev) => [
             ...prev.filter((m) => m.id !== tempId),
             result.user_message,
-            result.assistant_message,
+            assistantMessage,
           ])
         }
         return true
@@ -69,7 +76,10 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
         }
         return false
       } finally {
-        if (mounted.current) setPending(false)
+        if (mounted.current) {
+          setPending(false)
+          setPendingStartedAt(null)
+        }
       }
     },
     [],
@@ -106,8 +116,8 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   }, [logout, navigate])
 
   const value = useMemo(
-    () => ({ messages, pending, error, sessionExpired, load, send, retry, relogin }),
-    [messages, pending, error, sessionExpired, load, send, retry, relogin],
+    () => ({ messages, pending, pendingStartedAt, error, sessionExpired, load, send, retry, relogin }),
+    [messages, pending, pendingStartedAt, error, sessionExpired, load, send, retry, relogin],
   )
   return <ConversationContext.Provider value={value}>{children}</ConversationContext.Provider>
 }
