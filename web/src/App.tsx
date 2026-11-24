@@ -23,8 +23,6 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<RootRedirect />} />
-          <Route path="/stream" element={<StreamCorrectionPage />} />
-          <Route path="/coach" element={<CoachPage />} />
           <Route element={<GuestGuard />}>
             <Route path="/login" element={<Login />} />
           </Route>
@@ -38,6 +36,8 @@ export default function App() {
                   </ConversationProvider>
                 }
               />
+              <Route path="/stream" element={<StreamCorrectionPage />} />
+              <Route path="/coach" element={<CoachPage />} />
               <Route path="/notes" element={<NotesPage />} />
             </Route>
           </Route>

@@ -294,10 +294,10 @@ export default function CoachPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[#f8f9fa]">
+    <div className="flex h-full flex-col bg-[#f8f9fa]">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#dee2e6] bg-white px-4 md:px-6">
         <div>
-          <p className="text-sm font-semibold text-[#0a7053]">Echo · Coach</p>
+          <p className="text-sm font-semibold text-[#0a7053]">Coach</p>
           <p className="text-xs text-[#868e96]">流式纠错 · 思考过程可见</p>
         </div>
         <Button

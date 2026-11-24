@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test'
 
+import { login } from './auth'
+
 const COMPOSER = '输入英文，或提问用法'
+
+test.beforeEach(async ({ page }) => {
+  await login(page)
+})
 
 test('U-CO-01 结构化纠错流式展示思考、错误、改写与学习点', async ({ page }) => {
   await page.goto('/coach')

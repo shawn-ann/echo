@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test'
 
+import { login } from './auth'
+
 const COMPOSER = '输入英文纠错，或继续追问'
+
+test.beforeEach(async ({ page }) => {
+  await login(page)
+})
 
 test('U-S-01 流式纠错先错误后改写', async ({ page }) => {
   await page.goto('/stream')

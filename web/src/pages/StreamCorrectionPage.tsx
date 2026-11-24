@@ -296,10 +296,10 @@ export default function StreamCorrectionPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[#f8f9fa]">
+    <div className="flex h-full flex-col bg-[#f8f9fa]">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#dee2e6] bg-white px-4 md:px-6">
         <div>
-          <p className="text-sm font-semibold text-[#0a7053]">Echo · 流式纠错</p>
+          <p className="text-sm font-semibold text-[#0a7053]">流式纠错</p>
           <p className="text-xs text-[#868e96]">支持最近 10 轮追问</p>
         </div>
         <Button

@@ -99,7 +99,7 @@ test('N-06 导航切换纠错↔笔记', async ({ page }) => {
   // beforeEach 已登录并停留在 /correction
   await page.getByRole('link', { name: /我的笔记/ }).click()
   await expect(page).toHaveURL(/\/notes$/)
-  await page.getByRole('link', { name: /纠错/ }).click()
+  await page.getByRole('link', { name: /对话纠错/ }).click()
   await expect(page).toHaveURL(/\/correction$/)
 })
 
