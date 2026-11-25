@@ -46,9 +46,39 @@ def strip_code_fence(raw: str) -> str:
     return text.strip()
 
 
+def extract_json_object(raw: str) -> str:
+    """提取第一个完整 JSON 对象，容忍模型在 JSON 前后多写一句话。"""
+    text = strip_code_fence(raw)
+    start = text.find("{")
+    if start == -1:
+        return text
+    depth = 0
+    in_string = False
+    escaped = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : index + 1]
+    return text[start:]
+
+
 def validate_correction(raw: str) -> CoachCorrection | None:
     try:
-        data = json.loads(strip_code_fence(raw))
+        data = json.loads(extract_json_object(raw))
     except (json.JSONDecodeError, TypeError):
         return None
     try:

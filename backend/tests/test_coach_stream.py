@@ -1,6 +1,7 @@
 import json
 
 from app.services.coach_stream import (
+    extract_json_object,
     stream_coach_events,
     strip_code_fence,
     validate_correction,
@@ -156,3 +157,12 @@ def test_validate_correction_derives_nothing_about_learnings():
     correction = validate_correction(json.dumps(CORRECTION))
     assert correction is not None
     assert len(correction.errors) == 1
+
+
+def test_extract_json_object_ignores_trailing_text():
+    raw = json.dumps(CORRECTION, ensure_ascii=False) + "\n\nHope this helps."
+    extracted = extract_json_object(raw)
+    assert extracted.startswith("{")
+    assert extracted.endswith("}")
+    correction = validate_correction(raw)
+    assert correction is not None
