@@ -340,7 +340,7 @@ class MockLLMClient(LLMClient):
 
 
 def _coach_mock_response(last_user: str) -> str:
-    """Mock coach：中文提问走 answer，其余走 correct，字段顺序与真实契约一致。"""
+    """Mock coach：英文草稿返回纠错 JSON，提问返回纯文本。"""
     text = last_user.strip()
     question_markers = (
         "?",
@@ -357,23 +357,14 @@ def _coach_mock_response(last_user: str) -> str:
     )
     english_words = re.findall(r"[A-Za-z][A-Za-z']*", text)
     if len(english_words) < 8 and any(marker in text.lower() for marker in question_markers):
-        return json.dumps(
-            {
-                "mode": "answer",
-                "answer": (
-                    "turn on 是英语里“打开（电器/灯）”的固定搭配，"
-                    "open 一般只用于门、窗等可物理开合的东西。\n"
-                    "例如：Could you turn on the light? 比 Could you open the light? 自然得多。"
-                ),
-            },
-            ensure_ascii=False,
-            separators=(",", ":"),
+        return (
+            "turn on 是英语里“打开（电器/灯）”的固定搭配，"
+            "open 一般只用于门、窗等可物理开合的东西。\n"
+            "例如：Could you turn on the light? 比 Could you open the light? 自然得多。"
         )
 
     return json.dumps(
         {
-            "mode": "correct",
-            "has_errors": True,
             "errors": [
                 {
                     "severity": "Major",
@@ -403,15 +394,6 @@ def _coach_mock_response(last_user: str) -> str:
                     "text": "Yesterday I went to school and saw a very big building."
                 },
             },
-            "learnings": [
-                {
-                    "pattern": "过去时间要用过去式",
-                    "wrong": "yesterday + 动词原形",
-                    "right": "yesterday + 动词过去式",
-                    "rule": "句中出现 yesterday 等过去时间状语时，谓语动词需使用过去式。",
-                    "examples": ["Yesterday I go to school. ❌ → Yesterday I went to school. ✅"],
-                }
-            ],
         },
         ensure_ascii=False,
         separators=(",", ":"),

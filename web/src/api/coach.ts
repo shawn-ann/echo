@@ -28,21 +28,12 @@ export interface CoachRewrites {
   minimal: CoachRewrite
 }
 
-export interface CoachLearning {
-  pattern: string
-  wrong: string
-  right: string
-  rule: string
-  examples: string[]
-}
-
 export type CoachReport =
   | {
       mode: 'correct'
       has_errors: boolean
       errors: CoachError[]
       rewrites: CoachRewrites
-      learnings: CoachLearning[]
     }
   | { mode: 'answer'; answer: string }
 
@@ -56,7 +47,6 @@ export type CoachEvent =
       text: string
       note?: string
     }
-  | ({ kind: 'learning_added'; index: number } & CoachLearning)
   | { kind: 'answer_delta'; text: string }
   | { kind: 'done'; report: CoachReport | null; raw?: string }
   | { kind: 'error'; code: string; message: string }
@@ -121,18 +111,6 @@ function parseFrame(frame: string): CoachEvent | null {
         note: data.note ? String(data.note) : undefined,
       }
     }
-    case 'learning_added':
-      return {
-        kind: 'learning_added',
-        index: Number(data.index ?? 0),
-        pattern: String(data.pattern ?? ''),
-        wrong: String(data.wrong ?? ''),
-        right: String(data.right ?? ''),
-        rule: String(data.rule ?? ''),
-        examples: Array.isArray(data.examples)
-          ? data.examples.map((item) => String(item))
-          : [],
-      }
     case 'answer_delta':
       return { kind: 'answer_delta', text: String(data.text ?? '') }
     case 'done':

@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await login(page)
 })
 
-test('U-CO-01 结构化纠错流式展示思考、错误、改写与学习点', async ({ page }) => {
+test('U-CO-01 结构化纠错流式展示思考、错误与改写', async ({ page }) => {
   await page.goto('/coach')
   await page.getByPlaceholder(COMPOSER).fill('Yesterday I go to school.')
   await page.getByRole('button', { name: '发送', exact: true }).click()
@@ -25,7 +25,6 @@ test('U-CO-01 结构化纠错流式展示思考、错误、改写与学习点', 
   await expect(page.getByTestId('coach-rewrite-minimal')).toContainText(
     'Yesterday I went to school and saw a very big building.',
   )
-  await expect(page.getByTestId('coach-learnings')).toContainText('过去时间要用过去式')
   await expect(page.getByText('纠错', { exact: true })).toBeVisible()
 })
 

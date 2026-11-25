@@ -5,7 +5,6 @@ import {
   type CoachError,
   type CoachEvent,
   type CoachHistoryMessage,
-  type CoachLearning,
   type CoachMode,
   type CoachReport,
   type CoachRewrite,
@@ -34,7 +33,6 @@ interface CoachItem {
   reasoning: string
   errors: CoachError[]
   rewrites: Partial<Record<CoachVariant, CoachRewrite>>
-  learnings: CoachLearning[]
   answer: string
   error: string | null
 }
@@ -69,7 +67,6 @@ function compactReport(report: CoachReport): CoachHistoryMessage {
       has_errors: report.has_errors,
       errors: report.errors,
       rewrites: report.rewrites,
-      learnings: report.learnings,
     }),
   }
 }
@@ -165,27 +162,6 @@ export default function CoachPage() {
           ),
         )
         break
-      case 'learning_added':
-        updateAssistant(assistantId, (item) => {
-          const learnings = [...item.learnings]
-          learnings[event.index] = {
-            pattern: event.pattern,
-            wrong: event.wrong,
-            right: event.right,
-            rule: event.rule,
-            examples: event.examples,
-          }
-          return markContent(
-            {
-              ...item,
-              learnings: learnings.filter(
-                (value): value is CoachLearning => Boolean(value),
-              ),
-            },
-            at,
-          )
-        })
-        break
       case 'answer_delta':
         updateAssistant(assistantId, (item) =>
           markContent({ ...item, answer: item.answer + event.text }, at),
@@ -209,7 +185,6 @@ export default function CoachPage() {
             mode: report.mode,
             errors: report.mode === 'correct' ? report.errors : [],
             rewrites: report.mode === 'correct' ? report.rewrites : {},
-            learnings: report.mode === 'correct' ? report.learnings : [],
             answer: report.mode === 'answer' ? report.answer : '',
             doneMs: at - item.startedAt,
           }))
@@ -253,7 +228,6 @@ export default function CoachPage() {
         reasoning: '',
         errors: [],
         rewrites: {},
-        learnings: [],
         answer: '',
         error: null,
       },
@@ -376,8 +350,7 @@ function CoachMessage({ message, now }: { message: CoachItem; now: number }) {
     message.reasoning ||
     message.answer ||
     message.errors.length > 0 ||
-    Object.keys(message.rewrites).length > 0 ||
-    message.learnings.length > 0
+    Object.keys(message.rewrites).length > 0
 
   return (
     <div className="flex justify-start">
@@ -501,36 +474,6 @@ function CoachMessage({ message, now }: { message: CoachItem; now: number }) {
               </div>
             </div>
 
-            {message.learnings.length > 0 && (
-              <div
-                data-testid="coach-learnings"
-                className="mt-2 rounded-lg border border-[#dee2e6] p-3"
-              >
-                <p className="mb-2 text-sm font-semibold text-[#343a40]">学习要点</p>
-                <div className="space-y-2">
-                  {message.learnings.map((learning, index) => (
-                    <div
-                      key={`${index}-${learning.pattern}`}
-                      className="rounded-lg bg-[#f8f9fa] p-3"
-                    >
-                      <p className="text-sm font-semibold text-[#0a7053]">
-                        {learning.pattern}
-                      </p>
-                      <p className="mt-1 text-sm text-[#495057]">{learning.rule}</p>
-                      <p className="mt-1 text-xs text-[#c92a2a]">❌ {learning.wrong}</p>
-                      <p className="text-xs text-[#2b8a3e]">✅ {learning.right}</p>
-                      {learning.examples.length > 0 && (
-                        <ul className="mt-1 space-y-0.5 text-xs text-[#868e96]">
-                          {learning.examples.map((example) => (
-                            <li key={example}>{example}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </>
         )}
 

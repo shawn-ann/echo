@@ -1,12 +1,12 @@
 import json
 
-import pytest
+from app.services.coach_stream import (
+    stream_coach_events,
+    strip_code_fence,
+    validate_correction,
+)
 
-from app.services.coach_stream import stream_coach_events
-
-CORRECT_REPORT = {
-    "mode": "correct",
-    "has_errors": True,
+CORRECTION = {
     "errors": [
         {
             "severity": "Major",
@@ -21,18 +21,7 @@ CORRECT_REPORT = {
         "casual": {"text": "Casual.", "note": "口语"},
         "minimal": {"text": "Minimal."},
     },
-    "learnings": [
-        {
-            "pattern": "过去式",
-            "wrong": "yesterday + go",
-            "right": "yesterday + went",
-            "rule": "过去时间用过去式",
-            "examples": ["I go yesterday. ❌ → I went yesterday. ✅"],
-        }
-    ],
 }
-
-ANSWER_REPORT = {"mode": "answer", "answer": "第一段\n第二段"}
 
 
 class FakeRequest:
@@ -77,8 +66,8 @@ async def collect(client) -> list[tuple[str, dict]]:
     return parse_events(raw)
 
 
-def chunks_for(report: dict, size: int = 40) -> list[dict[str, str]]:
-    text = json.dumps(report, ensure_ascii=False)
+def chunks_for_json(payload: dict, size: int = 40) -> list[dict[str, str]]:
+    text = json.dumps(payload, ensure_ascii=False)
     chunks = [{"type": "reasoning", "text": "先看时态。"}]
     chunks += [
         {"type": "content", "text": text[start : start + size]}
@@ -87,50 +76,83 @@ def chunks_for(report: dict, size: int = 40) -> list[dict[str, str]]:
     return chunks
 
 
-async def test_stream_emits_incremental_events_and_done_report():
-    client = FakeStreamClient(chunks_for(CORRECT_REPORT))
+async def test_correction_json_events_and_done_report():
+    client = FakeStreamClient(chunks_for_json(CORRECTION))
     events = await collect(client)
 
     names = [name for name, _ in events]
-    assert "report_start" in names
-    assert names.index("report_start") < names.index("error_added")
-    assert "reasoning" in names
-    assert "error_added" in names
+    assert names[0] == "reasoning"
+    assert names[1] == "report_start"
+    assert names.count("error_added") == 1
     assert names.count("rewrite_ready") == 3
-    assert "learning_added" in names
     assert names[-1] == "done"
 
     done = events[-1][1]
     assert done["report"]["mode"] == "correct"
     assert done["report"]["has_errors"] is True
-    assert client.calls[0][1]["reasoning_effort"] == "high"
+    assert done["report"]["errors"][0]["fix"] == "went"
+    assert "learnings" not in done["report"]
+    assert client.calls[0][1]["json_mode"] is False
 
 
-async def test_stream_answer_mode():
-    events = await collect(FakeStreamClient(chunks_for(ANSWER_REPORT, size=7)))
-    answer = "".join(
-        payload["text"] for name, payload in events if name == "answer_delta"
+async def test_plain_text_answer_streams_without_json():
+    chunks = [
+        {"type": "reasoning", "text": "这是用法问题。"},
+        {"type": "content", "text": "turn on 是固定搭配，"},
+        {"type": "content", "text": "open 只用于可物理开合的东西。"},
+    ]
+    events = await collect(FakeStreamClient(chunks))
+    names = [name for name, _ in events]
+
+    assert names[0] == "reasoning"
+    assert names[1] == "report_start"
+    assert events[1][1]["mode"] == "answer"
+    assert names.count("answer_delta") == 2
+    answer = "".join(p["text"] for n, p in events if n == "answer_delta")
+    assert answer.startswith("turn on")
+    assert events[-1][1]["report"] == {
+        "mode": "answer",
+        "answer": "turn on 是固定搭配，open 只用于可物理开合的东西。",
+    }
+
+
+async def test_text_starting_with_brace_is_not_mistaken_for_answer():
+    payload = {"errors": [], "rewrites": CORRECTION["rewrites"]}
+    client = FakeStreamClient(
+        [{"type": "content", "text": json.dumps(payload, ensure_ascii=False)}]
     )
-    assert answer == "第一段\n第二段"
-    assert events[-1][1]["report"] == ANSWER_REPORT
-
-
-async def test_stream_invalid_json_falls_back_to_raw():
-    client = FakeStreamClient([{"type": "content", "text": '{"mode":"correct"'}])
     events = await collect(client)
+    assert next(p for n, p in events if n == "report_start")["mode"] == "correct"
+    assert events[-1][1]["report"]["mode"] == "correct"
+
+
+async def test_invalid_json_falls_back_to_raw():
+    client = FakeStreamClient([{"type": "content", "text": '{"errors":['}])
+    events = await collect(client)
+    assert next(p for n, p in events if n == "report_start")["mode"] == "correct"
     assert events[-1][0] == "done"
     assert events[-1][1]["report"] is None
-    assert events[-1][1]["raw"].startswith('{"mode"')
+    assert events[-1][1]["raw"].startswith('{"errors"')
 
 
-async def test_has_errors_is_normalized_from_errors():
-    report = {**CORRECT_REPORT, "has_errors": False}
-    events = await collect(FakeStreamClient(chunks_for(report)))
-    assert events[-1][1]["report"]["has_errors"] is True
+async def test_empty_output_returns_empty_raw():
+    events = await collect(FakeStreamClient([{"type": "content", "text": "   "}]))
+    assert events[-1] == ("done", {"report": None, "raw": ""})
 
 
-@pytest.mark.parametrize("raw", ["", "not json"])
-async def test_stream_handles_empty_output(raw):
+def test_strip_code_fence():
+    raw = '```json\n{"errors": [], "rewrites": {}}\n```'
+    assert strip_code_fence(raw) == '{"errors": [], "rewrites": {}}'
+
+
+async def test_fenced_json_is_parsed():
+    raw = '```json\n' + json.dumps(CORRECTION, ensure_ascii=False) + "\n```"
     events = await collect(FakeStreamClient([{"type": "content", "text": raw}]))
-    assert events[-1][0] == "done"
-    assert events[-1][1]["report"] is None
+    assert next(p for n, p in events if n == "report_start")["mode"] == "correct"
+    assert events[-1][1]["report"]["mode"] == "correct"
+
+
+def test_validate_correction_derives_nothing_about_learnings():
+    correction = validate_correction(json.dumps(CORRECTION))
+    assert correction is not None
+    assert len(correction.errors) == 1

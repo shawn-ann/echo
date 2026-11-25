@@ -16,15 +16,6 @@ def _str(node: Partial | None) -> str | None:
     return node.value
 
 
-def _str_list(node: Partial | None) -> list[str] | None:
-    if node is None or not node.complete or not isinstance(node.value, list):
-        return None
-    items = [_str(item) for item in node.value]
-    if any(item is None for item in items):
-        return None
-    return [item for item in items if item is not None]
-
-
 class CoachEventMapper:
     """幂等差分器：同一份数据可多次 feed，只发新增且已闭合的内容。"""
 
@@ -33,7 +24,6 @@ class CoachEventMapper:
         self._mode_emitted = False
         self._errors_emitted = 0
         self._rewrites_emitted: set[str] = set()
-        self._learnings_emitted = 0
         self._answer_length = 0
 
     def feed(self, partial: Partial | None) -> list[tuple[str, dict[str, Any]]]:
@@ -46,10 +36,17 @@ class CoachEventMapper:
         if self.mode == "correct":
             events += self._emit_errors(partial)
             events += self._emit_rewrites(partial)
-            events += self._emit_learnings(partial)
         elif self.mode == "answer":
             events += self._emit_answer(partial)
         return events
+
+    def force_mode(self, mode: str) -> list[tuple[str, dict[str, Any]]]:
+        """输出里没有 mode 时，由服务端按首个字段推导并补发 report_start。"""
+        if self._mode_emitted or mode not in ("correct", "answer"):
+            return []
+        self.mode = mode
+        self._mode_emitted = True
+        return [("report_start", {"schema_version": SCHEMA_VERSION, "mode": mode})]
 
     def feed_report(self, report: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
         """用校验后的完整报告做最后一次差分，补齐漏掉的条目。"""
@@ -102,27 +99,6 @@ class CoachEventMapper:
                 payload["note"] = note
             events.append(("rewrite_ready", payload))
             self._rewrites_emitted.add(variant)
-        return events
-
-    def _emit_learnings(self, partial: Partial) -> list[tuple[str, dict[str, Any]]]:
-        events: list[tuple[str, dict[str, Any]]] = []
-        node = partial.value.get("learnings")
-        if node is None or not isinstance(node.value, list):
-            return events
-        for index, item in enumerate(node.value):
-            if index < self._learnings_emitted:
-                continue
-            if not item.complete or not isinstance(item.value, dict):
-                break
-            values = {
-                key: _str(item.value.get(key))
-                for key in ("pattern", "wrong", "right", "rule")
-            }
-            examples = _str_list(item.value.get("examples"))
-            if any(value is None for value in values.values()) or examples is None:
-                break
-            events.append(("learning_added", {"index": index, **values, "examples": examples}))
-            self._learnings_emitted = index + 1
         return events
 
     def _emit_answer(self, partial: Partial) -> list[tuple[str, dict[str, Any]]]:

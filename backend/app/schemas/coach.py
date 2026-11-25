@@ -48,24 +48,23 @@ class CoachRewrites(BaseModel):
     minimal: CoachRewrite
 
 
-class CoachLearning(BaseModel):
-    pattern: str
-    wrong: str
-    right: str
-    rule: str
-    examples: list[str]
+class CoachCorrection(BaseModel):
+    """模型在纠错时输出的结构（无 mode / has_errors / learnings）。"""
+
+    errors: list[CoachError]
+    rewrites: CoachRewrites
 
 
 class CoachCorrectReport(BaseModel):
-    mode: Literal["correct"]
+    """服务端补全 mode / has_errors 后，用于 SSE 与前端渲染的报告。"""
+
+    mode: Literal["correct"] = "correct"
     has_errors: bool = False
     errors: list[CoachError]
     rewrites: CoachRewrites
-    learnings: list[CoachLearning]
 
     @model_validator(mode="after")
     def _normalize_has_errors(self):
-        # 模型偶尔会给出与 errors 不一致的 has_errors，以 errors 为准。
         self.has_errors = bool(self.errors)
         return self
 
