@@ -1,5 +1,5 @@
 import type { CoachError, CoachRewrites, CoachVariant } from './coach'
-import { API_BASE } from './client'
+import { API_BASE, getToken } from './client'
 
 export interface CorrectionReport {
   mode: 'correct'
@@ -95,10 +95,14 @@ export async function streamCorrection(
   signal?: AbortSignal,
 ): Promise<void> {
   let res: Response
+  const token = getToken()
   try {
     res = await fetch(`${API_BASE}/correction/stream`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ content, mode: 'correction' }),
       signal,
     })

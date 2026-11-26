@@ -14,7 +14,7 @@ from app.models.user import User, UserStatus
 
 async def drop_all_tables():
     async with engine.begin() as conn:
-        for name in ("sessions", "users"):
+        for name in ("corrections", "sessions", "users"):
             await conn.execute(text(f'DROP TABLE IF EXISTS "{name}" CASCADE'))
 
 
@@ -52,7 +52,7 @@ async def setup_db():
 @pytest_asyncio.fixture(autouse=True)
 async def clean_sessions():
     async with async_session_factory() as session:
-        await session.execute(text("TRUNCATE sessions CASCADE"))
+        await session.execute(text("TRUNCATE corrections, sessions CASCADE"))
         await session.commit()
     yield
 
