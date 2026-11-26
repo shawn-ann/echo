@@ -43,10 +43,15 @@ export default function CorrectionStreamPage() {
   const [busy, setBusy] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const abortRef = useRef<AbortController | null>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     return () => abortRef.current?.abort()
   }, [])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [result, submitted])
 
   useEffect(() => {
     if (!busy) return
@@ -313,6 +318,7 @@ export default function CorrectionStreamPage() {
               </div>
             </div>
           )}
+          <div ref={bottomRef} />
         </div>
       </div>
 

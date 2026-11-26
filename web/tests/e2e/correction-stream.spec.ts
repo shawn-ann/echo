@@ -76,3 +76,26 @@ test('C-S-04 先展示通用骨架，确定纠错后再出分区骨架', async (
   await expect(page.getByTestId('correction-thinking')).toHaveCount(0)
   await expect(page.getByTestId('correction-rewrite-formal')).toBeVisible()
 })
+
+test('C-S-05 新内容出现时自动滚动到底部', async ({ page }) => {
+  await page.goto('/correction/stream')
+  await page.getByPlaceholder(COMPOSER).fill('Yesterday I go to school.')
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+  await expect(page.getByTestId('correction-timing')).toContainText('总耗时')
+
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const scroller = [...document.querySelectorAll('div')].find(
+          (el) =>
+            el.className.includes('overflow-y-auto') &&
+            el.textContent?.includes('纠错结果'),
+        )
+        if (!scroller) return null
+        return (
+          scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
+        )
+      }),
+    )
+    .toBeLessThan(48)
+})
