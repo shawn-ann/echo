@@ -16,10 +16,19 @@ if [ -s "$HOME/.ssh/echo_deploy_key" ]; then
   export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/echo_deploy_key -o IdentitiesOnly=yes"
 fi
 
+RESUME_MARKER="--after-self-update"
+
 echo "==> 拉取 origin/master"
 git fetch origin master
+# 修复部分旧 clone 缺失的远程跟踪引用，让 origin/master 也可用。
+git update-ref refs/remotes/origin/master FETCH_HEAD
 git reset --hard FETCH_HEAD
 echo "==> 当前提交: $(git log --oneline -1)"
+
+# 脚本自身可能也在这个提交里更新了；重新执行一次新版本，避免旧逻辑继续运行。
+if [ "${1:-}" != "$RESUME_MARKER" ]; then
+  exec "$ROOT_DIR/deploy/update.sh" "$RESUME_MARKER"
+fi
 
 COMPOSE=(
   docker compose
