@@ -25,7 +25,7 @@ test('U-CO-01 结构化纠错流式展示思考、错误与改写', async ({ pag
   await expect(page.getByTestId('coach-rewrite-minimal')).toContainText(
     'Yesterday I went to school and saw a very big building.',
   )
-  await expect(page.getByText('纠错', { exact: true })).toBeVisible()
+  await expect(page.getByRole('main').getByText('纠错', { exact: true })).toBeVisible()
 })
 
 test('U-CO-02 追问走 answer 模式并流式输出', async ({ page }) => {

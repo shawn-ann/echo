@@ -14,15 +14,7 @@ from app.models.user import User, UserStatus
 
 async def drop_all_tables():
     async with engine.begin() as conn:
-        for name in (
-            "note_cases",
-            "notes",
-            "messages",
-            "correction_reports",
-            "session_conversations",
-            "sessions",
-            "users",
-        ):
+        for name in ("sessions", "users"):
             await conn.execute(text(f'DROP TABLE IF EXISTS "{name}" CASCADE'))
 
 
@@ -31,8 +23,6 @@ async def setup_db():
     await drop_all_tables()
     async with engine.begin() as conn:
         await conn.execute(text("DROP TYPE IF EXISTS user_status"))
-        await conn.execute(text("DROP TYPE IF EXISTS message_role"))
-        await conn.execute(text("DROP TYPE IF EXISTS message_type"))
         await conn.run_sync(Base.metadata.create_all)
     async with async_session_factory() as session:
         session.add_all(
@@ -62,7 +52,7 @@ async def setup_db():
 @pytest_asyncio.fixture(autouse=True)
 async def clean_sessions():
     async with async_session_factory() as session:
-        await session.execute(text("TRUNCATE note_cases, notes, sessions, messages, correction_reports, session_conversations"))
+        await session.execute(text("TRUNCATE sessions CASCADE"))
         await session.commit()
     yield
 

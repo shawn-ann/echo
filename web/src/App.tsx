@@ -2,19 +2,16 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { AuthGuard, GuestGuard } from '@/components/AuthGuard'
 import AppLayout from '@/components/AppLayout'
-import CorrectionPage from '@/pages/CorrectionPage'
 import CoachPage from '@/pages/CoachPage'
+import CorrectionStreamPage from '@/pages/CorrectionStreamPage'
 import Login from '@/pages/Login'
-import NotesPage from '@/pages/NotesPage'
-import StreamCorrectionPage from '@/pages/StreamCorrectionPage'
 import { useAuth } from '@/store/auth-context'
 import { AuthProvider } from '@/store/auth'
-import { ConversationProvider } from '@/store/conversation'
 
 function RootRedirect() {
   const { user, ready } = useAuth()
   if (!ready) return null
-  return <Navigate to={user ? '/correction' : '/login'} replace />
+  return <Navigate to={user ? '/correction/stream' : '/login'} replace />
 }
 
 export default function App() {
@@ -28,17 +25,12 @@ export default function App() {
           </Route>
           <Route element={<AuthGuard />}>
             <Route element={<AppLayout />}>
+              <Route path="/correction/stream" element={<CorrectionStreamPage />} />
               <Route
                 path="/correction"
-                element={
-                  <ConversationProvider>
-                    <CorrectionPage />
-                  </ConversationProvider>
-                }
+                element={<Navigate to="/correction/stream" replace />}
               />
-              <Route path="/stream" element={<StreamCorrectionPage />} />
               <Route path="/coach" element={<CoachPage />} />
-              <Route path="/notes" element={<NotesPage />} />
             </Route>
           </Route>
           <Route path="*" element={<RootRedirect />} />

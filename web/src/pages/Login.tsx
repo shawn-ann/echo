@@ -66,7 +66,7 @@ export default function Login() {
     setLoading(true)
     try {
       await login(uname, password)
-      navigate('/correction', { replace: true })
+      navigate('/correction/stream', { replace: true })
     } catch (err) {
       setPassword('')
       if (err instanceof ApiError && err.status === 403) {

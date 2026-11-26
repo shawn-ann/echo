@@ -154,7 +154,7 @@ jobs:
             echo "==> [4/6] 写入 .env（不进 git）"
             cd "$DIR"
             umask 077
-            printf 'DB_PASSWORD=%s\nLLM_BASE_URL=%s\nLLM_API_KEY=%s\nLLM_MODEL=%s\nSTREAM_MVP_ENABLED=true\nCOACH_MVP_ENABLED=true\n' \
+            printf 'DB_PASSWORD=%s\nLLM_BASE_URL=%s\nLLM_API_KEY=%s\nLLM_MODEL=%s\nCOACH_MVP_ENABLED=true\n' \
               "$DB_PASSWORD" "$LLM_BASE_URL" "$LLM_API_KEY" "$LLM_MODEL" > .env
             echo "==> .env 已写入"
 

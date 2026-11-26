@@ -8,5 +8,5 @@ export async function login(page: Page) {
   await page.getByLabel('用户名').fill(USERNAME)
   await page.getByLabel('密码').fill(PASSWORD)
   await page.getByRole('button', { name: '登录' }).click()
-  await expect(page).toHaveURL(/\/correction$/)
+  await expect(page).toHaveURL(/\/correction\/stream$/)
 }

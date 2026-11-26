@@ -18,8 +18,6 @@ class Settings(BaseSettings):
     LLM_THINKING_PARAM: str = "chat_template_kwargs"
     # glm-5.3 等“仅思考模式”的模型必须固定为 True
     LLM_THINKING_ALWAYS_ON: bool = False
-    # 流式纠错实验端点：默认关闭，避免误部署到公网；本地联调显式设为 true
-    STREAM_MVP_ENABLED: bool = False
     # Coach 流式教练端点：独立开关，默认关闭
     COACH_MVP_ENABLED: bool = False
     CONTEXT_LIMIT: int = 40

@@ -12,6 +12,6 @@ export function AuthGuard() {
 export function GuestGuard() {
   const { user, ready } = useAuth()
   if (!ready) return null
-  if (user) return <Navigate to="/correction" replace />
+  if (user) return <Navigate to="/correction/stream" replace />
   return <Outlet />
 }
