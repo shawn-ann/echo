@@ -1,8 +1,8 @@
 name: deploy
 
 on:
-  push:
-    branches: [master]
+  # 生产改为服务器本地构建 + deploy/update.sh；Actions 仅保留手动触发备用。
+  workflow_dispatch:
 
 env:
   REGISTRY: crpi-euvhe8kkdkzzannx.cn-hangzhou.personal.cr.aliyuncs.com

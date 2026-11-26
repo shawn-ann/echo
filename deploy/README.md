@@ -2,7 +2,7 @@
 
 **线上地址**：`https://echo.hootooa.com`
 
-**目标**：`git push origin master` → GitHub Actions 自动构建镜像、推送到阿里云 ACR、SSH 到服务器完成部署。
+**当前生产方式**：服务器本地构建，手动执行 `deploy/update.sh`。GitHub Actions 已改为仅 `workflow_dispatch` 手动触发，不再跟随 push 自动部署。
 
 ## 架构
 
@@ -112,13 +112,20 @@ base64 < ~/.ssh/echo_deploy | pbcopy   # macOS 进剪贴板；Linux 用 base64 ~
 
 ## 二、首次部署
 
+服务器上先准备好仓库与 `.env`：
+
 ```bash
-git push origin master
+cd /root
+git clone -b master git@github.com:shawn-ann/echo.git
+cd echo
+cp deploy/.env.example .env   # 填入 DB_PASSWORD / LLM_* 后保存
 ```
 
-Actions（`deploy.yml`）自动执行：
-1. 构建 api/web 镜像 → 推阿里云 ACR（`echo-rep/api`、`echo-rep/web`）
-2. SSH 服务器，幂等脚本 [0/6]~[5/6]：确保 git/compose → 准备 deploy key → 校验 GitHub 认证 → clone/pull 仓库 → 写 `.env` → 登录 ACR 拉镜像 → `up -d`
+然后执行本地构建部署：
+
+```bash
+deploy/update.sh
+```
 
 ## 三、验证
 
@@ -130,8 +137,16 @@ curl https://echo.hootooa.com/api/v1/health
 浏览器打开 `https://echo.hootooa.com` → 登录（内置账号 `shawn`，密码见仓库 `backend/app/core/config.py` 的 `SEED_PASSWORD`）→ 发一条英文纠错验证真实 LLM 链路。
 ## 四、日常更新
 
+本地提交并推送：
+
 ```bash
-git add . && git commit -m "..." && git push origin master   # 全自动部署
+git add . && git commit -m "..." && git push origin master
+```
+
+服务器执行：
+
+```bash
+/root/echo/deploy/update.sh
 ```
 
 ## 五、手动更新（不使用 GitHub Actions）
