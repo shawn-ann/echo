@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import Sidebar from '@/components/Sidebar'
@@ -8,6 +8,8 @@ import { useAuth } from '@/store/auth-context'
 export default function AppLayout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const pageTitle = pathname.startsWith('/correction') ? '纠错' : ''
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   async function handleLogout() {
@@ -60,7 +62,11 @@ export default function AppLayout() {
           >
             ☰
           </button>
-          <div className="hidden md:block" />
+          <div>
+            {pageTitle && (
+              <span className="text-sm font-semibold text-[#343a40]">{pageTitle}</span>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-[#495057]">{user?.username ?? ''}</span>
             <Button

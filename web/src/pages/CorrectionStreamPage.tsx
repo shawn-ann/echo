@@ -188,19 +188,6 @@ export default function CorrectionStreamPage() {
 
   return (
     <div className="flex h-full flex-col bg-[#f8f9fa]">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#dee2e6] bg-white px-4 md:px-6">
-        <div>
-          <p className="text-sm font-semibold text-[#0a7053]">纠错</p>
-          <p className="text-xs text-[#868e96]">单条英文纠错 · 流式结果</p>
-        </div>
-        <Button
-          variant="outline"
-          onClick={handleClear}
-          className="h-8 border-[#ced4da] bg-white px-3 text-[#343a40] hover:bg-[#f1f3f5]"
-        >
-          清空
-        </Button>
-      </header>
 
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl space-y-4 p-4 md:p-6">
@@ -347,11 +334,22 @@ export default function CorrectionStreamPage() {
               {busy ? '分析中…' : '发送'}
             </Button>
           </div>
-          <div className="mt-1 flex justify-between text-xs text-[#868e96]">
+          <div className="mt-1 flex items-center justify-between text-xs text-[#868e96]">
             <span>Enter 发送，Shift+Enter 换行</span>
-            <span className={content.length > MAX_LENGTH ? 'text-[#fa5252]' : ''}>
-              {content.length}/{MAX_LENGTH}
-            </span>
+            <div className="flex items-center gap-3">
+              {submitted && (
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className="text-[#868e96] hover:text-[#495057]"
+                >
+                  清空
+                </button>
+              )}
+              <span className={content.length > MAX_LENGTH ? 'text-[#fa5252]' : ''}>
+                {content.length}/{MAX_LENGTH}
+              </span>
+            </div>
           </div>
         </div>
       </div>
