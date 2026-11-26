@@ -28,6 +28,7 @@ interface ResultState {
   status: 'streaming' | 'done' | 'error'
   phase: 'thinking' | 'correct'
   reasoning: string
+  reasoningOpen: boolean
   errors: CoachError[]
   rewrites: Partial<Record<CoachVariant, CoachRewrite>>
   startedAt: number
@@ -96,6 +97,7 @@ export default function CorrectionStreamPage() {
           return {
             ...item,
             phase: 'correct',
+            reasoningOpen: event.index === 0 ? false : item.reasoningOpen,
             errors: errors.filter((value): value is CoachError => Boolean(value)),
           }
         })
@@ -157,6 +159,7 @@ export default function CorrectionStreamPage() {
       status: 'streaming',
       phase: 'thinking',
       reasoning: '',
+      reasoningOpen: true,
       errors: [],
       rewrites: {},
       startedAt,
@@ -216,10 +219,24 @@ export default function CorrectionStreamPage() {
                 </div>
 
                 {result.phase === 'thinking' ? (
-                  <ThinkingStage reasoning={result.reasoning} />
+                  <ThinkingStage
+                    reasoning={result.reasoning}
+                    open={result.reasoningOpen}
+                    onOpenChange={(open) =>
+                      patchResult((item) => ({ ...item, reasoningOpen: open }))
+                    }
+                  />
                 ) : (
                   <>
-                    {result.reasoning && <ReasoningPanel text={result.reasoning} />}
+                    {result.reasoning && (
+                      <ReasoningPanel
+                        text={result.reasoning}
+                        open={result.reasoningOpen}
+                        onOpenChange={(open) =>
+                          patchResult((item) => ({ ...item, reasoningOpen: open }))
+                        }
+                      />
+                    )}
 
                     <div className="rounded-lg border border-[#dee2e6] p-3">
                   <p className="mb-2 text-sm font-semibold text-[#343a40]">错误分析</p>
@@ -357,10 +374,20 @@ export default function CorrectionStreamPage() {
   )
 }
 
-function ThinkingStage({ reasoning }: { reasoning: string }) {
+function ThinkingStage({
+  reasoning,
+  open,
+  onOpenChange,
+}: {
+  reasoning: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   return (
     <>
-      {reasoning && <ReasoningPanel text={reasoning} />}
+      {reasoning && (
+        <ReasoningPanel text={reasoning} open={open} onOpenChange={onOpenChange} />
+      )}
       <div
         data-testid="correction-thinking"
         className="rounded-lg border border-[#dee2e6] bg-white p-3"
@@ -375,8 +402,15 @@ function ThinkingStage({ reasoning }: { reasoning: string }) {
   )
 }
 
-function ReasoningPanel({ text }: { text: string }) {
-  const [open, setOpen] = useState(true)
+function ReasoningPanel({
+  text,
+  open,
+  onOpenChange,
+}: {
+  text: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   const preRef = useRef<HTMLPreElement>(null)
   const pinnedRef = useRef(true)
 
@@ -388,11 +422,17 @@ function ReasoningPanel({ text }: { text: string }) {
 
   return (
     <details
+      data-testid="correction-reasoning"
       open={open}
-      onToggle={(event) => setOpen(event.currentTarget.open)}
       className="mb-2 rounded-lg border border-[#e9ecef] bg-[#f8f9fa]"
     >
-      <summary className="cursor-pointer px-3 py-2 text-xs text-[#868e96]">
+      <summary
+        className="cursor-pointer px-3 py-2 text-xs text-[#868e96]"
+        onClick={(event) => {
+          event.preventDefault()
+          onOpenChange(!open)
+        }}
+      >
         思考过程
       </summary>
       <pre

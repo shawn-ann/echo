@@ -99,3 +99,14 @@ test('C-S-05 新内容出现时自动滚动到底部', async ({ page }) => {
     )
     .toBeLessThan(48)
 })
+
+test('C-S-06 错误列表出现后自动收起思考面板', async ({ page }) => {
+  await page.goto('/correction/stream')
+  await page.getByPlaceholder(COMPOSER).fill('Yesterday I go to school.')
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+  await expect(page.getByTestId('correction-timing')).toContainText('总耗时')
+
+  const reasoning = page.getByTestId('correction-reasoning')
+  await expect(reasoning).toBeVisible()
+  await expect(reasoning).toHaveJSProperty('open', false)
+})
