@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { streamCorrection, type CorrectionEvent } from '@/api/correction'
+import {
+  fetchCorrections,
+  normalizeStoredReport,
+  streamCorrection,
+  type CorrectionEvent,
+  type StoredCorrection,
+} from '@/api/correction'
 import type { CoachError, CoachRewrite, CoachVariant } from '@/api/coach'
 import RewriteBox from '@/components/correction/RewriteBox'
 import TimingText from '@/components/correction/TimingText'
@@ -25,6 +31,8 @@ const SEVERITY_STYLE: Record<string, string> = {
 }
 
 interface ResultState {
+  id: string
+  source: string
   status: 'streaming' | 'done' | 'error'
   phase: 'thinking' | 'correct'
   reasoning: string
@@ -37,22 +45,61 @@ interface ResultState {
   error: string | null
 }
 
+function fromStored(record: StoredCorrection): ResultState {
+  const report = normalizeStoredReport(record.report)
+  return {
+    id: record.id,
+    source: record.source_text,
+    status: 'done',
+    phase: 'correct',
+    reasoning: '',
+    reasoningOpen: false,
+    errors: report.errors,
+    rewrites: report.rewrites,
+    startedAt: 0,
+    thinkingMs: null,
+    doneMs: record.duration_ms,
+    error: null,
+  }
+}
+
 export default function CorrectionStreamPage() {
   const [content, setContent] = useState('')
-  const [submitted, setSubmitted] = useState('')
-  const [result, setResult] = useState<ResultState | null>(null)
+  const [items, setItems] = useState<ResultState[]>([])
   const [busy, setBusy] = useState(false)
   const [now, setNow] = useState(() => Date.now())
+  const [historyError, setHistoryError] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const idRef = useRef(0)
+  const activeIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     return () => abortRef.current?.abort()
   }, [])
 
   useEffect(() => {
+    let cancelled = false
+    fetchCorrections()
+      .then((records) => {
+        if (cancelled) return
+        const history = records.map(fromStored)
+        setItems((prev) => {
+          const existing = new Set(prev.map((item) => item.id))
+          return [...history.filter((item) => !existing.has(item.id)), ...prev]
+        })
+      })
+      .catch(() => {
+        if (!cancelled) setHistoryError(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [result, submitted])
+  }, [items])
 
   useEffect(() => {
     if (!busy) return
@@ -61,12 +108,17 @@ export default function CorrectionStreamPage() {
     return () => window.clearInterval(timer)
   }, [busy])
 
-  function patchResult(updater: (item: ResultState) => ResultState) {
-    setResult((prev) => (prev ? updater(prev) : prev))
+  const nextId = () => {
+    idRef.current += 1
+    return `local-${idRef.current}`
   }
 
-  function markContent(at: number) {
-    patchResult((item) =>
+  function patchItem(id: string, updater: (item: ResultState) => ResultState) {
+    setItems((prev) => prev.map((item) => (item.id === id ? updater(item) : item)))
+  }
+
+  function markContent(id: string, at: number) {
+    patchItem(id, (item) =>
       item.thinkingMs == null
         ? { ...item, thinkingMs: at - item.startedAt }
         : item,
@@ -74,18 +126,23 @@ export default function CorrectionStreamPage() {
   }
 
   function handleEvent(event: CorrectionEvent) {
+    const id = activeIdRef.current
+    if (!id) return
     const at = Date.now()
     switch (event.kind) {
       case 'report_start':
-        markContent(at)
-        patchResult((item) => ({ ...item, phase: 'correct' }))
+        markContent(id, at)
+        patchItem(id, (item) => ({ ...item, phase: 'correct' }))
         break
       case 'reasoning':
-        patchResult((item) => ({ ...item, reasoning: item.reasoning + event.text }))
+        patchItem(id, (item) => ({
+          ...item,
+          reasoning: item.reasoning + event.text,
+        }))
         break
       case 'error_added':
-        markContent(at)
-        patchResult((item) => {
+        markContent(id, at)
+        patchItem(id, (item) => {
           const errors = [...item.errors]
           errors[event.index] = {
             severity: event.severity,
@@ -103,8 +160,8 @@ export default function CorrectionStreamPage() {
         })
         break
       case 'rewrite_ready':
-        markContent(at)
-        patchResult((item) => ({
+        markContent(id, at)
+        patchItem(id, (item) => ({
           ...item,
           phase: 'correct',
           rewrites: {
@@ -114,7 +171,7 @@ export default function CorrectionStreamPage() {
         }))
         break
       case 'done':
-        patchResult((item) => {
+        patchItem(id, (item) => {
           if (!event.report) {
             return {
               ...item,
@@ -136,7 +193,7 @@ export default function CorrectionStreamPage() {
         setBusy(false)
         break
       case 'error':
-        patchResult((item) => ({
+        patchItem(id, (item) => ({
           ...item,
           status: 'error',
           error: event.message,
@@ -154,19 +211,25 @@ export default function CorrectionStreamPage() {
     const controller = new AbortController()
     abortRef.current = controller
     const startedAt = Date.now()
-    setSubmitted(message)
-    setResult({
-      status: 'streaming',
-      phase: 'thinking',
-      reasoning: '',
-      reasoningOpen: true,
-      errors: [],
-      rewrites: {},
-      startedAt,
-      thinkingMs: null,
-      doneMs: null,
-      error: null,
-    })
+    const id = nextId()
+    activeIdRef.current = id
+    setItems((prev) => [
+      ...prev,
+      {
+        id,
+        source: message,
+        status: 'streaming',
+        phase: 'thinking',
+        reasoning: '',
+        reasoningOpen: true,
+        errors: [],
+        rewrites: {},
+        startedAt,
+        thinkingMs: null,
+        doneMs: null,
+        error: null,
+      },
+    ])
     setContent('')
     setBusy(true)
 
@@ -175,153 +238,169 @@ export default function CorrectionStreamPage() {
     } catch (err) {
       if (controller.signal.aborted) return
       const text = err instanceof Error ? err.message : '请求失败，请重试'
-      patchResult((item) => ({ ...item, status: 'error', error: text }))
+      patchItem(id, (item) => ({ ...item, status: 'error', error: text }))
     } finally {
       if (!controller.signal.aborted) setBusy(false)
     }
   }
 
-  function handleClear() {
-    abortRef.current?.abort()
-    setContent('')
-    setSubmitted('')
-    setResult(null)
-    setBusy(false)
-  }
-
   return (
     <div className="flex h-full flex-col bg-[#f8f9fa]">
-
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl space-y-4 p-4 md:p-6">
-          {!submitted && (
-            <div className="flex min-h-[40vh] items-center justify-center">
+          {items.length === 0 && !busy && !historyError && (
+            <div className="flex min-h-[50vh] items-center justify-center">
               <p className="text-center text-[#868e96]">
                 输入一段英文，获取错误分析和三版改写。
               </p>
             </div>
           )}
-
-          {submitted && <UserBubble content={submitted} />}
-
-          {result && (
-            <div className="flex justify-start">
-              <div className="w-full max-w-[90%] rounded-xl border border-[#dee2e6] bg-white p-3">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="text-sm font-semibold text-[#343a40]">纠错结果</span>
-                  <TimingText
-                    startedAt={result.startedAt}
-                    thinkingMs={result.reasoning ? result.thinkingMs : null}
-                    doneMs={result.doneMs}
-                    now={now}
-                    testId="correction-timing"
-                  />
-                </div>
-
-                {result.phase === 'thinking' ? (
-                  <ThinkingStage
-                    reasoning={result.reasoning}
-                    open={result.reasoningOpen}
-                    onOpenChange={(open) =>
-                      patchResult((item) => ({ ...item, reasoningOpen: open }))
-                    }
-                  />
-                ) : (
-                  <>
-                    {result.reasoning && (
-                      <ReasoningPanel
-                        text={result.reasoning}
-                        open={result.reasoningOpen}
-                        onOpenChange={(open) =>
-                          patchResult((item) => ({ ...item, reasoningOpen: open }))
-                        }
-                      />
-                    )}
-
-                    <div className="rounded-lg border border-[#dee2e6] p-3">
-                  <p className="mb-2 text-sm font-semibold text-[#343a40]">错误分析</p>
-                  {result.errors.length > 0 ? (
-                    <div className="space-y-2">
-                      {result.errors.map((error, index) => (
-                        <div
-                          key={`${index}-${error.fragment}`}
-                          className="rounded-lg border border-[#dee2e6] border-l-4 border-l-[#fa5252] p-3"
-                        >
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`rounded px-1.5 py-0.5 text-xs ${
-                                SEVERITY_STYLE[error.severity] ?? SEVERITY_STYLE.Minor
-                              }`}
-                            >
-                              {error.severity}
-                            </span>
-                            <span className="rounded bg-[#f1f3f5] px-1.5 py-0.5 text-xs text-[#495057]">
-                              {error.type}
-                            </span>
-                            <span className="text-sm font-medium text-[#c92a2a] line-through">
-                              {error.fragment}
-                            </span>
-                          </div>
-                          <p className="mt-1.5 text-sm text-[#495057]">{error.reason}</p>
-                          <p className="mt-1 text-sm font-medium text-[#2b8a3e]">
-                            ✅ {error.fix}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : result.status === 'streaming' ? (
-                    <p className="text-sm text-[#868e96]">分析中…</p>
-                  ) : (
-                    <p className="text-sm text-[#0a7053]">
-                      🎉 这段英文写得不错，没有发现需要修正的问题。
-                    </p>
-                  )}
-                </div>
-
-                <div className="mt-2 rounded-lg border border-[#dee2e6] p-3">
-                  <p className="mb-2 text-sm font-semibold text-[#343a40]">改写</p>
-                  <div className="space-y-2">
-                    {(['formal', 'casual', 'minimal'] as CoachVariant[]).map((variant) => {
-                      const meta = REWRITE_META[variant]
-                      const rewrite = result.rewrites[variant]
-                      if (rewrite) {
-                        return (
-                          <RewriteBox
-                            key={variant}
-                            label={meta.label}
-                            icon={meta.icon}
-                            accent={meta.accent}
-                            text={rewrite.text}
-                            note={rewrite.note ?? ''}
-                            testId={`correction-rewrite-${variant}`}
-                          />
-                        )
-                      }
-                      if (result.status !== 'streaming') return null
-                      return (
-                        <RewriteBox
-                          key={variant}
-                          label={meta.label}
-                          icon={meta.icon}
-                          accent={meta.accent}
-                          loading
-                          testId={`correction-rewrite-${variant}`}
-                        />
-                      )
-                    })}
-                  </div>
-                    </div>
-                  </>
-                )}
-
-                {result.error && (
-                  <div className="mt-2 rounded-lg border border-[#ffc9c9] bg-[#fff5f5] p-3 text-sm text-[#c92a2a]">
-                    {result.error}
-                  </div>
-                )}
-              </div>
+          {items.length === 0 && historyError && (
+            <div className="flex min-h-[50vh] items-center justify-center">
+              <p className="text-center text-[#868e96]">
+                历史加载失败，可以直接开始新的纠错。
+              </p>
             </div>
           )}
+
+          {items.map((item) => (
+            <div key={item.id} className="space-y-3">
+              <UserBubble content={item.source} />
+              <div className="flex justify-start">
+                <div className="w-full max-w-[90%] rounded-xl border border-[#dee2e6] bg-white p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-[#343a40]">
+                      纠错结果
+                    </span>
+                    <TimingText
+                      startedAt={item.startedAt}
+                      thinkingMs={item.reasoning ? item.thinkingMs : null}
+                      doneMs={item.doneMs}
+                      now={now}
+                      testId="correction-timing"
+                    />
+                  </div>
+
+                  {item.phase === 'thinking' ? (
+                    <ThinkingStage
+                      reasoning={item.reasoning}
+                      open={item.reasoningOpen}
+                      onOpenChange={(open) =>
+                        patchItem(item.id, (current) => ({
+                          ...current,
+                          reasoningOpen: open,
+                        }))
+                      }
+                    />
+                  ) : (
+                    <>
+                      {item.reasoning && (
+                        <ReasoningPanel
+                          text={item.reasoning}
+                          open={item.reasoningOpen}
+                          onOpenChange={(open) =>
+                            patchItem(item.id, (current) => ({
+                              ...current,
+                              reasoningOpen: open,
+                            }))
+                          }
+                        />
+                      )}
+
+                      <div className="rounded-lg border border-[#dee2e6] p-3">
+                        <p className="mb-2 text-sm font-semibold text-[#343a40]">
+                          错误分析
+                        </p>
+                        {item.errors.length > 0 ? (
+                          <div className="space-y-2">
+                            {item.errors.map((error, index) => (
+                              <div
+                                key={`${item.id}-${index}-${error.fragment}`}
+                                className="rounded-lg border border-[#dee2e6] border-l-4 border-l-[#fa5252] p-3"
+                              >
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span
+                                    className={`rounded px-1.5 py-0.5 text-xs ${
+                                      SEVERITY_STYLE[error.severity] ??
+                                      SEVERITY_STYLE.Minor
+                                    }`}
+                                  >
+                                    {error.severity}
+                                  </span>
+                                  <span className="rounded bg-[#f1f3f5] px-1.5 py-0.5 text-xs text-[#495057]">
+                                    {error.type}
+                                  </span>
+                                  <span className="text-sm font-medium text-[#c92a2a] line-through">
+                                    {error.fragment}
+                                  </span>
+                                </div>
+                                <p className="mt-1.5 text-sm text-[#495057]">
+                                  {error.reason}
+                                </p>
+                                <p className="mt-1 text-sm font-medium text-[#2b8a3e]">
+                                  ✅ {error.fix}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : item.status === 'streaming' ? (
+                          <p className="text-sm text-[#868e96]">分析中…</p>
+                        ) : (
+                          <p className="text-sm text-[#0a7053]">
+                            🎉 这段英文写得不错，没有发现需要修正的问题。
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="mt-2 rounded-lg border border-[#dee2e6] p-3">
+                        <p className="mb-2 text-sm font-semibold text-[#343a40]">
+                          改写
+                        </p>
+                        <div className="space-y-2">
+                          {(['formal', 'casual', 'minimal'] as CoachVariant[]).map(
+                            (variant) => {
+                              const meta = REWRITE_META[variant]
+                              const rewrite = item.rewrites[variant]
+                              if (rewrite) {
+                                return (
+                                  <RewriteBox
+                                    key={variant}
+                                    label={meta.label}
+                                    icon={meta.icon}
+                                    accent={meta.accent}
+                                    text={rewrite.text}
+                                    note={rewrite.note ?? ''}
+                                    testId={`correction-rewrite-${variant}`}
+                                  />
+                                )
+                              }
+                              if (item.status !== 'streaming') return null
+                              return (
+                                <RewriteBox
+                                  key={variant}
+                                  label={meta.label}
+                                  icon={meta.icon}
+                                  accent={meta.accent}
+                                  loading
+                                  testId={`correction-rewrite-${variant}`}
+                                />
+                              )
+                            },
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {item.error && (
+                    <div className="mt-2 rounded-lg border border-[#ffc9c9] bg-[#fff5f5] p-3 text-sm text-[#c92a2a]">
+                      {item.error}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
           <div ref={bottomRef} />
         </div>
       </div>
@@ -351,22 +430,11 @@ export default function CorrectionStreamPage() {
               {busy ? '分析中…' : '发送'}
             </Button>
           </div>
-          <div className="mt-1 flex items-center justify-between text-xs text-[#868e96]">
+          <div className="mt-1 flex justify-between text-xs text-[#868e96]">
             <span>Enter 发送，Shift+Enter 换行</span>
-            <div className="flex items-center gap-3">
-              {submitted && (
-                <button
-                  type="button"
-                  onClick={handleClear}
-                  className="text-[#868e96] hover:text-[#495057]"
-                >
-                  清空
-                </button>
-              )}
-              <span className={content.length > MAX_LENGTH ? 'text-[#fa5252]' : ''}>
-                {content.length}/{MAX_LENGTH}
-              </span>
-            </div>
+            <span className={content.length > MAX_LENGTH ? 'text-[#fa5252]' : ''}>
+              {content.length}/{MAX_LENGTH}
+            </span>
           </div>
         </div>
       </div>

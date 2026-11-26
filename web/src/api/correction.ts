@@ -1,5 +1,5 @@
 import type { CoachError, CoachRewrites, CoachVariant } from './coach'
-import { API_BASE, getToken } from './client'
+import { API_BASE, getToken, http } from './client'
 
 export interface CorrectionReport {
   mode: 'correct'
@@ -134,5 +134,51 @@ export async function streamCorrection(
   if (buffer.trim()) {
     const event = parseFrame(buffer)
     if (event) onEvent(event)
+  }
+}
+
+
+export interface StoredRewrite {
+  id: 'formal' | 'casual' | 'minimal' | string
+  text: string
+  note?: string
+}
+
+export interface StoredCorrection {
+  id: string
+  mode: string
+  source_text: string
+  report: {
+    schema_version: number
+    errors: CoachError[]
+    rewrites: StoredRewrite[] | CoachRewrites
+  }
+  schema_version: number
+  duration_ms: number | null
+  model: string | null
+  created_at: string
+}
+
+export async function fetchCorrections(): Promise<StoredCorrection[]> {
+  const data = await http.get<{ corrections: StoredCorrection[] }>('/corrections')
+  return data.corrections
+}
+
+export function normalizeStoredReport(report: StoredCorrection['report']): CorrectionReport {
+  const rewrites: Partial<Record<CoachVariant, { text: string; note?: string }>> = {}
+  if (Array.isArray(report.rewrites)) {
+    for (const item of report.rewrites) {
+      if (item.id === 'formal' || item.id === 'casual' || item.id === 'minimal') {
+        rewrites[item.id] = { text: item.text, note: item.note }
+      }
+    }
+  } else {
+    Object.assign(rewrites, report.rewrites)
+  }
+  return {
+    mode: 'correct',
+    has_errors: report.errors.length > 0,
+    errors: report.errors,
+    rewrites: rewrites as CorrectionReport['rewrites'],
   }
 }
