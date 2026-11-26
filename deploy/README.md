@@ -2,12 +2,12 @@
 
 **线上地址**：`https://echo.hootooa.com`
 
-**目标**：`git push origin v0.2` → GitHub Actions 自动构建镜像、推送到阿里云 ACR、SSH 到服务器完成部署。
+**目标**：`git push origin master` → GitHub Actions 自动构建镜像、推送到阿里云 ACR、SSH 到服务器完成部署。
 
 ## 架构
 
 ```
-开发者 ── git push v0.2 ─▶ GitHub Actions
+开发者 ── git push master ─▶ GitHub Actions
                              │ ① build api/web 镜像 → push 阿里云 ACR
                              │ ② SSH 服务器: 自动装工具 → clone/pull → 写 .env → pull 镜像 → up -d
 ECS 2C2G: 80/443 ─▶ caddy(自动 HTTPS) ─▶ web:80(nginx) ─▶ api:8000 ─▶ db:5432
@@ -113,7 +113,7 @@ base64 < ~/.ssh/echo_deploy | pbcopy   # macOS 进剪贴板；Linux 用 base64 ~
 ## 二、首次部署
 
 ```bash
-git push origin v0.2
+git push origin master
 ```
 
 Actions（`deploy.yml`）自动执行：
@@ -131,10 +131,35 @@ curl https://echo.hootooa.com/api/v1/health
 ## 四、日常更新
 
 ```bash
-git add . && git commit -m "..." && git push origin v0.2   # 全自动部署
+git add . && git commit -m "..." && git push origin master   # 全自动部署
 ```
 
-## 五、数据库备份
+## 五、手动更新（不使用 GitHub Actions）
+
+服务器上已有仓库、`.env` 和 Docker 环境时，直接执行：
+
+```bash
+/root/echo/deploy/update.sh
+```
+
+脚本会：
+
+1. `git fetch origin master && git reset --hard origin/master`
+2. 使用 `deploy/docker-compose.prod.yml` + `deploy/docker-compose.build.yml` 在服务器本地构建 `api` / `web`
+3. `docker compose up -d --remove-orphans` 重启
+4. 清理悬空镜像
+
+`.env` 是 gitignored 文件，不会被更新脚本覆盖。
+
+说明：
+
+- 这是“服务器本地构建”模式，不需要 GitHub Actions，也不需要 ACR
+- 首次使用前确认服务器已配置 2G swap，前端 Vite 构建在 2C2G 上可能 OOM
+- API 容器启动时自动执行 `alembic upgrade head`
+- 构建失败时不会影响正在运行的容器；确认构建成功后再执行 `up -d`
+- 如果要回滚，先保留旧镜像，或用 git 回退后重新运行脚本
+
+## 六、数据库备份
 
 服务器上配置每日备份（crontab）：
 
@@ -150,14 +175,14 @@ crontab -e
 gunzip -c /var/backups/echo/echo-YYYYMMDD-HHMMSS.sql.gz | docker exec -i echo-db-1 psql -U echo -d echo
 ```
 
-## 六、本地生产镜像自检（可选）
+## 七、本地生产镜像自检（可选）
 
 ```bash
 # 校验生产 compose 文件语法（无需镜像即可验证解析）
 docker compose -f deploy/docker-compose.prod.yml config
 ```
 
-## 七、注意事项
+## 八、注意事项
 
 - **服务器不构建代码**：镜像由 CI 在 GitHub 构建推 ACR，服务器只 `pull`，2G 内存无 OOM 风险
 - **ACR 推送**：buildx 需关闭 `provenance`/`sbom` 附件清单，否则 ACR 报 `denied: unknown manifest class for application/vnd.oci.empty.v1+json`（已在 workflow 处理）
