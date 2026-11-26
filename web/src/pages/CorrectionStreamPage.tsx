@@ -26,6 +26,7 @@ const SEVERITY_STYLE: Record<string, string> = {
 
 interface ResultState {
   status: 'streaming' | 'done' | 'error'
+  phase: 'thinking' | 'correct'
   reasoning: string
   errors: CoachError[]
   rewrites: Partial<Record<CoachVariant, CoachRewrite>>
@@ -71,6 +72,7 @@ export default function CorrectionStreamPage() {
     switch (event.kind) {
       case 'report_start':
         markContent(at)
+        patchResult((item) => ({ ...item, phase: 'correct' }))
         break
       case 'reasoning':
         patchResult((item) => ({ ...item, reasoning: item.reasoning + event.text }))
@@ -88,6 +90,7 @@ export default function CorrectionStreamPage() {
           }
           return {
             ...item,
+            phase: 'correct',
             errors: errors.filter((value): value is CoachError => Boolean(value)),
           }
         })
@@ -96,6 +99,7 @@ export default function CorrectionStreamPage() {
         markContent(at)
         patchResult((item) => ({
           ...item,
+          phase: 'correct',
           rewrites: {
             ...item.rewrites,
             [event.variant]: { text: event.text, note: event.note },
@@ -115,6 +119,7 @@ export default function CorrectionStreamPage() {
           return {
             ...item,
             status: 'done',
+            phase: 'correct',
             errors: event.report.errors,
             rewrites: event.report.rewrites,
             thinkingMs: item.thinkingMs ?? at - item.startedAt,
@@ -145,6 +150,7 @@ export default function CorrectionStreamPage() {
     setSubmitted(message)
     setResult({
       status: 'streaming',
+      phase: 'thinking',
       reasoning: '',
       errors: [],
       rewrites: {},
@@ -217,15 +223,13 @@ export default function CorrectionStreamPage() {
                   />
                 </div>
 
-                {result.reasoning && (
-                  <ReasoningPanel text={result.reasoning} />
-                )}
+                {result.phase === 'thinking' ? (
+                  <ThinkingStage reasoning={result.reasoning} />
+                ) : (
+                  <>
+                    {result.reasoning && <ReasoningPanel text={result.reasoning} />}
 
-                {!result.reasoning && result.status === 'streaming' && !result.errors.length && (
-                  <p className="text-sm text-[#868e96]">思考中…</p>
-                )}
-
-                <div className="rounded-lg border border-[#dee2e6] p-3">
+                    <div className="rounded-lg border border-[#dee2e6] p-3">
                   <p className="mb-2 text-sm font-semibold text-[#343a40]">错误分析</p>
                   {result.errors.length > 0 ? (
                     <div className="space-y-2">
@@ -297,7 +301,9 @@ export default function CorrectionStreamPage() {
                       )
                     })}
                   </div>
-                </div>
+                    </div>
+                  </>
+                )}
 
                 {result.error && (
                   <div className="mt-2 rounded-lg border border-[#ffc9c9] bg-[#fff5f5] p-3 text-sm text-[#c92a2a]">
@@ -344,6 +350,24 @@ export default function CorrectionStreamPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function ThinkingStage({ reasoning }: { reasoning: string }) {
+  return (
+    <>
+      {reasoning && <ReasoningPanel text={reasoning} />}
+      <div
+        data-testid="correction-thinking"
+        className="rounded-lg border border-[#dee2e6] bg-white p-3"
+      >
+        <p className="text-sm text-[#868e96]">正在分析…</p>
+        <div className="mt-3 space-y-2">
+          <div className="h-3 w-4/5 animate-pulse rounded bg-[#e9ecef]" />
+          <div className="h-3 w-3/5 animate-pulse rounded bg-[#e9ecef]" />
+        </div>
+      </div>
+    </>
   )
 }
 

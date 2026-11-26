@@ -59,3 +59,20 @@ test('C-S-03 后端不可达时展示错误', async ({ page }) => {
   await page.getByRole('button', { name: '发送', exact: true }).click()
   await expect(page.getByText('无法连接后端服务，请确认后端已启动')).toBeVisible()
 })
+
+test('C-S-04 先展示通用骨架，确定纠错后再出分区骨架', async ({ page }) => {
+  await page.route('**/api/v1/correction/stream', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    await route.continue()
+  })
+  await page.goto('/correction/stream')
+  await page.getByPlaceholder(COMPOSER).fill('Yesterday I go to school.')
+  await page.getByRole('button', { name: '发送', exact: true }).click()
+
+  await expect(page.getByTestId('correction-thinking')).toBeVisible()
+  await expect(page.getByTestId('correction-rewrite-formal')).toHaveCount(0)
+
+  await expect(page.getByTestId('correction-timing')).toContainText('总耗时')
+  await expect(page.getByTestId('correction-thinking')).toHaveCount(0)
+  await expect(page.getByTestId('correction-rewrite-formal')).toBeVisible()
+})
