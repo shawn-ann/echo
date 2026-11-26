@@ -18,7 +18,7 @@ fi
 
 echo "==> 拉取 origin/master"
 git fetch origin master
-git reset --hard origin/master
+git reset --hard FETCH_HEAD
 echo "==> 当前提交: $(git log --oneline -1)"
 
 COMPOSE=(

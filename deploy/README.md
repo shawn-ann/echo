@@ -159,7 +159,7 @@ git add . && git commit -m "..." && git push origin master
 
 脚本会：
 
-1. `git fetch origin master && git reset --hard origin/master`
+1. `git fetch origin master && git reset --hard FETCH_HEAD`
 2. 使用 `deploy/docker-compose.prod.yml` + `deploy/docker-compose.build.yml` 在服务器本地构建 `api` / `web`
 3. `docker compose up -d --remove-orphans` 重启
 4. 清理悬空镜像
