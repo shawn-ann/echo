@@ -6,11 +6,14 @@ services:
     build:
       context: ../backend
       dockerfile: Dockerfile
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple}
     image: echo-api:local
   web:
     build:
       context: ../web
       dockerfile: Dockerfile
       args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
         VITE_API_BASE_URL: /api/v1
     image: echo-web:local
