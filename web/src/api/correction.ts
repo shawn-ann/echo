@@ -159,9 +159,17 @@ export interface StoredCorrection {
   created_at: string
 }
 
-export async function fetchCorrections(): Promise<StoredCorrection[]> {
-  const data = await http.get<{ corrections: StoredCorrection[] }>('/corrections')
-  return data.corrections
+export interface CorrectionsPage {
+  corrections: StoredCorrection[]
+  next_cursor: string | null
+  has_more: boolean
+}
+
+export async function fetchCorrections(cursor?: string): Promise<CorrectionsPage> {
+  const query = cursor
+    ? `?limit=10&before=${encodeURIComponent(cursor)}`
+    : '?limit=10'
+  return http.get<CorrectionsPage>(`/corrections${query}`)
 }
 
 export function normalizeStoredReport(report: StoredCorrection['report']): CorrectionReport {

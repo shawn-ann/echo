@@ -24,6 +24,20 @@ const REWRITE_META: Record<
   minimal: { label: '最小修正', icon: '✏️', accent: 'text-[#2b8a3e]' },
 }
 
+function dayKey(iso: string) {
+  const date = new Date(iso)
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
+}
+
+function formatDay(iso: string) {
+  return new Date(iso).toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+  })
+}
+
 const SEVERITY_STYLE: Record<string, string> = {
   Critical: 'bg-[#fa5252] text-white',
   Major: 'bg-[#f08c00] text-white',
@@ -33,6 +47,7 @@ const SEVERITY_STYLE: Record<string, string> = {
 interface ResultState {
   id: string
   source: string
+  createdAt: string
   status: 'streaming' | 'done' | 'error'
   phase: 'thinking' | 'correct'
   reasoning: string
@@ -50,6 +65,7 @@ function fromStored(record: StoredCorrection): ResultState {
   return {
     id: record.id,
     source: record.source_text,
+    createdAt: record.created_at,
     status: 'done',
     phase: 'correct',
     reasoning: '',
@@ -69,10 +85,19 @@ export default function CorrectionStreamPage() {
   const [busy, setBusy] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [historyError, setHistoryError] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const idRef = useRef(0)
   const activeIdRef = useRef<string | null>(null)
+  const pinnedRef = useRef(true)
+  const skipScrollRef = useRef(false)
+  const initialScrolledRef = useRef(false)
+  const loadingOlderRef = useRef(false)
 
   useEffect(() => {
     return () => abortRef.current?.abort()
@@ -81,16 +106,21 @@ export default function CorrectionStreamPage() {
   useEffect(() => {
     let cancelled = false
     fetchCorrections()
-      .then((records) => {
+      .then((page) => {
         if (cancelled) return
-        const history = records.map(fromStored)
+        const history = page.corrections.map(fromStored).reverse()
         setItems((prev) => {
           const existing = new Set(prev.map((item) => item.id))
           return [...history.filter((item) => !existing.has(item.id)), ...prev]
         })
+        setNextCursor(page.next_cursor)
+        setHasMore(page.has_more)
       })
       .catch(() => {
         if (!cancelled) setHistoryError(true)
+      })
+      .finally(() => {
+        if (!cancelled) setInitialLoading(false)
       })
     return () => {
       cancelled = true
@@ -98,7 +128,14 @@ export default function CorrectionStreamPage() {
   }, [])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (skipScrollRef.current) {
+      skipScrollRef.current = false
+      return
+    }
+    if (!initialScrolledRef.current || pinnedRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'auto' })
+      initialScrolledRef.current = true
+    }
   }, [items])
 
   useEffect(() => {
@@ -204,6 +241,37 @@ export default function CorrectionStreamPage() {
     }
   }
 
+  async function loadOlder() {
+    if (
+      loadingOlderRef.current ||
+      initialLoading ||
+      !hasMore ||
+      !nextCursor
+    ) {
+      return
+    }
+    loadingOlderRef.current = true
+    setLoadingOlder(true)
+    const el = scrollRef.current
+    const previousHeight = el?.scrollHeight ?? 0
+    try {
+      const page = await fetchCorrections(nextCursor)
+      const older = page.corrections.map(fromStored).reverse()
+      skipScrollRef.current = true
+      setItems((prev) => [...older, ...prev])
+      setNextCursor(page.next_cursor)
+      setHasMore(page.has_more)
+      requestAnimationFrame(() => {
+        if (el) el.scrollTop += el.scrollHeight - previousHeight
+      })
+    } catch {
+      setHistoryError(true)
+    } finally {
+      loadingOlderRef.current = false
+      setLoadingOlder(false)
+    }
+  }
+
   async function send() {
     const message = content.trim()
     if (!message || busy) return
@@ -213,11 +281,13 @@ export default function CorrectionStreamPage() {
     const startedAt = Date.now()
     const id = nextId()
     activeIdRef.current = id
+    pinnedRef.current = true
     setItems((prev) => [
       ...prev,
       {
         id,
         source: message,
+        createdAt: new Date().toISOString(),
         status: 'streaming',
         phase: 'thinking',
         reasoning: '',
@@ -246,9 +316,26 @@ export default function CorrectionStreamPage() {
 
   return (
     <div className="flex h-full flex-col bg-[#f8f9fa]">
-      <div className="flex-1 overflow-y-auto">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto"
+        onScroll={(event) => {
+          const el = event.currentTarget
+          pinnedRef.current =
+            el.scrollHeight - el.scrollTop - el.clientHeight < 100
+          if (el.scrollTop < 40) void loadOlder()
+        }}
+      >
         <div className="mx-auto w-full max-w-3xl space-y-4 p-4 md:p-6">
-          {items.length === 0 && !busy && !historyError && (
+          {initialLoading && items.length === 0 && (
+            <div className="flex min-h-[50vh] items-center justify-center">
+              <p className="text-center text-[#868e96]">加载历史…</p>
+            </div>
+          )}
+          {loadingOlder && (
+            <p className="text-center text-xs text-[#868e96]">加载更早记录…</p>
+          )}
+          {items.length === 0 && !busy && !historyError && !initialLoading && (
             <div className="flex min-h-[50vh] items-center justify-center">
               <p className="text-center text-[#868e96]">
                 输入一段英文，获取错误分析和三版改写。
@@ -263,8 +350,16 @@ export default function CorrectionStreamPage() {
             </div>
           )}
 
-          {items.map((item) => (
+          {items.map((item, index) => {
+            const showDayHeader =
+              index === 0 || dayKey(items[index - 1].createdAt) !== dayKey(item.createdAt)
+            return (
             <div key={item.id} className="space-y-3">
+              {showDayHeader && (
+                <div className="sticky top-0 z-10 -mx-1 bg-[#f8f9fa]/95 px-1 py-1 text-xs font-medium text-[#868e96]">
+                  {formatDay(item.createdAt)}
+                </div>
+              )}
               <UserBubble content={item.source} />
               <div className="flex justify-start">
                 <div className="w-full max-w-[90%] rounded-xl border border-[#dee2e6] bg-white p-3">
@@ -400,7 +495,8 @@ export default function CorrectionStreamPage() {
                 </div>
               </div>
             </div>
-          ))}
+            )
+          })}
           <div ref={bottomRef} />
         </div>
       </div>

@@ -131,3 +131,64 @@ test('C-S-07 刷新后加载全部纠错历史', async ({ page }) => {
     'Yesterday I went to school and saw a very big building.',
   )
 })
+
+test('C-S-08 滚动到顶部加载更早 10 条', async ({ page }) => {
+  const report = {
+    schema_version: 1,
+    errors: [],
+    rewrites: [
+      { id: 'minimal', text: 'history rewrite' },
+    ],
+  }
+  const makeRecord = (index: number, day: number) => ({
+    id: `history-${index}`,
+    mode: 'correction',
+    source_text: `history-source-${index}`,
+    report,
+    schema_version: 1,
+    duration_ms: 1000,
+    model: 'mock',
+    created_at: `2026-11-${day}T10:00:00+00:00`,
+  })
+
+  await page.route('**/api/v1/corrections*', async (route) => {
+    const url = new URL(route.request().url())
+    if (url.searchParams.get('before') === 'older') {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          corrections: Array.from({ length: 2 }, (_, i) => makeRecord(i, 27)),
+          next_cursor: null,
+          has_more: false,
+        }),
+      })
+      return
+    }
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        corrections: Array.from({ length: 10 }, (_, i) => makeRecord(19 - i, 28)),
+        next_cursor: 'older',
+        has_more: true,
+      }),
+    })
+  })
+
+  await page.goto('/correction/stream')
+  await expect(page.getByTestId('correction-timing')).toHaveCount(10)
+
+  await page.evaluate(() => {
+    const scroller = [...document.querySelectorAll('div')].find(
+      (el) =>
+        el.className.includes('overflow-y-auto') &&
+        el.textContent?.includes('history-source-19'),
+    )
+    if (!scroller) throw new Error('scroller not found')
+    scroller.scrollTop = 0
+    scroller.dispatchEvent(new Event('scroll', { bubbles: true }))
+  })
+
+  await expect(page.getByTestId('correction-timing')).toHaveCount(12)
+  await expect(page.getByText('history-source-0')).toBeVisible()
+  await expect(page.getByText('2026年11月27日')).toBeVisible()
+})

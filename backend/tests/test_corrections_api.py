@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import select
 
 from app.db import async_session_factory
@@ -62,3 +64,46 @@ async def test_corrections_returns_user_history(client):
     assert rows[0]["source_text"] == "Yesterday I go to school."
     assert rows[0]["report"]["rewrites"][0]["id"] == "minimal"
     assert rows[0]["duration_ms"] == 1200
+
+
+async def test_corrections_paginate_newest_first_with_cursor(client):
+    token = await _login(client)
+    async with async_session_factory() as session:
+        user = await session.scalar(select(User).where(User.username == "demo"))
+        assert user is not None
+        base = datetime(2026, 11, 28, tzinfo=timezone.utc)
+        for index in range(12):
+            session.add(
+                Correction(
+                    user_id=user.id,
+                    mode="correction",
+                    source_text=f"message-{index}",
+                    report={"schema_version": 1, "errors": [], "rewrites": []},
+                    schema_version=1,
+                    created_at=base + timedelta(seconds=index),
+                )
+            )
+        await session.commit()
+
+    headers = {"Authorization": f"Bearer {token}"}
+    first = await client.get("/api/v1/corrections", headers=headers)
+    assert first.status_code == 200
+    page = first.json()
+    assert len(page["corrections"]) == 10
+    assert page["has_more"] is True
+    assert page["next_cursor"]
+    assert [row["source_text"] for row in page["corrections"]] == [
+        f"message-{index}" for index in range(11, 1, -1)
+    ]
+
+    second = await client.get(
+        f"/api/v1/corrections?before={page['next_cursor']}", headers=headers
+    )
+    assert second.status_code == 200
+    page2 = second.json()
+    assert len(page2["corrections"]) == 2
+    assert page2["has_more"] is False
+    assert [row["source_text"] for row in page2["corrections"]] == [
+        "message-1",
+        "message-0",
+    ]

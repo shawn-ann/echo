@@ -26,3 +26,5 @@ class CorrectionRecordOut(BaseModel):
 
 class CorrectionsResponse(BaseModel):
     corrections: list[CorrectionRecordOut]
+    next_cursor: str | None = None
+    has_more: bool = False
